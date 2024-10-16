@@ -25,6 +25,14 @@ static inline uint64_t uint16_to_bin16(uint16_t u) {
 	return sum;
 }
 
+struct ONIProbeStatistics{
+	float sum;
+	float mean;
+	float ss;
+	float variance;
+	float deviation;
+};
+
 class ONIRegister{
 
 public:
@@ -166,7 +174,7 @@ protected:
 			return 0;
 		}
 
-		LOGDEBUG("%s  read register: %s == dec(%05i) bin(%016llX) hex(%#06x)", reg.getDeviceName().c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
+		LOGDEBUG("%s (%i)  read register: %s == dec(%05i) bin(%016llX) hex(%#06x)", reg.getDeviceName().c_str(), deviceType.idx, reg.getName().c_str(), value, uint16_to_bin16(value), value);
 
 		return value;
 
@@ -175,7 +183,7 @@ protected:
 	bool writeRegister(const ONIRegister& reg, const unsigned int& value){
 
 		assert(ctx != NULL && deviceTypeID != -1, "ONIContext and ONIDevice must be setup");
-		LOGDEBUG("%s write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", reg.getDeviceName().c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
+		LOGDEBUG("%s (%i) write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", reg.getDeviceName().c_str(), deviceType.idx, reg.getName().c_str(), value, uint16_to_bin16(value), value);
 
 		int rc = ONI_ESUCCESS;
 
@@ -242,11 +250,6 @@ public:
 	}
 
 	bool writeRegister(const FmcRegister& reg, const unsigned int& value){
-		//if(reg == PORTVOLTAGE && value > 69){
-		//	LOGALERT("Voltage too high!!? %i", value);
-		//	assert(false);
-		//	return false;
-		//}
 		return ONIDevice::writeRegister(reg, value);
 	}
 
@@ -254,32 +257,35 @@ public:
 		// nothing
 	}
 
-	inline bool getLinkState(const bool& bCheckRegisters = true){
-		if(bCheckRegisters) bLinkState = (bool)readRegister(FmcDevice::LINKSTATE);
+	bool getLinkState(const bool& bCheckRegisters = true){
+		if(bCheckRegisters) bLinkState = (bool)readRegister(FmcDevice::LINKSTATE); // HMMM returns 3 when rhs2116 connected?!!
 		return bLinkState;
 	}
 
-	inline bool setEnabled(const bool& b){
+	bool setEnabled(const bool& b){
 		bool bOk = writeRegister(FmcDevice::ENABLE, (unsigned int)b);
-		if(bOk) getEnabled(true);
+		if(bOk) getEnabled(true); // updates the cached value
 		return bOk;
 	}
 
-	inline bool getEnabled(const bool& bCheckRegisters = true){
+	bool getEnabled(const bool& bCheckRegisters = true){
 		if(bCheckRegisters) bEnabled = (bool)readRegister(FmcDevice::ENABLE);
 		return bEnabled;
 	}
 
-	inline bool setPortVoltage(const float& v){
+	bool setPortVoltage(const float& v){
 		writeRegister(FmcDevice::PORTVOLTAGE, 0); // have to set to 0 and back to voltage or else won't init properly
 		ofSleepMillis(500); // needs to pause
 		bool bOk = writeRegister(FmcDevice::PORTVOLTAGE, v * 10);
 		ofSleepMillis(500); // needs to pause
-		if(bOk) getPortVoltage(true); bDeviceRequiresContextRestart = true;
+		if(bOk){ // updates the cached value
+			getPortVoltage(true); 
+			bDeviceRequiresContextRestart = true;
+		}
 		return bOk;
 	}
 
-	inline float getPortVoltage(const bool& bCheckRegisters = true){
+	float getPortVoltage(const bool& bCheckRegisters = true){
 		if(bCheckRegisters) voltage = readRegister(FmcDevice::PORTVOLTAGE) / 10.0f;
 		return voltage;
 	}
@@ -323,26 +329,29 @@ public:
 		//fu::debug << (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time) << fu::endl;
 	}
 
-	inline bool setEnabled(const bool& b){
+	bool setEnabled(const bool& b){
 		bool bOk = writeRegister(HeartBeatDevice::ENABLE, (unsigned int)b);
-		if(bOk) getEnabled(true);
+		if(bOk) getEnabled(true); // updates the cached value
 		return bOk;
 	}
 
-	inline bool getEnabled(const bool& bCheckRegisters = true){
+	bool getEnabled(const bool& bCheckRegisters = true){
 		if(bCheckRegisters) bEnabled = (bool)readRegister(HeartBeatDevice::ENABLE);
 		return bEnabled;
 	}
 
-	inline bool setFrequencyHz(const unsigned int& beatsPerSecond){
+	bool setFrequencyHz(const unsigned int& beatsPerSecond){
 		unsigned int clkHz = readRegister(HeartBeatDevice::CLK_HZ);
 		unsigned int clkDv = clkHz / beatsPerSecond;
 		bool bOk = writeRegister(HeartBeatDevice::CLK_DIV, clkDv);
-		if(bOk) getFrequencyHz(true); bDeviceRequiresContextRestart = true;
+		if(bOk){ // updates the cached value
+			getFrequencyHz(true); 
+			bDeviceRequiresContextRestart = true;
+		}
 		return bOk;
 	}
 
-	inline float getFrequencyHz(const bool& bCheckRegisters = true){
+	float getFrequencyHz(const bool& bCheckRegisters = true){
 		if(bCheckRegisters){
 			unsigned int clkHz  = readRegister(HeartBeatDevice::CLK_HZ);
 			unsigned int clkDv = readRegister(HeartBeatDevice::CLK_DIV);
@@ -353,6 +362,8 @@ public:
 	}
 
 protected:
+
+
 
 	unsigned int frequencyHz = 0;
 	bool bEnabled = false;
@@ -400,15 +411,10 @@ public:
 	static inline const Rhs2116Register DCPWR		= Rhs2116Register(0x26, "DCPWR");		// Individual DC Amplifier Power
 
 	static inline const Rhs2116Register COMPMON		= Rhs2116Register(0x28, "COMPMON");		// Compliance Monitor
-
 	static inline const Rhs2116Register STIMON		= Rhs2116Register(0x2a, "STIMON");		// Stimulator On
-
 	static inline const Rhs2116Register STIMPOL		= Rhs2116Register(0x2c, "STIMPOL");		// Stimulator Polarity
-
 	static inline const Rhs2116Register RECOV		= Rhs2116Register(0x2e, "RECOV");		// Charge Recovery Switch
-
 	static inline const Rhs2116Register LIMREC		= Rhs2116Register(0x30, "LIMREC");		// Current-Limited Charge Recovery Enable
-
 	static inline const Rhs2116Register FAULTDET	= Rhs2116Register(0x32, "FAULTDET");	// Fault Current Detector
 
 	static inline const Rhs2116Register NEG00  = Rhs2116Register(0x40, "NEG00");
@@ -500,20 +506,6 @@ public:
 	};
 #pragma pack(pop)
 
-//#pragma pack(push, 1)
-//	struct Rhs2116ProcessedDataFrame{
-//		uint64_t hubTime;
-//		float ac[16];
-//		float dc[16];
-//		float acAvg[16];
-//		float dcAvg[16];
-//		float acStdDev[16];
-//		float dcStdDev[16];
-//		uint64_t acqTime;
-//		long double deltaTime;
-//	};
-//#pragma pack(pop)
-
 	struct acquisition_clock_compare {
 		inline bool operator() (const Rhs2116DataFrame& lhs, const Rhs2116DataFrame& rhs){
 			return (lhs.acqTime < rhs.acqTime);
@@ -530,15 +522,16 @@ public:
 		//deviceID = Rhs2116DeviceID;
 		//setBufferSizeSamples(15000);
 		setBufferSizeMillis(5000);
+		setDrawBufferStride(100);
 		//sampleRateTimer.start<fu::millis>(1000);
 		//cntTimer.start<fu::millis>(1000);
-		
 	};
 	
 	~Rhs2116Device(){
 		LOGDEBUG("RHS2116 Device DTOR");
 		const std::lock_guard<std::mutex> lock(mutex);
 		rawDataFrames.clear();
+		drawDataFrames.clear();
 		//readRegister(ENABLE);
 		//writeRegister(ENABLE, 0);
 	};
@@ -551,6 +544,45 @@ public:
 		return ONIDevice::writeRegister(reg, value);
 	}
 
+	bool setEnabled(const bool& b){
+		bool bOk = writeRegister(Rhs2116Device::ENABLE, (unsigned int)b);
+		if(bOk) getEnabled(true); // updates the cached value
+		return bOk;
+	}
+
+	bool getEnabled(const bool& bCheckRegisters = true){
+		if(bCheckRegisters) bEnabled = (bool)readRegister(Rhs2116Device::ENABLE);
+		return bEnabled;
+	}
+
+	bool setDspCutOff(const Rhs2116DspCutoff& cutoff){
+		Rhs2116Format format = getFormat(true);
+		if(cutoff == Rhs2116DspCutoff::Off){
+			format.dspEnable = 0;
+			format.dspCutOff = Rhs2116DspCutoff::Dsp146mHz; // is this a bug? that seems to be default status
+		}else{
+			format.dspEnable = 1;
+			format.dspCutOff = cutoff;
+		}
+		
+		return setFormat(format);
+	}
+
+	bool setFormat(Rhs2116Format format){
+		unsigned int uformat = *(reinterpret_cast<unsigned int*>(&format));
+		bool bOk = writeRegister(Rhs2116Device::FORMAT, uformat);
+		if(bOk) getFormat(true); // updates the cached value
+		return bOk;
+	}
+
+	Rhs2116Format getFormat(const bool& bCheckRegisters = true){
+		if(bCheckRegisters){
+			unsigned int uformat = readRegister(Rhs2116Device::FORMAT);
+			format = *(reinterpret_cast<Rhs2116Format*>(&uformat));
+		}
+		return format;
+	}
+
 	const std::vector<Rhs2116DataFrame>& getRawDataFrames(){
 		const std::lock_guard<std::mutex> lock(mutex);
 		return rawDataFrames;
@@ -559,25 +591,6 @@ public:
 	const std::vector<Rhs2116DataFrame>& getDrawDataFrames(){
 		const std::lock_guard<std::mutex> lock(mutex);
 		return drawDataFrames;
-	}
-
-	inline void getSortedDataFrames(std::vector<Rhs2116DataFrame>& to, const size_t& stride = 1){
-		//const std::lock_guard<std::mutex> lock(mutex);
-
-		//size_t n_frames = floor(bufferSize / stride);
-		//std::vector<Rhs2116DataFrame> to(n_frames);
-		//to.resize(n_frames);
-		mutex.lock();
-		to = rawDataFrames;
-		//size_t sorted_idx = currentBufferIDX;
-		//for(size_t i = 0; i < n_frames; ++i){
-		//	to[i] = rawDataFrames[sorted_idx];
-		//	sorted_idx = (sorted_idx + stride) % bufferSize;
-		//}
-		mutex.unlock();
-		std::sort(to.begin(), to.end(), acquisition_clock_compare());
-		//if(to[0].acqTime != rawDataFrames[currentBufferIDX].acqTime) fu::debug << "not sorted?" << fu::endl;
-		//return to;
 	}
 
 	Rhs2116DataFrame getLastDataFrame(){
@@ -594,28 +607,17 @@ public:
 		frameTimer.start();
 		return t;
 	}
-	struct ProbeStatistics{
-		float sum;
-		float mean;
-		float ss;
-		float variance;
-		float deviation;
-	};
-	std::vector<ProbeStatistics> probeStats;
+
+	//std::vector<ONIProbeStatistics> probeStats;
 
 	//uint64_t cnt = 0;
 	inline void process(oni_frame_t* frame){
+
 		const std::lock_guard<std::mutex> lock(mutex);
-		//++cnt;
-		//if(cntTimer.finished()){
-		//	fu::debug << "count: " << cnt << fu::endl;
-		//	cntTimer.restart();
-		//	cnt = 0;
-		//}
+
 		memcpy(&rawDataFrames[currentBufferIDX], frame->data, frame->data_sz);  // copy the data payload including hub clock
 		rawDataFrames[currentBufferIDX].acqTime = frame->time;					// copy the acquisition clock
 		rawDataFrames[currentBufferIDX].deltaTime = ONIDevice::getAcqDeltaTimeMicros(frame->time); //fu::time::now<fu::micros>() * 1000;
-		//fu::debug << "DEV: " << frame->dev_idx << " " << frame->time << " " << rawDataFrames[currentBufferIDX].hubTime << fu::endl;
 
 		if(currentBufferIDX % drawStride == 0){
 			//for(int i = 0; i < 16; ++i){
@@ -630,26 +632,27 @@ public:
 			//frameTimer.start();
 		}
 
-		
+		// nice way to sort
+		//size_t sorted_idx = currentBufferIDX;
+		//for(size_t i = 0; i < n_frames; ++i){
+		//	to[i] = rawDataFrames[sorted_idx];
+		//	sorted_idx = (sorted_idx + stride) % bufferSize;
+		//}
 
 		//for(size_t probe = 0; probe < 16; ++probe){
-
 		//	probeStats[probe].sum = 0;
-
 		//	for(size_t frame = 0; frame < bufferSize; ++frame){
 		//		probeStats[probe].sum += rawDataFrames[frame].ac[probe];
 		//	}
 		//	
 		//	probeStats[probe].mean = probeStats[probe].sum / bufferSize;
 		//	probeStats[probe].mean = 0.195f * (probeStats[probe].mean - 32768) / 1000.0f;
-
 		//	for(size_t frame = 0; frame < bufferSize; ++frame){
 		//		float acdiff = 0.195f * (rawDataFrames[frame].ac[probe] - 32768) / 1000.0f - probeStats[probe].mean;
 		//		probeStats[probe].ss += acdiff * acdiff; 
 		//	}
 		//	probeStats[probe].variance = probeStats[probe].ss / (bufferSize - 1);  // use population (N) or sample (n-1) deviation?
 		//	probeStats[probe].deviation = sqrt(probeStats[probe].variance);
-
 		//}
 		
 		//long double deltaFrameAcqTime = (rawDataFrames[currentBufferIDX].acqTime - rawDataFrames[lastBufferIDX].acqTime) / (long double)acq_clock_khz * 1000000;
@@ -667,32 +670,25 @@ public:
 
 	}
 
-	//std::vector< std::vector<float> > acProbes;
-	//std::vector< std::vector<float> > dcProbes;
-	//std::vector<uint64_t> deltaTimes;
 
-	std::vector<Rhs2116DataFrame> drawDataFrames;
-	size_t drawStride = 100;
-	size_t currentDrawBufferIDX = 0;
-	size_t drawBufferSize = 0;
-	void setBufferSizeSamples(const size_t& samples){
-		const std::lock_guard<std::mutex> lock(mutex);
-		bufferSize = samples;
-		currentBufferIDX = 0;
-		rawDataFrames.resize(bufferSize);
+	void setDrawBufferStride(const size_t& samples){
+		mutex.lock();
+		drawStride = samples;
 		drawBufferSize = bufferSize / drawStride;
 		currentDrawBufferIDX = 0;
 		drawDataFrames.resize(drawBufferSize);
-		LOGINFO("Raw  Buffer size: %i (samples)", bufferSize);
+		mutex.unlock();
 		LOGINFO("Draw Buffer size: %i (samples)", drawBufferSize);
-		probeStats.resize(16);
-		//acProbes.resize(16);
-		//dcProbes.resize(16);
-		//for(int i = 0; i < 16; ++i){
-		//	acProbes[i].resize(drawBufferSize);
-		//	dcProbes[i].resize(drawBufferSize);
-		//}
-		//deltaTimes.resize(drawBufferSize);
+	}
+
+	void setBufferSizeSamples(const size_t& samples){
+		mutex.lock();
+		bufferSize = samples;
+		currentBufferIDX = 0;
+		rawDataFrames.resize(bufferSize);
+		mutex.unlock();
+		LOGINFO("Raw  Buffer size: %i (samples)", bufferSize);
+		setDrawBufferStride(drawStride);
 	}
 
 	void setBufferSizeMillis(const int& millis){
@@ -700,12 +696,6 @@ public:
 		// SO I am just going to assume 30kS/s sample rate for the RHS2116 hard coded to sampleRate
 		size_t samples = sampleRatekSs * millis / 1000;
 		setBufferSizeSamples(samples);
-	}
-
-	inline void printSampleCount(){
-		const std::lock_guard<std::mutex> lock(mutex);
-		fu::debug << sampleCount << fu::endl;
-		sampleCount = 0;
 	}
 
 private:
@@ -718,12 +708,18 @@ private:
 	size_t currentBufferIDX = 0;
 	size_t lastBufferIDX = 0;
 
+	std::vector<Rhs2116DataFrame> drawDataFrames;
+
+	size_t drawStride = 100;
+	size_t currentDrawBufferIDX = 0;
+	size_t drawBufferSize = 0;
+
 	const int sampleRatekSs = 30000; // see above, cannot seem to change this using BIAS registers!!
 
-	uint64_t sampleCount = 0;
-	//fu::Timer sampleRateTimer;
-
 	std::mutex mutex;
+
+	bool bEnabled = false;
+	Rhs2116Format format;
 
 };
 
@@ -731,7 +727,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rhs2116Device::Rhs2116Fo
 
 	os << "[unsigned: " << *(unsigned int*)&format << "] ";
 	os << "[dspCutOff: " << format.dspCutOff << "] ";
-	os << "[dsPen: " << format.dspEnable << "] ";
+	os << "[dsPenable: " << format.dspEnable << "] ";
 	os << "[absmode: " << format.absmode << "] ";
 	os << "[twoscomp: " << format.twoscomp << "] ";
 	os << "[weakMISO: " << format.weakMISO << "] ";

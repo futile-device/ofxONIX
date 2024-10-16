@@ -252,43 +252,6 @@ public:
 
 	}
 
-	bool startContext(){
-		LOGINFO("Starting ONI context");
-		setContextOption(RESETACQCOUNTER, 2);
-		if(getContextOption(RUNNING) != 1){
-			LOGERROR("Could not start hardware"); // necessary?
-			return false;
-		}
-		//startFrameRead();
-		return true;
-	}
-
-	bool stopContext(){
-		LOGINFO("Stopping ONI context");
-		//stopFrameRead();
-		if(setContextOption(RUNNING, 0) == -1){
-			LOGERROR("Could not stop hardware"); // necessary?
-			return false;
-		}
-		return true;
-	}
-
-	void closeContext(){
-
-		LOGDEBUG("Closing ONIContext...");
-
-		if(ctx == NULL) return; // nothing to do
-
-		stopFrameRead();
-		clearDevices();
-		stopContext();
-		
-		oni_destroy_ctx(ctx);
-
-		LOGINFO("...ONIContext closed");
-
-	}
-
 	oni_size_t getMaxReadSize(){
 		assert(maxReadSize > 0);
 		return maxReadSize;
@@ -336,13 +299,61 @@ public:
 		return &ctx;
 	}
 
+	void startAcquisition(){
+		startFrameRead();
+		startContext();
+	}
+
+	void stopAcquisition(){
+		stopFrameRead();
+		stopContext();
+	}
+
+	void closeContext(){
+
+		LOGDEBUG("Closing ONIContext...");
+
+		if(ctx == NULL) return; // nothing to do
+
+		stopFrameRead();
+		clearDevices();
+		stopContext();
+
+		oni_destroy_ctx(ctx);
+
+		LOGINFO("...ONIContext closed");
+
+	}
+
+private:
+
+	bool startContext(){
+		LOGINFO("Starting ONI context");
+		setContextOption(RESETACQCOUNTER, 2);
+		if(getContextOption(RUNNING) != 1){
+			LOGERROR("Could not start hardware"); // necessary?
+			return false;
+		}
+		//startFrameRead();
+		return true;
+	}
+
+	bool stopContext(){
+		LOGINFO("Stopping ONI context");
+		//stopFrameRead();
+		if(setContextOption(RUNNING, 0) == -1){
+			LOGERROR("Could not stop hardware"); // necessary?
+			return false;
+		}
+		return true;
+	}
+
 	void startFrameRead(){
 		if(bThread) stopFrameRead();
 		LOGDEBUG("Starting frame read thread");
 		bThread = true;
-		for(auto it = oniDevices.begin(); it != oniDevices.end();it++){
-			auto device = it->second;
-			device->reset();
+		for(auto device : oniDevices){
+			device.second->reset();
 		}
 		thread = std::thread(&ONIContext::readFrame, this);
 	}
@@ -353,8 +364,6 @@ public:
 		bThread = false;
 		if(thread.joinable()) thread.join();
 	}
-
-private:
 
 	bool setupContext(){
 
