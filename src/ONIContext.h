@@ -7,7 +7,9 @@
 #include "oni.h"
 #include "onix.h"
 
+
 #include "ofMain.h"
+#include "ofxImGui.h"
 #include "ofxFutilities.h"
 
 //#define LOG_OF 1
@@ -35,35 +37,6 @@
 #include "ONIDevices.h"
 
 #pragma once
-
-//void print_dev_table(oni_device_t* devices, size_t num_devs){
-//
-//	// Show device table
-//	printf("   +--------------------+-------+-------+-------+-------+---------------------\n");
-//	printf("   |        \t\t|  \t|Firm.\t|Read\t|Wrt. \t|     \n");
-//	printf("   |Dev. idx\t\t|ID\t|ver. \t|size\t|size \t|Desc.\n");
-//	printf("   +--------------------+-------+-------+-------+-------+---------------------\n");
-//
-//	size_t dev_idx;
-//	for (dev_idx = 0; dev_idx < num_devs; dev_idx++) {
-//
-//		const char* dev_str = onix_device_str(devices[dev_idx].id);
-//
-//		printf("%02zd |%05u: 0x%02x.0x%02x\t|%d\t|%d\t|%u\t|%u\t|%s\n",
-//			dev_idx,
-//			devices[dev_idx].idx,
-//			(uint8_t)(devices[dev_idx].idx >> 8),
-//			(uint8_t)devices[dev_idx].idx,
-//			devices[dev_idx].id,
-//			devices[dev_idx].version,
-//			devices[dev_idx].read_size,
-//			devices[dev_idx].write_size,
-//			dev_str);
-//	}
-//
-//	printf("   +--------------------+-------+-------+-------+-------+---------------------\n");
-//
-//}
 
 class ONIContextOption{
 
@@ -108,6 +81,25 @@ inline bool operator>=(const ONIContextOption& lhs, const ONIContextOption& rhs)
 inline bool operator==(const ONIContextOption& lhs, const ONIContextOption& rhs) { return (lhs.optn == rhs.optn && lhs.name == rhs.name); }
 inline bool operator!=(const ONIContextOption& lhs, const ONIContextOption& rhs) { return !(lhs == rhs); }
 
+inline std::ostream& operator<<(std::ostream& os, const oni_device_t& type) {
+
+	char typeBuffer[256];
+
+	sprintf(typeBuffer, "%05u: 0x%02x.0x%02x\t|%02d\t|%02d\t|%02u\t|%02u\t|%s",
+			type.idx,
+			(uint8_t)(type.idx >> 8),
+			(uint8_t)type.idx,
+			type.id,
+			type.version,
+			type.read_size,
+			type.write_size,
+			onix_device_str(type.id));
+
+	os << typeBuffer;
+	return os;
+
+}
+
 class ONIContext {
 
 public:
@@ -133,21 +125,140 @@ public:
 		closeContext();
 	};
 
+	inline void gui(){
+
+		ImGui::Begin("ONI Context");
+		ImGui::PushID("ONI Context");
+
+		if(bIsContextSetup){
+
+			if(ImGui::Button("Setup Context")){
+				setupContext();
+			}
+
+			ImGui::SameLine();
+
+			if(ImGui::Button("List Devices")){
+				printDeviceTable();
+			}
+
+			ImGui::SameLine();
+
+			std::string acqString = (bIsAcquiring ? "Stop Acquisition" : "Start Acquisition");
+
+			if(ImGui::Button(acqString.c_str())){
+				if(bIsAcquiring){
+					stopAcquisition();
+				}else{
+					startAcquisition();
+				}
+			}
+
+
+
+			ImGui::NewLine();
+
+
+			static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
+
+			ImVec2 outer_size = ImVec2(0.0f, 400.0f);
+			ImGui::SetNextItemOpen(true);
+			if(ImGui::CollapsingHeader("Device List")){
+				if (ImGui::BeginTable("Device Types", 6, flags, outer_size)){
+					ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+					ImGui::TableSetupColumn("Device IDX", ImGuiTableColumnFlags_WidthFixed, 50);
+					ImGui::TableSetupColumn("Hard ID", ImGuiTableColumnFlags_WidthFixed, 25);
+					ImGui::TableSetupColumn("Firmware", ImGuiTableColumnFlags_WidthFixed, 20);
+					ImGui::TableSetupColumn("Read Size", ImGuiTableColumnFlags_WidthFixed, 20);
+					ImGui::TableSetupColumn("Write Size", ImGuiTableColumnFlags_WidthFixed, 20);
+					ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_None);
+					ImGui::TableHeadersRow();
+
+					// Demonstrate using clipper for large vertical lists
+					ImGuiListClipper clipper;
+					clipper.Begin(deviceTypes.size());
+					while (clipper.Step()){
+						for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++){
+
+							const oni_device_t& type = deviceTypes[row];
+							ImGui::TableNextRow();
+
+							ImGui::TableSetColumnIndex(0); // Device IDX
+							ImGui::Text("%02i|%05u: 0x%02x.0x%02x", row, type.idx, (uint8_t)(type.idx >> 8), (uint8_t)type.idx);
+
+							ImGui::TableSetColumnIndex(1); // Device Type ID
+							ImGui::Text("%02d", type.id);
+
+							ImGui::TableSetColumnIndex(2); // Firmware Version
+							ImGui::Text("%02d", type.version);
+
+							ImGui::TableSetColumnIndex(3); // Read Size
+							ImGui::Text("%02u", type.read_size);
+
+							ImGui::TableSetColumnIndex(4); // Write Size
+							ImGui::Text("%02u", type.write_size);
+
+							ImGui::TableSetColumnIndex(5); // Description
+							ImGui::Text("%s", onix_device_str(type.id));
+
+						}
+					}
+					ImGui::EndTable();
+				}
+			}
+			
+		}
+
+		for(auto device : oniDevices){
+			ImGui::SetNextItemOpen(true);
+			if(ImGui::CollapsingHeader(device.second->getName().c_str(), true)) device.second->gui();
+		}
+
+		ImGui::PopID();
+		ImGui::End();
+
+	}
+
 	inline void update(){
 
-		bool bContextRequiresRestart = !bIsContextSetup;
+		if(!bIsContextSetup) return;
 
+		bool bContextNeedsRestart = false;
+		bool bContextNeedsReset = false;
+		
 		// check all the devices to see if they require an context restart eg., PORTVOLTAGE
+
+		ONIDevice* device_changed = NULL;
+
 		for(auto device : oniDevices){
-			if(device.second->getDeviceRequiresContextRestart()){
-				bContextRequiresRestart = true;
+			if(device.second->getContexteNeedsRestart()){
+				device_changed = (ONIDevice*)device.second;
+				bContextNeedsRestart = true;
 				break;
+			}
+			if(device.second->getContexteNeedsReset()){
+				device_changed = (ONIDevice*)device.second;
+				bContextNeedsReset = true;
+				//break;
 			}
 		}
 
-		if(bContextRequiresRestart){
-			LOGINFO("Context requires a restart");
+		if(bContextNeedsRestart){
+			LOGDEBUG("Device requires context restart: %s", device_changed->getName().c_str());
 			setupContext();
+
+		}
+
+		if(bContextNeedsReset){
+			LOGDEBUG("Device requires context reset: %s", device_changed->getName().c_str());
+			bool bResetAcquire = bIsAcquiring;
+			if(bResetAcquire) stopAcquisition();
+			setContextOption(ONIContext::RESET, 1);
+			if(bResetAcquire){ 
+				startAcquisition();
+			}else{
+				device_changed->reset();
+			}
 		}
 	}
 
@@ -193,24 +304,27 @@ public:
 
 			deviceTypes.push_back(devices_t[i]);
 
-			if(devices_t[i].id == ONIDevice::TypeID::FMC){ // 23 FMC Host Device
+			if(devices_t[i].id == ONIDeviceTypeID::FMC){ // 23 FMC Host Device
 				LOGDEBUG("Mapping FMC Host Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
 				FmcDevice* fmc = new FmcDevice;
 				fmc->setup(&ctx, devices_t[i], acq_clock_khz);
+				fmc->reset();
 				oniDevices[devices_t[i].idx] = fmc;
 			}
 
-			if(devices_t[i].id == ONIDevice::TypeID::HEARTBEAT){ // 12 HeartBeat Device
+			if(devices_t[i].id == ONIDeviceTypeID::HEARTBEAT){ // 12 HeartBeat Device
 				LOGDEBUG("Mapping HeartBeat Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
 				HeartBeatDevice* hbd = new HeartBeatDevice;
 				hbd->setup(&ctx, devices_t[i], acq_clock_khz);
+				hbd->reset();
 				oniDevices[devices_t[i].idx] = hbd;
 			}
 
-			if(devices_t[i].id == ONIDevice::TypeID::RHS2116){ // 31 RHS2116 Device
+			if(devices_t[i].id == ONIDeviceTypeID::RHS2116){ // 31 RHS2116 Device
 				LOGDEBUG("Mapping Rhs2116 Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
 				Rhs2116Device* rhd2116 = new Rhs2116Device;
 				rhd2116->setup(&ctx, devices_t[i], acq_clock_khz);
+				rhd2116->reset();
 				oniDevices[devices_t[i].idx] = rhd2116;
 			}
 
@@ -245,7 +359,7 @@ public:
 		os << "   +--------------------+-------+-------+-------+-------+---------------------" << std::endl;
 
 		for(size_t i = 0; i < deviceTypes.size(); ++i){
-			os << std::setfill('0') << std::setw(2) << i << " |" << deviceTypes[i] << std::endl;
+			os << std::setfill('0') << std::setw(2) << i << " |" << deviceTypes[i] << std::endl; // see stream operator<< overload for oni_device_t above
 		}
 
 		LOGINFO("ONI Device Table\n%s", os.str().c_str());
@@ -302,11 +416,13 @@ public:
 	void startAcquisition(){
 		startFrameRead();
 		startContext();
+		bIsAcquiring = true;
 	}
 
 	void stopAcquisition(){
 		stopFrameRead();
 		stopContext();
+		bIsAcquiring = false;
 	}
 
 	void closeContext(){
@@ -314,6 +430,8 @@ public:
 		LOGDEBUG("Closing ONIContext...");
 
 		if(ctx == NULL) return; // nothing to do
+
+		bIsAcquiring = false;
 
 		stopFrameRead();
 		clearDevices();
@@ -466,7 +584,7 @@ private:
 					auto device = it->second;
 					device->process(frame);
 
-					//if(device->getDeviceTypeID() == ONIDevice::TypeID::HEARTBEAT){
+					//if(device->getDeviceONIDeviceTypeID() == ONIDevice::ONIDeviceTypeID::HEARTBEAT){
 					//	Rhs2116Device* rhd2116Device1 = (Rhs2116Device*)getDevice(256);
 					//	Rhs2116Device* rhd2116Device2 = (Rhs2116Device*)getDevice(257);
 					//	rhd2116Device1->printSampleCount();
@@ -490,8 +608,8 @@ private:
 
 		deviceTypes.clear();
 
-		for(auto it = oniDevices.begin(); it != oniDevices.end();it++){
-			delete it->second;
+		for(auto device : oniDevices){
+			delete device.second;
 		}
 
 		oniDevices.clear();
@@ -501,6 +619,7 @@ private:
 private:
 
 	bool bIsContextSetup = false;
+	bool bIsAcquiring = false;
 
 	unsigned int blockReadSize = 2048;
 	unsigned int blockWriteSize = 2048;
@@ -508,13 +627,13 @@ private:
 	unsigned int blockReadBytes = 0;
 	unsigned int blockWriteBytes = 0;
 
-	volatile bool bThread = false;
+	std::atomic_bool bThread = false;
 	std::thread thread;
 	std::mutex mutex;
 
 	volatile oni_ctx ctx = NULL;
 
-	std::unordered_map<unsigned int, ONIDevice*> oniDevices;
+	std::map<unsigned int, ONIDevice*> oniDevices;
 	std::vector<oni_device_t> deviceTypes = {};
 
 	int host_idx = -1;

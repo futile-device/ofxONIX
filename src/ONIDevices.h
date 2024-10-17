@@ -93,37 +93,31 @@ public:
 	Rhs2116Register(unsigned int val, std::string name) { this->addr = val; this->name = name; this->devn = "RHS2116Device"; };
 };
 
-inline std::ostream& operator<<(std::ostream& os, const oni_device_t& type) {
 
-	char typeBuffer[256];
-
-	sprintf(typeBuffer, "%05u: 0x%02x.0x%02x\t|%02d\t|%02d\t|%02u\t|%02u\t|%s",
-		   type.idx,
-		   (uint8_t)(type.idx >> 8),
-		   (uint8_t)type.idx,
-			type.id,
-			type.version,
-			type.read_size,
-			type.write_size,
-			onix_device_str(type.id));
-
-	os << typeBuffer;
-	return os;
-}
 
 //class ONIContext; // pre-declare for friend class?
+
+enum ONIDeviceTypeID{
+	HEARTBEAT	= 12,
+	FMC			= 23,
+	RHS2116		= 31,
+	NONE		= 2048
+};
+
+static std::string ONIDeviceTypeIDStr(const ONIDeviceTypeID& typeID){
+	switch(typeID){
+	case HEARTBEAT: {return "HeartBeat Device"; break;}
+	case FMC: {return "FMC Device"; break;}
+	case RHS2116: {return "RHS2116 Device"; break;}
+	case NONE: {return "No Device"; break;}
+	}
+};
 
 class ONIDevice{
 
 public:
 
 
-	enum TypeID{
-		HEARTBEAT	= 12,
-		FMC			= 23,
-		RHS2116		= 31,
-		NONE		= 2048
-	};
 
 	//ONIDevice(){};
 	virtual ~ONIDevice(){};
@@ -132,8 +126,9 @@ public:
 		LOGDEBUG("Setting up device: %s", onix_device_str(type.id));
 		ctx = context;
 		deviceType = type;
-		deviceTypeID = (TypeID)type.id;
-		deviceName = std::string(onix_device_str(type.id));
+		deviceTypeID = (ONIDeviceTypeID)type.id;
+		ostringstream os; os << ONIDeviceTypeIDStr(deviceTypeID) << " (" << type.idx << ")";
+		deviceName = os.str();
 		this->acq_clock_khz = acq_clock_khz;
 	}
 
@@ -141,19 +136,25 @@ public:
 		return deviceName;
 	}
 
-	inline const TypeID& getDeviceTypeID(){
+	inline const ONIDeviceTypeID& getDeviceTypeID(){
 		return deviceTypeID;
 	}
 
-	void reset(){
+	virtual void reset(){ // derived class should always call base clase reset()
 		firstFrameTime = -1;
-		bDeviceRequiresContextRestart = false;
+		bContextNeedsRestart = false;
+		bContextNeedsReset = false;
 	}
 
+	virtual inline void gui() = 0;
 	virtual inline void process(oni_frame_t* frame) = 0;
 
-	inline bool getDeviceRequiresContextRestart(){
-		return bDeviceRequiresContextRestart;
+	const inline bool& getContexteNeedsRestart(){
+		return bContextNeedsRestart;
+	}
+
+	const inline bool& getContexteNeedsReset(){
+		return bContextNeedsReset;
 	}
 
 	//inline bool isDeviceType(unsigned int deviceID){ return (deviceID == deviceType.id); };
@@ -174,7 +175,7 @@ protected:
 			return 0;
 		}
 
-		LOGDEBUG("%s (%i)  read register: %s == dec(%05i) bin(%016llX) hex(%#06x)", reg.getDeviceName().c_str(), deviceType.idx, reg.getName().c_str(), value, uint16_to_bin16(value), value);
+		LOGDEBUG("%s  read register: %s == dec(%05i) bin(%016llX) hex(%#06x)", deviceName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
 
 		return value;
 
@@ -183,7 +184,7 @@ protected:
 	bool writeRegister(const ONIRegister& reg, const unsigned int& value){
 
 		assert(ctx != NULL && deviceTypeID != -1, "ONIContext and ONIDevice must be setup");
-		LOGDEBUG("%s (%i) write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", reg.getDeviceName().c_str(), deviceType.idx, reg.getName().c_str(), value, uint16_to_bin16(value), value);
+		LOGDEBUG("%s write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", deviceName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
 
 		int rc = ONI_ESUCCESS;
 
@@ -201,7 +202,7 @@ protected:
 			LOGERROR("Write does not match read values");
 			return false;
 		}
-
+		bContextNeedsReset = true;
 		return true;
 	}
 
@@ -210,12 +211,13 @@ protected:
 		return (t - firstFrameTime) / (long double)acq_clock_khz * 1000000; // 250000000
 	}
 
-	bool bDeviceRequiresContextRestart = false;
+	bool bContextNeedsRestart = false;
+	bool bContextNeedsReset = false;
 
 	volatile oni_ctx* ctx = NULL;
 	oni_device_t deviceType;
 
-	TypeID deviceTypeID = TypeID::NONE;
+	ONIDeviceTypeID deviceTypeID = ONIDeviceTypeID::NONE;
 
 	std::string deviceName = "UNDEFINED";
 
@@ -245,12 +247,72 @@ public:
 		//writeRegister(ENABLE, 0);
 	};
 
-	unsigned int readRegister(const FmcRegister& reg){
-		return ONIDevice::readRegister(reg);
+	void reset(){
+		ONIDevice::reset();
+		getPortVoltage(true);
 	}
 
-	bool writeRegister(const FmcRegister& reg, const unsigned int& value){
-		return ONIDevice::writeRegister(reg, value);
+	inline void gui(){
+
+		//ImGui::Begin(deviceName.c_str());
+		ImGui::PushID(deviceName.c_str());
+
+		//getPortVoltage(false);
+
+		ImGui::Text(getName().c_str());
+
+		ImGui::SetNextItemWidth(100);
+		ImGui::InputFloat("Port Voltage", &gvoltage, 0.1f, 0.1f, "%.1f"); 
+		
+
+		gvoltage = std::clamp(gvoltage, 3.0f, 10.0f); // use some way of specifying min and max
+
+		if(gvoltage != voltage){
+			ImGui::SameLine();
+			bool bApplyVoltage = false;
+			if(ImGui::Button("Apply")){
+				if(gvoltage >= 5.0f){
+					bApplyVoltage = false;
+					ImGui::OpenPopup("Overvoltage");
+				}else{
+					bApplyVoltage = true;
+				}
+			}
+
+			if(gvoltage >= 5.0f){
+				ImGui::SameLine();
+				ImGui::Text("WARNING Voltage exceeds 5.0v");
+			}
+
+			// Always center this window when appearing
+			ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+			ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+			if(ImGui::BeginPopupModal("Overvoltage", NULL)){
+				ImGui::Text("Voltages above 5.0v may damage the device!");
+				ImGui::Text("Do you really want to supply %.1f v to device?", gvoltage);
+				ImGui::Separator();
+				if (ImGui::Button("Yes", ImVec2(120, 0))) { bApplyVoltage = true; ImGui::CloseCurrentPopup(); }
+				ImGui::SetItemDefaultFocus();
+				ImGui::SameLine();
+				if (ImGui::Button("Cancel", ImVec2(120, 0))) { bApplyVoltage = false; getPortVoltage(true); ImGui::CloseCurrentPopup(); }
+				ImGui::EndPopup();
+			}
+
+			if(bApplyVoltage){
+				LOGINFO("Change Voltage from %.1f to %.1f", voltage, gvoltage);
+				setPortVoltage(gvoltage);
+				//getPortVoltage(true);
+			}
+
+
+
+		}
+		ImGui::Separator();
+		ImGui::Separator();
+		ImGui::PopID();
+		//ImGui::End();
+
 	}
 
 	inline void process(oni_frame_t* frame){
@@ -280,19 +342,28 @@ public:
 		ofSleepMillis(500); // needs to pause
 		if(bOk){ // updates the cached value
 			getPortVoltage(true); 
-			bDeviceRequiresContextRestart = true;
+			bContextNeedsRestart = true;
 		}
 		return bOk;
 	}
 
-	float getPortVoltage(const bool& bCheckRegisters = true){
-		if(bCheckRegisters) voltage = readRegister(FmcDevice::PORTVOLTAGE) / 10.0f;
+	const float& getPortVoltage(const bool& bCheckRegisters = true){
+		if(bCheckRegisters || voltage == 0) gvoltage = voltage = readRegister(FmcDevice::PORTVOLTAGE) / 10.0f;
 		return voltage;
+	}
+
+	unsigned int readRegister(const FmcRegister& reg){
+		return ONIDevice::readRegister(reg);
+	}
+
+	bool writeRegister(const FmcRegister& reg, const unsigned int& value){
+		return ONIDevice::writeRegister(reg, value);
 	}
 
 protected:
 
 	float voltage = 0;
+	float gvoltage = 0; // voltage for gui
 	bool bLinkState = false;
 	bool bEnabled = false;
 
@@ -315,17 +386,30 @@ public:
 		//writeRegister(ENABLE, 0);
 	};
 
-	unsigned int readRegister(const HeartBeatRegister& reg){
-		return ONIDevice::readRegister(reg);
+	inline void gui(){
+
+		//ImGui::Begin(deviceName.c_str());
+		ImGui::PushID(deviceName.c_str());
+		ImGui::Text(getName().c_str());
+		ImGui::RadioButton("HeartBeat", bHeartBeat); ImGui::SameLine();
+		ImGui::Text(" %0.3f (ms)", deltaTime / 1000.0f);
+		ImGui::Separator();
+		ImGui::Separator();
+		ImGui::PopID();
+		//ImGui::End();
+
 	}
 
-	bool writeRegister(const HeartBeatRegister& reg, const unsigned int& value){
-		return ONIDevice::writeRegister(reg, value);
+	void reset(){
+		ONIDevice::reset();
+		getFrequencyHz(true);
 	}
 
 	inline void process(oni_frame_t* frame){
 		
-		LOGDEBUG("HEARTBEAT: %i %i %i %s", frame->dev_idx, (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time), frame->data_sz, deviceName.c_str());
+		bHeartBeat = !bHeartBeat;
+		deltaTime = (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time);
+		//LOGDEBUG("HEARTBEAT: %i %i %i %s", frame->dev_idx, (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time), frame->data_sz, deviceName.c_str());
 		//fu::debug << (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time) << fu::endl;
 	}
 
@@ -344,16 +428,13 @@ public:
 		unsigned int clkHz = readRegister(HeartBeatDevice::CLK_HZ);
 		unsigned int clkDv = clkHz / beatsPerSecond;
 		bool bOk = writeRegister(HeartBeatDevice::CLK_DIV, clkDv);
-		if(bOk){ // updates the cached value
-			getFrequencyHz(true); 
-			bDeviceRequiresContextRestart = true;
-		}
+		if(bOk) getFrequencyHz(true); 
 		return bOk;
 	}
 
 	float getFrequencyHz(const bool& bCheckRegisters = true){
 		if(bCheckRegisters){
-			unsigned int clkHz  = readRegister(HeartBeatDevice::CLK_HZ);
+			unsigned int clkHz = readRegister(HeartBeatDevice::CLK_HZ);
 			unsigned int clkDv = readRegister(HeartBeatDevice::CLK_DIV);
 			frequencyHz = clkHz / clkDv;
 			LOGDEBUG("Heartbeat FrequencyHz: %i", frequencyHz);
@@ -361,12 +442,20 @@ public:
 		return frequencyHz;
 	}
 
+	unsigned int readRegister(const HeartBeatRegister& reg){
+		return ONIDevice::readRegister(reg);
+	}
+
+	bool writeRegister(const HeartBeatRegister& reg, const unsigned int& value){
+		return ONIDevice::writeRegister(reg, value);
+	}
+
 protected:
-
-
 
 	unsigned int frequencyHz = 0;
 	bool bEnabled = false;
+	std::atomic_bool bHeartBeat = false;
+	std::atomic_uint64_t deltaTime = 0;
 
 };
 
@@ -471,9 +560,128 @@ public:
 		Off
 	};
 
+	enum Rhs2116AnalogLowCutoff{
+		Low1000Hz = 0,
+		Low500Hz,
+		Low300Hz,
+		Low250Hz,
+		Low200Hz,
+		Low150Hz,
+		Low100Hz,
+		Low75Hz,
+		Low50Hz,
+		Low30Hz,
+		Low25Hz,
+		Low20Hz,
+		Low15Hz,
+		Low10Hz,
+		Low7500mHz,
+		Low5000mHz,
+		Low3090mHz,
+		Low2500mHz,
+		Low2000mHz,
+		Low1500mHz,
+		Low1000mHz,
+		Low750mHz,
+		Low500mHz,
+		Low300mHz,
+		Low250mHz,
+		Low100mHz
+	};
+
+	enum Rhs2116AnalogHighCutoff{
+		High20000Hz = 0,
+		High15000Hz,
+		High10000Hz,
+		High7500Hz,
+		High5000Hz,
+		High3000Hz,
+		High2500Hz,
+		High2000Hz,
+		High1500Hz,
+		High1000Hz,
+		High750Hz,
+		High500Hz,
+		High300Hz,
+		High250Hz,
+		High200Hz,
+		High150Hz,
+		High100Hz,
+	};
+
+
+	const unsigned int AnalogLowCutoffRegisters [26][3]{
+		{ 10, 0, 0 },
+		{ 13, 0, 0 },
+		{ 15, 0, 0 },
+		{ 17, 0, 0 },
+		{ 18, 0, 0 },
+		{ 21, 0, 0 },
+		{ 25, 0, 0 },
+		{ 28, 0, 0 },
+		{ 34, 0, 0 },
+		{ 44, 0, 0 },
+		{ 48, 0, 0 },
+		{ 54, 0, 0 },
+		{ 62, 0, 0 },
+		{ 5, 1, 0 },
+		{ 18, 1, 0 },
+		{ 40, 1, 0 },
+		{ 20, 2, 0 },
+		{ 42, 2, 0 },
+		{ 8, 3, 0 },
+		{ 9, 4, 0 },
+		{ 44, 6, 0 },
+		{ 49, 9, 0 },
+		{ 35, 17, 0 },
+		{ 1, 40, 0 },
+		{ 56, 54, 0 },
+		{ 16, 60, 1 }
+	};
+
+	const unsigned int AnalogHighCutoffRegisters [17][4]{
+		{ 8, 0, 4, 0 },
+		{ 11, 0, 8, 0 },
+		{ 17, 0, 16, 0 },
+		{ 22, 0, 23, 0 },
+		{ 33, 0, 37, 0 },
+		{ 3, 1, 13, 1 },
+		{ 13, 1, 25, 1 },
+		{ 27, 1, 44, 1 },
+		{ 1, 2, 23, 2 },
+		{ 46, 2, 30, 3 },
+		{ 41, 3, 36, 4 },
+		{ 30, 5, 43, 6 },
+		{ 6, 9, 2, 11 },
+		{ 42, 10, 5, 13 },
+		{ 24, 13, 7, 16 },
+		{ 44, 17, 8, 21 },
+		{ 38, 26, 5, 31 }
+	};
+	const unsigned int AnalogHighCutoffToFastSettleSamples [17]{
+		4, 5, 8, 10, 15, 25, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30
+	};
+
+#pragma pack(push, 1)
+	struct Rhs2116LowCutReg{
+		unsigned RL_Asel1:7;
+		unsigned RL_Asel2:6;
+		unsigned RL_Asel3:1;
+		unsigned unused:2;
+	};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+	struct Rhs2116HighCutReg{
+		unsigned RH1_sel1:6;
+		unsigned RH1_sel2:5;
+		unsigned unused:5;
+	};
+#pragma pack(pop)
+
 #pragma pack(push, 1)
 	struct Rhs2116Format{
-		unsigned dspCutOff:4;
+		unsigned dspCutoff:4;
 		unsigned dspEnable:1;
 		unsigned absmode:1;
 		unsigned twoscomp:1;
@@ -536,12 +744,24 @@ public:
 		//writeRegister(ENABLE, 0);
 	};
 
-	unsigned int readRegister(const Rhs2116Register& reg){
-		return ONIDevice::readRegister(reg);
-	}
+	void reset(){
+		ONIDevice::reset();
+		//mutex.lock();
+		//rawDataFrames.clear();
+		//drawDataFrames.clear();
+		//rawDataFrames.resize(bufferSize);
+		//drawDataFrames.resize(drawBufferSize);
+		//currentBufferIDX = 0;
+		//currentDrawBufferIDX = 0;
+		//mutex.unlock();
 
-	bool writeRegister(const Rhs2116Register& reg, const unsigned int& value){
-		return ONIDevice::writeRegister(reg, value);
+		getFormat(true);
+		getAnalogLowCutoff(true);
+		getAnalogLowCutoffRecovery(true);
+		getAnalogHighCutoff(true);
+
+		setBufferSizeSamples(bufferSize);
+
 	}
 
 	bool setEnabled(const bool& b){
@@ -555,17 +775,85 @@ public:
 		return bEnabled;
 	}
 
-	bool setDspCutOff(const Rhs2116DspCutoff& cutoff){
-		Rhs2116Format format = getFormat(true);
-		if(cutoff == Rhs2116DspCutoff::Off){
-			format.dspEnable = 0;
-			format.dspCutOff = Rhs2116DspCutoff::Dsp146mHz; // is this a bug? that seems to be default status
-		}else{
-			format.dspEnable = 1;
-			format.dspCutOff = cutoff;
+	bool setAnalogLowCutoff(Rhs2116AnalogLowCutoff lowcut){
+		const unsigned int * regs = AnalogLowCutoffRegisters[lowcut];
+		unsigned int reg = regs[2] << 13 | regs[1] << 7 | regs[0];
+		bool bOk = writeRegister(Rhs2116Device::BW2, reg);
+		if(bOk) getAnalogLowCutoff(true);
+
+		//std::vector<std::string> lowCutoffStrs = ofSplitString(std::string(lowCutoffOptions), "\0");
+		//LOGDEBUG("Analog Low Cutoff: %s", lowCutoffStrs[lowcut].c_str());
+		//unsigned int chr = readRegister(Rhs2116Device::BW2);
+		//Rhs2116LowCutReg r = *reinterpret_cast<Rhs2116LowCutReg*>(&chr);
+		//LOGDEBUG("Low reg: %i %i %i == %i ===> %i %i %i == %i", regs[0], regs[1], regs[2], reg, r.RL_Asel1, r.RL_Asel2, r.RL_Asel3, chr);
+		//LOGDEBUG("Struct val %i == %i", lowcut, getLowCutoffFromReg(reg));
+		return bOk;
+	}
+
+	Rhs2116AnalogLowCutoff getAnalogLowCutoff(const bool& bCheckRegisters = true){
+		if(bCheckRegisters){
+			unsigned int bw2 = readRegister(Rhs2116Device::BW2);
+			lowCutoff = getLowCutoffFromReg(bw2);
 		}
-		
-		return setFormat(format);
+		return lowCutoff;
+	}
+
+	bool setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff lowcut){
+		const unsigned int * regs = AnalogLowCutoffRegisters[lowcut];
+		unsigned int reg = regs[2] << 13 | regs[1] << 7 | regs[0];
+		bool bOk = writeRegister(Rhs2116Device::BW3, reg);
+		if(bOk) getAnalogLowCutoffRecovery(true);
+
+		//std::vector<std::string> lowCutoffStrs = ofSplitString(std::string(lowCutoffOptions), "\\0");
+		//LOGDEBUG("Analog Low Cutoff: %s", lowCutoffStrs[lowcut].c_str());
+		//unsigned int chr = readRegister(Rhs2116Device::BW3);
+		//Rhs2116LowCutReg r = *reinterpret_cast<Rhs2116LowCutReg*>(&chr);
+		//LOGDEBUG("Low reg recover: %i %i %i == %i ===> %i %i %i == %i", regs[0], regs[1], regs[2], reg, r.RL_Asel1, r.RL_Asel2, r.RL_Asel3, chr);
+		//LOGDEBUG("Struct val %i == %i", lowcut, getLowCutoffFromReg(reg));
+		return bOk;
+	}
+
+	Rhs2116AnalogLowCutoff getAnalogLowCutoffRecovery(const bool& bCheckRegisters = true){
+		if(bCheckRegisters){
+			unsigned int bw3 = readRegister(Rhs2116Device::BW3);
+			lowCutoffRecovery = getLowCutoffFromReg(bw3);
+		}
+		return lowCutoffRecovery;
+	}
+
+	bool setAnalogHighCutoff(Rhs2116AnalogHighCutoff hicut){
+		const unsigned int * regs = AnalogHighCutoffRegisters[hicut];
+		unsigned int reg0 = regs[1] << 6 | regs[0];
+		unsigned int reg1 = regs[3] << 6 | regs[2];
+		unsigned int reg2 = AnalogHighCutoffToFastSettleSamples[hicut];
+		bool b0 = writeRegister(Rhs2116Device::BW0, reg0);
+		bool b1 = writeRegister(Rhs2116Device::BW1, reg1);
+		bool b2 = writeRegister(Rhs2116Device::FASTSETTLESAMPLES, reg2);
+		bool bOk = (b0 && b1 && b2);
+		if(bOk) getAnalogHighCutoff(true);
+
+
+
+		//std::vector<std::string> highCutoffStrs = ofSplitString(std::string(highCutoffOptions), "\\0");
+		//LOGDEBUG("Analog High Cutoff to: %s", highCutoffStrs[hicut].c_str());
+
+		//unsigned int chr0 = readRegister(Rhs2116Device::BW0);
+		//unsigned int chr1 = readRegister(Rhs2116Device::BW1);
+		//Rhs2116HighCutReg r0 = *reinterpret_cast<Rhs2116HighCutReg*>(&chr0);
+		//Rhs2116HighCutReg r1 = *reinterpret_cast<Rhs2116HighCutReg*>(&chr1);
+		//LOGDEBUG("High reg: %i %i %i %i === %i %i ====> %i %i %i %i === %i %i", regs[0], regs[1], regs[2], regs[3], reg0, reg1, r0.RH1_sel1, r0.RH1_sel2, r1.RH1_sel1, r1.RH1_sel2, chr0, chr1);
+		//LOGDEBUG("Struct val %i == %i", hicut, getHighCutoffFromReg(reg0, reg1, reg2));
+		return bOk;
+	}
+
+	Rhs2116AnalogHighCutoff getAnalogHighCutoff(const bool& bCheckRegisters = true){
+		if(bCheckRegisters){
+			unsigned int bw0 = readRegister(Rhs2116Device::BW0);
+			unsigned int bw1 = readRegister(Rhs2116Device::BW1);
+			unsigned int fast = readRegister(Rhs2116Device::FASTSETTLESAMPLES);
+			highCutoff = getHighCutoffFromReg(bw0, bw1, fast);
+		}
+		return highCutoff;
 	}
 
 	bool setFormat(Rhs2116Format format){
@@ -583,6 +871,22 @@ public:
 		return format;
 	}
 
+	bool setDspCutOff(Rhs2116DspCutoff cutoff){
+		Rhs2116Format format = getFormat(true);
+		if(cutoff == Rhs2116DspCutoff::Off){
+			format.dspEnable = 0;
+			format.dspCutoff = Rhs2116DspCutoff::Dsp146mHz; // is this a bug? that seems to be default status
+		}else{
+			format.dspEnable = 1;
+			format.dspCutoff = cutoff;
+		}
+		
+		//std::vector<std::string> dspCutoffStrs = ofSplitString(std::string(dspCutoffOptions), "\\0");
+		//LOGDEBUG("Setting DSP Cutoff to: %s", dspCutoffStrs[format.dspCutoff].c_str());
+
+		return setFormat(format);
+	}
+
 	const std::vector<Rhs2116DataFrame>& getRawDataFrames(){
 		const std::lock_guard<std::mutex> lock(mutex);
 		return rawDataFrames;
@@ -598,19 +902,80 @@ public:
 		return rawDataFrames[lastBufferIDX];
 	}
 
-	fu::Timer frameTimer;
-
-	double getFrameTimerAvg(){
-		const std::lock_guard<std::mutex> lock(mutex);
-		frameTimer.stop();
-		double t = frameTimer.avg<fu::micros>();
-		frameTimer.start();
-		return t;
+	void setDrawBufferStride(const size_t& samples){
+		mutex.lock();
+		drawStride = samples;
+		drawBufferSize = bufferSize / drawStride;
+		currentDrawBufferIDX = 0;
+		drawDataFrames.clear();
+		drawDataFrames.resize(drawBufferSize);
+		mutex.unlock();
+		LOGINFO("Draw Buffer size: %i (samples)", drawBufferSize);
 	}
+
+	void setBufferSizeSamples(const size_t& samples){
+		mutex.lock();
+		bufferSize = samples;
+		currentBufferIDX = 0;
+		rawDataFrames.clear();
+		rawDataFrames.resize(bufferSize);
+		mutex.unlock();
+		LOGINFO("Raw  Buffer size: %i (samples)", bufferSize);
+		setDrawBufferStride(drawStride);
+	}
+
+	void setBufferSizeMillis(const int& millis){
+		// TODO: I can't seem to change the ADC Bias and MUX settings to get different sample rates
+		// SO I am just going to assume 30kS/s sample rate for the RHS2116 hard coded to sampleRate
+		size_t samples = sampleRatekSs * millis / 1000;
+		setBufferSizeSamples(samples);
+	}
+
+	//fu::Timer frameTimer;
+
+	//double getFrameTimerAvg(){
+	//	const std::lock_guard<std::mutex> lock(mutex);
+	//	frameTimer.stop();
+	//	double t = frameTimer.avg<fu::micros>();
+	//	frameTimer.start();
+	//	return t;
+	//}
 
 	//std::vector<ONIProbeStatistics> probeStats;
 
 	//uint64_t cnt = 0;
+
+	inline void gui(){
+
+		//ImGui::Begin(deviceName.c_str());
+		ImGui::PushID(deviceName.c_str());
+
+		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
+		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
+		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
+
+
+		int dspFormatItem = format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
+		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
+		if(dspFormatItem != Rhs2116DspCutoff::Off && dspFormatItem != format.dspCutoff) setDspCutOff((Rhs2116DspCutoff)dspFormatItem);
+		if(dspFormatItem == Rhs2116DspCutoff::Off && format.dspEnable == 1) setDspCutOff((Rhs2116DspCutoff)dspFormatItem);
+
+		//int lowCutoffItem = getAnalogLowCutoff(false);
+		//ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
+		//if(lowCutoffItem != lowCutoff) setAnalogLowCutoff((Rhs2116AnalogLowCutoff)lowCutoffItem);
+
+		//int lowCutoffRecoveryItem = getAnalogLowCutoffRecovery(false);
+		//ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
+		//if(lowCutoffRecoveryItem != lowCutoffRecovery) setAnalogLowCutoffRecovery((Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem);
+
+		//int highCutoffItem = getAnalogHighCutoff(false);
+		//ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
+		//if(highCutoffItem != highCutoff) setAnalogHighCutoff((Rhs2116AnalogHighCutoff)highCutoffItem);
+
+		ImGui::PopID();
+		//ImGui::End();
+	}
+
 	inline void process(oni_frame_t* frame){
 
 		const std::lock_guard<std::mutex> lock(mutex);
@@ -659,7 +1024,7 @@ public:
 		//double deltaFrameTimer = frameTimer.elapsed<fu::micros>();
 		//fu::debug << rawDataFrames[currentBufferIDX].acqTime - rawDataFrames[lastBufferIDX].acqTime << " " << deltaFrameTimer << " " << deltaFrameAcqTime << fu::endl;
 		//if(deltaFrameTimer > 1000000.0 / sampleRatekSs) LOGDEBUG("RHS2116 Frame Buffer Underrun %f", deltaFrameTimer);
-		frameTimer.fcount();
+		//frameTimer.fcount();
 
 		lastBufferIDX = currentBufferIDX;
 		currentBufferIDX = (currentBufferIDX + 1) % bufferSize;
@@ -670,32 +1035,41 @@ public:
 
 	}
 
-
-	void setDrawBufferStride(const size_t& samples){
-		mutex.lock();
-		drawStride = samples;
-		drawBufferSize = bufferSize / drawStride;
-		currentDrawBufferIDX = 0;
-		drawDataFrames.resize(drawBufferSize);
-		mutex.unlock();
-		LOGINFO("Draw Buffer size: %i (samples)", drawBufferSize);
+	unsigned int readRegister(const Rhs2116Register& reg){
+		return ONIDevice::readRegister(reg);
 	}
 
-	void setBufferSizeSamples(const size_t& samples){
-		mutex.lock();
-		bufferSize = samples;
-		currentBufferIDX = 0;
-		rawDataFrames.resize(bufferSize);
-		mutex.unlock();
-		LOGINFO("Raw  Buffer size: %i (samples)", bufferSize);
-		setDrawBufferStride(drawStride);
+	bool writeRegister(const Rhs2116Register& reg, const unsigned int& value){
+		return ONIDevice::writeRegister(reg, value);
 	}
 
-	void setBufferSizeMillis(const int& millis){
-		// TODO: I can't seem to change the ADC Bias and MUX settings to get different sample rates
-		// SO I am just going to assume 30kS/s sample rate for the RHS2116 hard coded to sampleRate
-		size_t samples = sampleRatekSs * millis / 1000;
-		setBufferSizeSamples(samples);
+protected:
+
+	inline Rhs2116AnalogLowCutoff getLowCutoffFromReg(unsigned int bw){
+		Rhs2116LowCutReg r = *reinterpret_cast<Rhs2116LowCutReg*>(&bw);
+		for(size_t i = 0; i < 26; ++i){
+			const unsigned int * regs = AnalogLowCutoffRegisters[i];
+			if(regs[0] == r.RL_Asel1 &&
+			   regs[1] == r.RL_Asel2 &&
+			   regs[2] == r.RL_Asel3){
+				return (Rhs2116AnalogLowCutoff)(i);
+			}
+		}
+	}
+
+	inline Rhs2116AnalogHighCutoff getHighCutoffFromReg(unsigned int bw0, unsigned int bw1, unsigned int fast){
+		Rhs2116HighCutReg r0 = *reinterpret_cast<Rhs2116HighCutReg*>(&bw0);
+		Rhs2116HighCutReg r1 = *reinterpret_cast<Rhs2116HighCutReg*>(&bw1);
+		for(size_t i = 0; i < 17; ++i){
+			const unsigned int * regs = AnalogHighCutoffRegisters[i];
+			const unsigned int regf = AnalogHighCutoffToFastSettleSamples[i];
+			if(regs[0] == r0.RH1_sel1 && 
+			   regs[1] == r0.RH1_sel2 && 
+			   regs[2] == r1.RH1_sel1 && 
+			   regs[3] == r1.RH1_sel2 && regf == fast){
+				return (Rhs2116AnalogHighCutoff)(i);
+			}
+		}
 	}
 
 private:
@@ -721,12 +1095,16 @@ private:
 	bool bEnabled = false;
 	Rhs2116Format format;
 
+	Rhs2116AnalogLowCutoff lowCutoff;
+	Rhs2116AnalogLowCutoff lowCutoffRecovery;
+	Rhs2116AnalogHighCutoff highCutoff;
+
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Rhs2116Device::Rhs2116Format& format) {
 
 	os << "[unsigned: " << *(unsigned int*)&format << "] ";
-	os << "[dspCutOff: " << format.dspCutOff << "] ";
+	os << "[dspCutOff: " << format.dspCutoff << "] ";
 	os << "[dsPenable: " << format.dspEnable << "] ";
 	os << "[absmode: " << format.absmode << "] ";
 	os << "[twoscomp: " << format.twoscomp << "] ";
