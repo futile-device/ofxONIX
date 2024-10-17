@@ -254,6 +254,8 @@ public:
 			bool bResetAcquire = bIsAcquiring;
 			if(bResetAcquire) stopAcquisition();
 			setContextOption(ONIContext::RESET, 1);
+			setContextOption(ONIContext::BLOCKREADSIZE, blockReadBytes); // WHY? For some reason this needs resetting 
+			setContextOption(ONIContext::BLOCKWRITESIZE, blockWriteBytes);
 			if(bResetAcquire){ 
 				startAcquisition();
 			}else{

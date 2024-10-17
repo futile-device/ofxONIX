@@ -960,17 +960,17 @@ public:
 		if(dspFormatItem != Rhs2116DspCutoff::Off && dspFormatItem != format.dspCutoff) setDspCutOff((Rhs2116DspCutoff)dspFormatItem);
 		if(dspFormatItem == Rhs2116DspCutoff::Off && format.dspEnable == 1) setDspCutOff((Rhs2116DspCutoff)dspFormatItem);
 
-		//int lowCutoffItem = getAnalogLowCutoff(false);
-		//ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
-		//if(lowCutoffItem != lowCutoff) setAnalogLowCutoff((Rhs2116AnalogLowCutoff)lowCutoffItem);
+		int lowCutoffItem = getAnalogLowCutoff(false);
+		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
+		if(lowCutoffItem != lowCutoff) setAnalogLowCutoff((Rhs2116AnalogLowCutoff)lowCutoffItem);
 
-		//int lowCutoffRecoveryItem = getAnalogLowCutoffRecovery(false);
-		//ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
-		//if(lowCutoffRecoveryItem != lowCutoffRecovery) setAnalogLowCutoffRecovery((Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem);
+		int lowCutoffRecoveryItem = getAnalogLowCutoffRecovery(false);
+		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
+		if(lowCutoffRecoveryItem != lowCutoffRecovery) setAnalogLowCutoffRecovery((Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem);
 
-		//int highCutoffItem = getAnalogHighCutoff(false);
-		//ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
-		//if(highCutoffItem != highCutoff) setAnalogHighCutoff((Rhs2116AnalogHighCutoff)highCutoffItem);
+		int highCutoffItem = getAnalogHighCutoff(false);
+		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
+		if(highCutoffItem != highCutoff) setAnalogHighCutoff((Rhs2116AnalogHighCutoff)highCutoffItem);
 
 		ImGui::PopID();
 		//ImGui::End();
