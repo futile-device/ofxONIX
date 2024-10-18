@@ -124,8 +124,10 @@ public:
 	~ONIContext(){
 		closeContext();
 	};
-
+	
 	inline void gui(){
+
+		static bool bOpenOnFirstStart = true;
 
 		ImGui::Begin("ONI Context");
 		ImGui::PushID("ONI Context");
@@ -158,11 +160,13 @@ public:
 
 			ImGui::NewLine();
 
-
+			
 			static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
 
 			ImVec2 outer_size = ImVec2(0.0f, 400.0f);
-			ImGui::SetNextItemOpen(true);
+
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(true);
+
 			if(ImGui::CollapsingHeader("Device List")){
 				if (ImGui::BeginTable("Device Types", 6, flags, outer_size)){
 					ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
@@ -210,12 +214,14 @@ public:
 		}
 
 		for(auto device : oniDevices){
-			ImGui::SetNextItemOpen(true);
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if(ImGui::CollapsingHeader(device.second->getName().c_str(), true)) device.second->gui();
 		}
-
+		
 		ImGui::PopID();
 		ImGui::End();
+
+		bOpenOnFirstStart = false;
 
 	}
 
@@ -254,8 +260,8 @@ public:
 			bool bResetAcquire = bIsAcquiring;
 			if(bResetAcquire) stopAcquisition();
 			setContextOption(ONIContext::RESET, 1);
-			setContextOption(ONIContext::BLOCKREADSIZE, blockReadBytes); // WHY? For some reason this needs resetting 
-			setContextOption(ONIContext::BLOCKWRITESIZE, blockWriteBytes);
+			//setContextOption(ONIContext::BLOCKREADSIZE, blockReadBytes); // WHY? For some reason this needs resetting 
+			//setContextOption(ONIContext::BLOCKWRITESIZE, blockWriteBytes);
 			if(bResetAcquire){ 
 				startAcquisition();
 			}else{
@@ -264,10 +270,10 @@ public:
 		}
 	}
 
-	bool setup(const std::string& driverName = "riffa", const unsigned int& blockReadSize = 2048, const unsigned int& blockWriteSize = 2048){
+	bool setup(const std::string& driverName = "riffa", const unsigned int& blockReadBytes = 2048, const unsigned int& blockWriteBytes = 2048){
 		this->driverName = driverName;
-		this->blockReadSize = blockReadSize;
-		this->blockWriteSize = blockWriteSize;
+		this->blockReadBytes = blockReadBytes;
+		this->blockWriteBytes = blockWriteBytes;
 		return setupContext();
 	}
 
@@ -449,6 +455,8 @@ private:
 
 	bool startContext(){
 		LOGINFO("Starting ONI context");
+		setContextOption(ONIContext::BLOCKREADSIZE, blockReadBytes);
+		setContextOption(ONIContext::BLOCKWRITESIZE, blockWriteBytes);
 		setContextOption(RESETACQCOUNTER, 2);
 		if(getContextOption(RUNNING) != 1){
 			LOGERROR("Could not start hardware"); // necessary?
@@ -549,11 +557,11 @@ private:
 		if(acq_clock_khz == -1) return false;
 		if(sys_clock_khz == -1) return false;
 
-		blockReadBytes = setContextOption(BLOCKREADSIZE, blockReadSize);
-		blockWriteBytes = setContextOption(BLOCKWRITESIZE, blockWriteSize);
+		//blockReadBytes = setContextOption(BLOCKREADSIZE, blockReadSize);
+		//blockWriteBytes = setContextOption(BLOCKWRITESIZE, blockWriteSize);
 
-		if(blockReadBytes == -1) return false;
-		if(blockWriteBytes == -1) return false;
+		//if(blockReadBytes == -1) return false;
+		//if(blockWriteBytes == -1) return false;
 
 		bIsContextSetup = startContext(); // is this ok? or should the user do it!?
 
@@ -623,8 +631,8 @@ private:
 	bool bIsContextSetup = false;
 	bool bIsAcquiring = false;
 
-	unsigned int blockReadSize = 2048;
-	unsigned int blockWriteSize = 2048;
+	//unsigned int blockReadSize = 2048;
+	//unsigned int blockWriteSize = 2048;
 
 	unsigned int blockReadBytes = 0;
 	unsigned int blockWriteBytes = 0;

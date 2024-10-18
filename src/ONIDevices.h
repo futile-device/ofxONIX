@@ -261,7 +261,7 @@ public:
 
 		ImGui::Text(getName().c_str());
 
-		ImGui::SetNextItemWidth(100);
+		ImGui::SetNextItemWidth(200);
 		ImGui::InputFloat("Port Voltage", &gvoltage, 0.1f, 0.1f, "%.1f"); 
 		
 
@@ -711,6 +711,8 @@ public:
 		uint16_t unused;
 		uint64_t acqTime;
 		long double deltaTime;
+		float acf[16];
+		float dcf[16];
 	};
 #pragma pack(pop)
 
@@ -730,7 +732,7 @@ public:
 		//deviceID = Rhs2116DeviceID;
 		//setBufferSizeSamples(15000);
 		setBufferSizeMillis(5000);
-		setDrawBufferStride(100);
+		setDrawBufferStride(300);
 		//sampleRateTimer.start<fu::millis>(1000);
 		//cntTimer.start<fu::millis>(1000);
 	};
@@ -931,15 +933,15 @@ public:
 		setBufferSizeSamples(samples);
 	}
 
-	//fu::Timer frameTimer;
+	fu::Timer frameTimer;
 
-	//double getFrameTimerAvg(){
-	//	const std::lock_guard<std::mutex> lock(mutex);
-	//	frameTimer.stop();
-	//	double t = frameTimer.avg<fu::micros>();
-	//	frameTimer.start();
-	//	return t;
-	//}
+	double getFrameTimerAvg(){
+		const std::lock_guard<std::mutex> lock(mutex);
+		frameTimer.stop();
+		double t = frameTimer.avg<fu::micros>();
+		frameTimer.start();
+		return t;
+	}
 
 	//std::vector<ONIProbeStatistics> probeStats;
 
@@ -954,20 +956,23 @@ public:
 		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
 		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
 
-
+		ImGui::SetNextItemWidth(200);
 		int dspFormatItem = format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
 		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
 		if(dspFormatItem != Rhs2116DspCutoff::Off && dspFormatItem != format.dspCutoff) setDspCutOff((Rhs2116DspCutoff)dspFormatItem);
 		if(dspFormatItem == Rhs2116DspCutoff::Off && format.dspEnable == 1) setDspCutOff((Rhs2116DspCutoff)dspFormatItem);
 
+		ImGui::SetNextItemWidth(200);
 		int lowCutoffItem = getAnalogLowCutoff(false);
 		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
 		if(lowCutoffItem != lowCutoff) setAnalogLowCutoff((Rhs2116AnalogLowCutoff)lowCutoffItem);
 
+		ImGui::SetNextItemWidth(200);
 		int lowCutoffRecoveryItem = getAnalogLowCutoffRecovery(false);
 		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
 		if(lowCutoffRecoveryItem != lowCutoffRecovery) setAnalogLowCutoffRecovery((Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem);
 
+		ImGui::SetNextItemWidth(200);
 		int highCutoffItem = getAnalogHighCutoff(false);
 		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
 		if(highCutoffItem != highCutoff) setAnalogHighCutoff((Rhs2116AnalogHighCutoff)highCutoffItem);
@@ -983,6 +988,11 @@ public:
 		memcpy(&rawDataFrames[currentBufferIDX], frame->data, frame->data_sz);  // copy the data payload including hub clock
 		rawDataFrames[currentBufferIDX].acqTime = frame->time;					// copy the acquisition clock
 		rawDataFrames[currentBufferIDX].deltaTime = ONIDevice::getAcqDeltaTimeMicros(frame->time); //fu::time::now<fu::micros>() * 1000;
+
+		for(size_t probe = 0; probe < 16; ++probe){
+			rawDataFrames[currentBufferIDX].acf[probe] = 0.195f * (rawDataFrames[currentBufferIDX].ac[probe] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
+			rawDataFrames[currentBufferIDX].dcf[probe] = -19.23 * (rawDataFrames[currentBufferIDX].dc[probe] - 512) / 1000.0f; // -19.23 mV × (ADC result – 512) divide by 1000 for V?
+		}
 
 		if(currentBufferIDX % drawStride == 0){
 			//for(int i = 0; i < 16; ++i){
@@ -1024,10 +1034,13 @@ public:
 		//double deltaFrameTimer = frameTimer.elapsed<fu::micros>();
 		//fu::debug << rawDataFrames[currentBufferIDX].acqTime - rawDataFrames[lastBufferIDX].acqTime << " " << deltaFrameTimer << " " << deltaFrameAcqTime << fu::endl;
 		//if(deltaFrameTimer > 1000000.0 / sampleRatekSs) LOGDEBUG("RHS2116 Frame Buffer Underrun %f", deltaFrameTimer);
-		//frameTimer.fcount();
+		
 
 		lastBufferIDX = currentBufferIDX;
 		currentBufferIDX = (currentBufferIDX + 1) % bufferSize;
+
+		frameTimer.fcount();
+
 		//ofSleepMillis(1);
 		//sortedDataFrames = rawDataFrames;
 		//std::sort(sortedDataFrames.begin(), sortedDataFrames.end(), acquisition_clock_compare());
