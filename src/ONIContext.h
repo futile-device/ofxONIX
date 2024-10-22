@@ -21,10 +21,14 @@
 #include <mutex>
 #include <syncstream>
 
-#include "ofxImGui.h"
+//#include "ofxImGui.h"
+
 
 
 //#define LOG_OF 1
+
+
+#pragma once
 
 #ifdef ONI_LOG_FU
 #include "ofxFutilities.h"
@@ -48,9 +52,8 @@
 #define LOGFATAL(fmt, ...) printf(fmt, __VA_ARGS__); printf("\n");
 #endif
 
-#include "ONIDevices.h"
 
-#pragma once
+#include "ONIDevice.h"
 
 class ONIContextOption{
 
@@ -140,7 +143,7 @@ public:
 	};
 	
 	inline void gui(){
-		/*
+		
 		static bool bOpenOnFirstStart = true;
 
 		ImGui::Begin("ONI Context");
@@ -236,7 +239,7 @@ public:
 		ImGui::End();
 
 		bOpenOnFirstStart = false;
-		*/
+		
 	}
 
 	inline void update(){

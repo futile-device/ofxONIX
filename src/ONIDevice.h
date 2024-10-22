@@ -7,9 +7,6 @@
 #include "oni.h"
 #include "onix.h"
 
-//#include "ofMain.h"
-//#include "ofxFutilities.h"
-
 #include <cassert>
 #include <string>
 #include <vector>
@@ -24,7 +21,12 @@
 #include <mutex>
 #include <syncstream>
 
-#include "ofxImGui.h"
+//#include "ofxImGui.h"
+
+#include "ONIDeviceConfig.h"
+
+// later we can set which device config to use with specific #define for USE_IMGUI etc
+typedef _FmcDeviceConfig FmcDeviceConfig;
 
 #pragma once
 
@@ -133,8 +135,6 @@ class ONIDevice{
 
 public:
 
-
-
 	//ONIDevice(){};
 	virtual ~ONIDevice(){};
 
@@ -146,7 +146,17 @@ public:
 		std::ostringstream os; os << ONIDeviceTypeIDStr(deviceTypeID) << " (" << type.idx << ")";
 		deviceName = os.str();
 		this->acq_clock_khz = acq_clock_khz;
+		deviceSetup(); // always call device specific setup/reset
 	}
+
+	virtual void reset(){ // derived class should always call base clase reset()
+		firstFrameTime = -1;
+		bContextNeedsRestart = false;
+		bContextNeedsReset = false;
+		deviceSetup(); // always call device specific setup/reset
+	}
+
+	virtual void deviceSetup() = 0; // this should always set the config name and do whatever else is device specific for setup/reset
 
 	inline const std::string& getName(){
 		return deviceName;
@@ -154,12 +164,6 @@ public:
 
 	inline const ONIDeviceTypeID& getDeviceTypeID(){
 		return deviceTypeID;
-	}
-
-	virtual void reset(){ // derived class should always call base clase reset()
-		firstFrameTime = -1;
-		bContextNeedsRestart = false;
-		bContextNeedsReset = false;
 	}
 
 	virtual inline void gui() = 0;
@@ -263,73 +267,24 @@ public:
 		//writeRegister(ENABLE, 0);
 	};
 
-	void reset(){
-		ONIDevice::reset();
+	//void reset(){
+	//	ONIDevice::reset();
+	//	
+	//}
+
+	void deviceSetup(){
+		config.setup(deviceName);
 		getPortVoltage(true);
+		config.last() = config.get();
 	}
 
 	inline void gui(){
-		/*
-		//ImGui::Begin(deviceName.c_str());
-		ImGui::PushID(deviceName.c_str());
-
-		//getPortVoltage(false);
-
-		ImGui::Text(getName().c_str());
-
-		ImGui::SetNextItemWidth(200);
-		ImGui::InputFloat("Port Voltage", &gvoltage, 0.1f, 0.1f, "%.1f"); 
-		
-
-		gvoltage = std::clamp(gvoltage, 3.0f, 10.0f); // use some way of specifying min and max
-
-		if(gvoltage != voltage){
-			ImGui::SameLine();
-			bool bApplyVoltage = false;
-			if(ImGui::Button("Apply")){
-				if(gvoltage >= 5.0f){
-					bApplyVoltage = false;
-					ImGui::OpenPopup("Overvoltage");
-				}else{
-					bApplyVoltage = true;
-				}
-			}
-
-			if(gvoltage >= 5.0f){
-				ImGui::SameLine();
-				ImGui::Text("WARNING Voltage exceeds 5.0v");
-			}
-
-			// Always center this window when appearing
-			ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-			ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-
-			if(ImGui::BeginPopupModal("Overvoltage", NULL)){
-				ImGui::Text("Voltages above 5.0v may damage the device!");
-				ImGui::Text("Do you really want to supply %.1f v to device?", gvoltage);
-				ImGui::Separator();
-				if (ImGui::Button("Yes", ImVec2(120, 0))) { bApplyVoltage = true; ImGui::CloseCurrentPopup(); }
-				ImGui::SetItemDefaultFocus();
-				ImGui::SameLine();
-				if (ImGui::Button("Cancel", ImVec2(120, 0))) { bApplyVoltage = false; getPortVoltage(true); ImGui::CloseCurrentPopup(); }
-				ImGui::EndPopup();
-			}
-
-			if(bApplyVoltage){
-				LOGINFO("Change Voltage from %.1f to %.1f", voltage, gvoltage);
-				setPortVoltage(gvoltage);
-				//getPortVoltage(true);
-			}
-
-
-
+		config.gui();
+		if(config.apply()){
+			LOGDEBUG("FMC Device settings changed");
+			setPortVoltage(config.last().voltage);
+			config.last() = config.get();
 		}
-		ImGui::Separator();
-		ImGui::Separator();
-		ImGui::PopID();
-		//ImGui::End();
-		*/
-
 	}
 
 	inline void process(oni_frame_t* frame, const uint64_t & sampleIDX){
@@ -348,7 +303,7 @@ public:
 	}
 
 	bool getEnabled(const bool& bCheckRegisters = true){
-		if(bCheckRegisters) bEnabled = (bool)readRegister(FmcDevice::ENABLE);
+		if(bCheckRegisters) .bEnabled = (bool)readRegister(FmcDevice::ENABLE);
 		return bEnabled;
 	}
 
@@ -367,8 +322,8 @@ public:
 	}
 
 	const float& getPortVoltage(const bool& bCheckRegisters = true){
-		if(bCheckRegisters || voltage == 0) gvoltage = voltage = readRegister(FmcDevice::PORTVOLTAGE) / 10.0f;
-		return voltage;
+		if(bCheckRegisters ||  config.get().voltage == 0) config.get().voltage = readRegister(FmcDevice::PORTVOLTAGE) / 10.0f;
+		return config.get().voltage;
 	}
 
 	unsigned int readRegister(const FmcRegister& reg){
@@ -381,8 +336,10 @@ public:
 
 protected:
 
-	float voltage = 0;
-	float gvoltage = 0; // voltage for gui
+	FmcDeviceConfig config;
+
+	//float voltage = 0;
+	//float gvoltage = 0; // voltage for gui
 	bool bLinkState = false;
 	bool bEnabled = false;
 
@@ -404,6 +361,10 @@ public:
 		//readRegister(ENABLE); // FOR SOME REASON IF WE DISABLE WE HAVE A PROBLEM
 		//writeRegister(ENABLE, 0);
 	};
+
+	void deviceSetup(){
+		//config.setup(deviceName);
+	}
 
 	inline void gui(){
 		/*
@@ -766,24 +727,14 @@ public:
 		//writeRegister(ENABLE, 0);
 	};
 
-	void reset(){
-		ONIDevice::reset();
-		//mutex.lock();
-		//rawDataFrames.clear();
-		//drawDataFrames.clear();
-		//rawDataFrames.resize(bufferSize);
-		//drawDataFrames.resize(drawBufferSize);
-		//currentBufferIDX = 0;
-		//currentDrawBufferIDX = 0;
-		//mutex.unlock();
-
+	void deviceSetup(){
+		//config.setup(deviceName);
 		getFormat(true);
 		getAnalogLowCutoff(true);
 		getAnalogLowCutoffRecovery(true);
 		getAnalogHighCutoff(true);
 
 		setBufferSizeSamples(bufferSize);
-
 	}
 
 	bool setEnabled(const bool& b){
