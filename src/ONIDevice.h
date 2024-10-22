@@ -7,8 +7,24 @@
 #include "oni.h"
 #include "onix.h"
 
-#include "ofMain.h"
-#include "ofxFutilities.h"
+//#include "ofMain.h"
+//#include "ofxFutilities.h"
+
+#include <cassert>
+#include <string>
+#include <vector>
+#include <map>
+#include <cstdio>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <algorithm>
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <syncstream>
+
+#include "ofxImGui.h"
 
 #pragma once
 
@@ -127,7 +143,7 @@ public:
 		ctx = context;
 		deviceType = type;
 		deviceTypeID = (ONIDeviceTypeID)type.id;
-		ostringstream os; os << ONIDeviceTypeIDStr(deviceTypeID) << " (" << type.idx << ")";
+		std::ostringstream os; os << ONIDeviceTypeIDStr(deviceTypeID) << " (" << type.idx << ")";
 		deviceName = os.str();
 		this->acq_clock_khz = acq_clock_khz;
 	}
@@ -147,7 +163,7 @@ public:
 	}
 
 	virtual inline void gui() = 0;
-	virtual inline void process(oni_frame_t* frame) = 0;
+	virtual inline void process(oni_frame_t* frame, const uint64_t & sampleIDX) = 0;
 
 	const inline bool& getContexteNeedsRestart(){
 		return bContextNeedsRestart;
@@ -157,7 +173,7 @@ public:
 		return bContextNeedsReset;
 	}
 
-	//inline bool isDeviceType(unsigned int deviceID){ return (deviceID == deviceType.id); };
+	//inline boo l isDeviceType(unsigned int deviceID){ return (deviceID == deviceType.id); };
 
 protected:
 
@@ -253,7 +269,7 @@ public:
 	}
 
 	inline void gui(){
-
+		/*
 		//ImGui::Begin(deviceName.c_str());
 		ImGui::PushID(deviceName.c_str());
 
@@ -312,10 +328,11 @@ public:
 		ImGui::Separator();
 		ImGui::PopID();
 		//ImGui::End();
+		*/
 
 	}
 
-	inline void process(oni_frame_t* frame){
+	inline void process(oni_frame_t* frame, const uint64_t & sampleIDX){
 		// nothing
 	}
 
@@ -337,9 +354,11 @@ public:
 
 	bool setPortVoltage(const float& v){
 		writeRegister(FmcDevice::PORTVOLTAGE, 0); // have to set to 0 and back to voltage or else won't init properly
-		ofSleepMillis(500); // needs to pause
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		//ofSleepMillis(500); // needs to pause
 		bool bOk = writeRegister(FmcDevice::PORTVOLTAGE, v * 10);
-		ofSleepMillis(500); // needs to pause
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		//ofSleepMillis(500); // needs to pause
 		if(bOk){ // updates the cached value
 			getPortVoltage(true); 
 			bContextNeedsRestart = true;
@@ -387,7 +406,7 @@ public:
 	};
 
 	inline void gui(){
-
+		/*
 		//ImGui::Begin(deviceName.c_str());
 		ImGui::PushID(deviceName.c_str());
 		ImGui::Text(getName().c_str());
@@ -397,7 +416,7 @@ public:
 		ImGui::Separator();
 		ImGui::PopID();
 		//ImGui::End();
-
+		*/
 	}
 
 	void reset(){
@@ -405,7 +424,7 @@ public:
 		getFrequencyHz(true);
 	}
 
-	inline void process(oni_frame_t* frame){
+	inline void process(oni_frame_t* frame, const uint64_t & sampleIDX){
 		
 		bHeartBeat = !bHeartBeat;
 		deltaTime = (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time);
@@ -710,9 +729,10 @@ public:
 		uint16_t dc[16];
 		uint16_t unused;
 		uint64_t acqTime;
-		long double deltaTime;
 		float acf[16];
 		float dcf[16];
+		long double deltaTime;
+		uint64_t sampleIDX;
 	};
 #pragma pack(pop)
 
@@ -933,22 +953,25 @@ public:
 		setBufferSizeSamples(samples);
 	}
 
-	fu::Timer frameTimer;
+	//fu::Timer frameTimer;
 
 	double getFrameTimerAvg(){
+		/*
 		const std::lock_guard<std::mutex> lock(mutex);
 		frameTimer.stop();
 		double t = frameTimer.avg<fu::micros>();
 		frameTimer.start();
 		return t;
+		*/
+		return 0;
 	}
 
 	//std::vector<ONIProbeStatistics> probeStats;
 
 	//uint64_t cnt = 0;
-
+	
 	inline void gui(){
-
+		/*
 		//ImGui::Begin(deviceName.c_str());
 		ImGui::PushID(deviceName.c_str());
 
@@ -976,18 +999,29 @@ public:
 		int highCutoffItem = getAnalogHighCutoff(false);
 		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
 		if(highCutoffItem != highCutoff) setAnalogHighCutoff((Rhs2116AnalogHighCutoff)highCutoffItem);
-
+		mutex.lock();
+		ImGui::Text("Frame delta: %i", frameDeltaSFX);
+		ImGui::Text("Sample cont: %i", sampleCounter);
+		ImGui::Text("Div delta  : %f", div);
+		mutex.unlock();
 		ImGui::PopID();
 		//ImGui::End();
+		*/
 	}
-
-	inline void process(oni_frame_t* frame){
+	uint64_t lastAcquisitionTime = 0;
+	uint64_t lastSampleIDX = 0;
+	uint64_t sampleCounter = 0;
+	uint64_t frameDeltaSFX = 0;
+	float div = 0;
+	inline void process(oni_frame_t* frame, const uint64_t & sampleIDX){
 
 		const std::lock_guard<std::mutex> lock(mutex);
 
 		memcpy(&rawDataFrames[currentBufferIDX], frame->data, frame->data_sz);  // copy the data payload including hub clock
 		rawDataFrames[currentBufferIDX].acqTime = frame->time;					// copy the acquisition clock
 		rawDataFrames[currentBufferIDX].deltaTime = ONIDevice::getAcqDeltaTimeMicros(frame->time); //fu::time::now<fu::micros>() * 1000;
+		//rawDataFrames[currentBufferIDX].sampleIDX = fu::time::now<fu::micros>();
+		
 
 		for(size_t probe = 0; probe < 16; ++probe){
 			rawDataFrames[currentBufferIDX].acf[probe] = 0.195f * (rawDataFrames[currentBufferIDX].ac[probe] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
@@ -1036,10 +1070,28 @@ public:
 		//if(deltaFrameTimer > 1000000.0 / sampleRatekSs) LOGDEBUG("RHS2116 Frame Buffer Underrun %f", deltaFrameTimer);
 		
 
-		lastBufferIDX = currentBufferIDX;
+		//lastBufferIDX = currentBufferIDX;
+		/*
+		frameDeltaSFX = frameTimer.elapsed<fu::micros>(); //(rawDataFrames[currentBufferIDX].sampleIDX - lastSampleIDX);
+		if(frameDeltaSFX > 5) {
+			div = (float)frameDeltaSFX / sampleCounter;
+			//LOGDEBUG("Framt: %i %i %f", frameDeltaSFX, sampleCounter, (float)frameDeltaSFX / sampleCounter );
+			sampleCounter = 0;
+		}
+		sampleCounter++;
+		frameTimer.start();
+		float frameDeltaAQX = (rawDataFrames[currentBufferIDX].acqTime - lastAcquisitionTime) / (float)acq_clock_khz * 1000000;
+		if(frameDeltaAQX > 33.333333333333333f) LOGDEBUG("Underflow: %f", frameDeltaAQX);
+		*/
+
+		//if(currentBufferIDX % 30000 == 0) LOGDEBUG("Delta %s: %i %f %i %i %i", deviceName.c_str(), frameDeltaSFX, frameDeltaAQX, sampleIDX, lastSampleIDX, rawDataFrames[currentBufferIDX].sampleIDX);
+
+		lastAcquisitionTime = rawDataFrames[currentBufferIDX].acqTime;
+		lastSampleIDX = rawDataFrames[currentBufferIDX].sampleIDX;
+		
 		currentBufferIDX = (currentBufferIDX + 1) % bufferSize;
 
-		frameTimer.fcount();
+		//frameTimer.fcount();
 
 		//ofSleepMillis(1);
 		//sortedDataFrames = rawDataFrames;

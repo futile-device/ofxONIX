@@ -7,20 +7,34 @@
 #include "oni.h"
 #include "onix.h"
 
+#include <cassert>
+#include <string>
+#include <vector>
+#include <map>
+#include <cstdio>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <algorithm>
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <syncstream>
 
-#include "ofMain.h"
 #include "ofxImGui.h"
-#include "ofxFutilities.h"
+
 
 //#define LOG_OF 1
 
 #ifdef ONI_LOG_FU
+#include "ofxFutilities.h"
 #define LOGDEBUG(fmt, ...) fu::debugf(fmt, __VA_ARGS__);
 #define LOGINFO(fmt, ...)  fu::infof(fmt, __VA_ARGS__);
 #define LOGALERT(fmt, ...) fu::alertf(fmt, __VA_ARGS__);
 #define LOGERROR(fmt, ...) fu::errorf(fmt, __VA_ARGS__);
 #define LOGFATAL(fmt, ...) fu::fatalf(fmt, __VA_ARGS__);
 #elif ONI_LOG_OF
+#include "ofMain.h"
 #define LOGDEBUG(fmt, ...) ofLog(OF_LOG_VERBOSE, fmt, __VA_ARGS__);
 #define LOGINFO(fmt, ...)  ofLog(OF_LOG_NOTICE, fmt, __VA_ARGS__);
 #define LOGALERT(fmt, ...) ofLog(OF_LOG_WARNING, fmt, __VA_ARGS__);
@@ -126,7 +140,7 @@ public:
 	};
 	
 	inline void gui(){
-
+		/*
 		static bool bOpenOnFirstStart = true;
 
 		ImGui::Begin("ONI Context");
@@ -222,7 +236,7 @@ public:
 		ImGui::End();
 
 		bOpenOnFirstStart = false;
-
+		*/
 	}
 
 	inline void update(){
@@ -274,6 +288,7 @@ public:
 		this->driverName = driverName;
 		this->blockReadBytes = blockReadBytes;
 		this->blockWriteBytes = blockWriteBytes;
+
 		return setupContext();
 	}
 
@@ -359,7 +374,7 @@ public:
 
 		getDeviceTypes(); // make sure we have the updated list?
 
-		ostringstream os;
+		std::ostringstream os;
 
 		os << "   +--------------------+-------+-------+-------+-------+---------------------" << std::endl;
 		os << "   |        \t\t|  \t|Firm.\t|Read\t|Wrt. \t|     " << std::endl;
@@ -450,7 +465,21 @@ public:
 		LOGINFO("...ONIContext closed");
 
 	}
-
+	std::atomic_uint64_t sampleCount = 0;
+	std::mutex audioMutex;
+	//void audioOut(ofSoundBuffer &outBuffer) {
+	//	for(size_t i = 0; i < outBuffer.getNumFrames(); i++){
+	//		//readFrame(sampleCount);
+	//		//audioMutex.lock();
+	//		//unique_lock<std::mutex> lock(audioMutex);
+	//		
+	//		readFrame();
+	//		++sampleCount;
+	//		
+	//		//audioMutex.unlock();
+	//	}
+	//}
+	//fu::Timer frameCtxTimer;
 private:
 
 	bool startContext(){
@@ -475,7 +504,7 @@ private:
 		}
 		return true;
 	}
-
+	
 	void startFrameRead(){
 		if(bThread) stopFrameRead();
 		LOGDEBUG("Starting frame read thread");
@@ -483,6 +512,18 @@ private:
 		for(auto device : oniDevices){
 			device.second->reset();
 		}
+
+		sampleCount = 0;
+
+		//ofSoundStreamSettings settings;
+		//settings.numOutputChannels = 1;
+		//settings.sampleRate = 192000;
+		//settings.bufferSize = 1024;
+		//settings.numBuffers = 4;
+		//settings.setOutListener(this);
+		//soundStream.setup(settings);
+
+		//soundStream.start();
 		thread = std::thread(&ONIContext::readFrame, this);
 	}
 
@@ -490,6 +531,7 @@ private:
 		LOGDEBUG("Stopping frame read thread");
 		if(!bThread) return;
 		bThread = false;
+		//soundStream.close();
 		if(thread.joinable()) thread.join();
 	}
 
@@ -570,7 +612,7 @@ private:
 		return true;
 
 	}
-
+	
 	void readFrame(){
 
 		while(bThread){
@@ -578,6 +620,11 @@ private:
 			//fu::debug << "something");
 
 			int rc = ONI_ESUCCESS;
+
+			//uint64_t sampleIDX = 0;
+			//audioMutex.lock();
+			//sampleIDX = sampleCount;
+			//audioMutex.unlock();
 
 			oni_frame_t *frame = NULL;
 			rc = oni_read_frame(ctx, &frame);
@@ -591,8 +638,12 @@ private:
 				if(it == oniDevices.end()){
 					LOGERROR("ONIDevice doesn't exist with idx: %i", frame->dev_idx);
 				}else{
+
 					auto device = it->second;
-					device->process(frame);
+					//sampleCount = fu::time::now<fu::micros>();
+
+					//unique_lock<std::mutex> lock(audioMutex);
+					device->process(frame, sampleCount);
 
 					//if(device->getDeviceONIDeviceTypeID() == ONIDevice::ONIDeviceTypeID::HEARTBEAT){
 					//	Rhs2116Device* rhd2116Device1 = (Rhs2116Device*)getDevice(256);
@@ -602,6 +653,7 @@ private:
 					//}
 					
 					//fu::debug << "DEV: " << frame->dev_idx << " " << frame->time << " " << device->getName() << fu::endl;
+
 				}
 
 			}
@@ -609,7 +661,7 @@ private:
 			oni_destroy_frame(frame);
 
 			//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
+			//frameCtxTimer.fcount();
 		}
 
 	}
@@ -640,6 +692,8 @@ private:
 	std::atomic_bool bThread = false;
 	std::thread thread;
 	std::mutex mutex;
+
+	//ofSoundStream soundStream;
 
 	volatile oni_ctx ctx = NULL;
 
