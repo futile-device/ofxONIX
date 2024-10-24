@@ -21,12 +21,13 @@
 #include <mutex>
 #include <syncstream>
 
-
+#include "ONIConfig.h"
 #include "ONIDevice.h"
-#include "ONIDeviceConfig.h"
 #include "ONIDeviceFmc.h"
 #include "ONIDeviceHeartBeat.h"
 #include "ONIDeviceRhs2116.h"
+#include "ONIRegister.h"
+#include "ONISettingTypes.h"
 #include "ONIUtility.h"
 
 #pragma once
@@ -207,7 +208,7 @@ public:
 			
 		}
 
-		for(auto device : oniDevices){
+		for(auto device : config.devices()){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if(ImGui::CollapsingHeader(device.second->getName().c_str(), true)) device.second->gui();
 		}
@@ -230,7 +231,7 @@ public:
 
 		ONIDevice* device_changed = NULL;
 
-		for(auto device : oniDevices){
+		for(auto device : config.devices()){
 			if(device.second->getContexteNeedsRestart()){
 				device_changed = (ONIDevice*)device.second;
 				bContextNeedsRestart = true;
@@ -312,7 +313,7 @@ public:
 				FmcDevice* fmc = new FmcDevice;
 				fmc->setup(&ctx, devices_t[i], acq_clock_khz);
 				fmc->reset();
-				oniDevices[devices_t[i].idx] = fmc;
+				config.devices()[devices_t[i].idx] = fmc;
 			}
 
 			if(devices_t[i].id == ONIDeviceTypeID::HEARTBEAT){ // 12 HeartBeat Device
@@ -320,7 +321,7 @@ public:
 				HeartBeatDevice* hbd = new HeartBeatDevice;
 				hbd->setup(&ctx, devices_t[i], acq_clock_khz);
 				hbd->reset();
-				oniDevices[devices_t[i].idx] = hbd;
+				config.devices()[devices_t[i].idx] = hbd;
 			}
 
 			if(devices_t[i].id == ONIDeviceTypeID::RHS2116){ // 31 RHS2116 Device
@@ -328,7 +329,7 @@ public:
 				Rhs2116Device* rhd2116 = new Rhs2116Device;
 				rhd2116->setup(&ctx, devices_t[i], acq_clock_khz);
 				rhd2116->reset();
-				oniDevices[devices_t[i].idx] = rhd2116;
+				config.devices()[devices_t[i].idx] = rhd2116;
 			}
 
 		}
@@ -342,8 +343,8 @@ public:
 	}
 
 	ONIDevice* getDevice(const unsigned int& idx){
-		auto it = oniDevices.find(idx);
-		if(it == oniDevices.end()){
+		auto it = config.devices().find(idx);
+		if(it == config.devices().end()){
 			LOGERROR("ONIDevice doesn't exist with idx: %i", idx);
 			return NULL;
 		}
@@ -489,7 +490,7 @@ private:
 		if(bThread) stopFrameRead();
 		LOGDEBUG("Starting frame read thread");
 		bThread = true;
-		for(auto device : oniDevices){
+		for(auto device : config.devices()){
 			device.second->reset();
 		}
 
@@ -613,9 +614,9 @@ private:
 				LOGERROR("Frame read error: %s", oni_error_str(rc));
 			}else{
 				
-				auto it = oniDevices.find((unsigned int)frame->dev_idx);
+				auto it = config.devices().find((unsigned int)frame->dev_idx);
 
-				if(it == oniDevices.end()){
+				if(it == config.devices().end()){
 					LOGERROR("ONIDevice doesn't exist with idx: %i", frame->dev_idx);
 				}else{
 
@@ -650,15 +651,17 @@ private:
 
 		deviceTypes.clear();
 
-		for(auto device : oniDevices){
+		for(auto device : config.devices()){
 			delete device.second;
 		}
 
-		oniDevices.clear();
+		config.devices().clear();
 
 	}
 
 private:
+
+	ContextConfig config;
 
 	bool bIsContextSetup = false;
 	bool bIsAcquiring = false;
@@ -677,7 +680,7 @@ private:
 
 	volatile oni_ctx ctx = NULL;
 
-	std::map<unsigned int, ONIDevice*> oniDevices;
+	//std::map<unsigned int, ONIDevice*> oniDevices;
 	std::vector<oni_device_t> deviceTypes = {};
 
 	int host_idx = -1;

@@ -21,15 +21,13 @@
 #include <mutex>
 #include <syncstream>
 
+#include "ONIConfig.h"
 #include "ONIDevice.h"
-#include "ONIDeviceConfig.h"
 #include "ONIRegister.h"
+#include "ONISettingTypes.h"
 #include "ONIUtility.h"
 
 #pragma once
-
-// later we can set which device config to use with specific #define for USE_IMGUI etc
-typedef _HeartBeatDeviceConfig HeartBeatDeviceConfig;
 
 class HeartBeatRegister : public ONIRegister{
 public:
@@ -53,26 +51,32 @@ public:
 	};
 
 	void deviceSetup(){
-		//config.setup(deviceName);
+		config.setup(this);
+		getFrequencyHz(true);
+		//setFrequencyHz(config.getSettings().frequencyHz);
+		config.syncSettings();
 	}
 
 	inline void gui(){
 		config.gui();
-		if(config.apply()){
+		if(config.applySettings()){
 			LOGDEBUG("HeartBeat Device settings changed");
-			setFrequencyHz(config.last().frequencyHz);
-			config.last() = config.get();
+			setFrequencyHz(config.getChangedSettings().frequencyHz);
+			config.syncSettings();
 		}
 	}
 
-	bool saveConfig(std::string filePath){
-		getFrequencyHz(true);
-		return config.save(filePath);
+	bool saveConfig(std::string presetName){
+		//getFrequencyHz(true);
+		return config.save(presetName);
 	}
 
-	bool loadConfig(std::string filePath){
-		bool bOk = config.load(filePath);
-		setFrequencyHz(config.get().frequencyHz);
+	bool loadConfig(std::string presetName){
+		bool bOk = config.load(presetName);
+		if(bOk){
+			setFrequencyHz(config.getSettings().frequencyHz);
+			config.syncSettings();
+		}
 		return bOk;
 	}
 
@@ -82,9 +86,9 @@ public:
 	}
 
 	inline void process(oni_frame_t* frame, const uint64_t & sampleIDX){
-		//config.process(frame);
-		config.bHeartBeat = !config.bHeartBeat;
-		config.deltaTime = (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time);
+		config.process(frame);
+		//config.bHeartBeat = !config.bHeartBeat;
+		//config.deltaTime = (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time);
 		//LOGDEBUG("HEARTBEAT: %i %i %i %s", frame->dev_idx, (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time), frame->data_sz, deviceName.c_str());
 		//fu::debug << (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time) << fu::endl;
 	}
@@ -96,8 +100,8 @@ public:
 	}
 
 	bool getEnabled(const bool& bCheckRegisters = true){
-		if(bCheckRegisters) config.bEnabled = (bool)readRegister(HeartBeatDevice::ENABLE);
-		return config.bEnabled;
+		if(bCheckRegisters) bEnabled = (bool)readRegister(HeartBeatDevice::ENABLE);
+		return bEnabled;
 	}
 
 	bool setFrequencyHz(const unsigned int& beatsPerSecond){
@@ -112,10 +116,10 @@ public:
 		if(bCheckRegisters){
 			unsigned int clkHz = readRegister(HeartBeatDevice::CLK_HZ);
 			unsigned int clkDv = readRegister(HeartBeatDevice::CLK_DIV);
-			config.get().frequencyHz = clkHz / clkDv;
-			LOGDEBUG("Heartbeat FrequencyHz: %i", config.get().frequencyHz);
+			config.getSettings().frequencyHz = clkHz / clkDv;
+			LOGDEBUG("Heartbeat FrequencyHz: %i", config.getSettings().frequencyHz);
 		}
-		return config.get().frequencyHz;
+		return config.getSettings().frequencyHz;
 	}
 
 	unsigned int readRegister(const HeartBeatRegister& reg){
@@ -129,10 +133,8 @@ public:
 protected:
 
 	HeartBeatDeviceConfig config;
-	//unsigned int frequencyHz = 0;
-	//bool bEnabled = false;
-	//std::atomic_bool bHeartBeat = false;
-	//std::atomic_uint64_t deltaTime = 0;
+
+	bool bEnabled = false;
 
 };
 

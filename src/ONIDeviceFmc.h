@@ -21,15 +21,13 @@
 #include <mutex>
 #include <syncstream>
 
+#include "ONIConfig.h"
 #include "ONIDevice.h"
-#include "ONIDeviceConfig.h"
 #include "ONIRegister.h"
+#include "ONISettingTypes.h"
 #include "ONIUtility.h"
 
 #pragma once
-
-// later we can set which device config to use with specific #define for USE_IMGUI etc
-typedef _FmcDeviceConfig FmcDeviceConfig;
 
 class FmcRegister : public ONIRegister{
 public:
@@ -61,28 +59,32 @@ public:
 	//}
 
 	void deviceSetup(){
-		config.setup(deviceName);
+		config.setup(this);
 		getPortVoltage(true);
-		config.last() = config.get();
+		//setPortVoltage(config.getSettings().voltage);
+		config.syncSettings();
 	}
 
 	inline void gui(){
 		config.gui();
-		if(config.apply()){
+		if(config.applySettings()){
 			LOGDEBUG("FMC Device settings changed");
-			setPortVoltage(config.last().voltage);
-			config.last() = config.get();
+			setPortVoltage(config.getChangedSettings().voltage);
+			config.syncSettings();
 		}
 	}
 
-	bool saveConfig(std::string filePath){
-		getPortVoltage(true);
-		return config.save(filePath);
+	bool saveConfig(std::string presetName){
+		//getPortVoltage(true);
+		return config.save(presetName);
 	}
 
-	bool loadConfig(std::string filePath){
-		bool bOk = config.load(filePath);
-		setPortVoltage(config.get().voltage);
+	bool loadConfig(std::string presetName){
+		bool bOk = config.load(presetName);
+		if(bOk){
+			setPortVoltage(config.getSettings().voltage);
+			config.syncSettings();
+		}
 		return bOk;
 	}
 
@@ -91,8 +93,8 @@ public:
 	}
 
 	bool getLinkState(const bool& bCheckRegisters = true){
-		if(bCheckRegisters) config.bLinkState = (bool)readRegister(FmcDevice::LINKSTATE); // HMMM returns 3 when rhs2116 connected?!!
-		return config.bLinkState;
+		if(bCheckRegisters) bLinkState = (bool)readRegister(FmcDevice::LINKSTATE); // HMMM returns 3 when rhs2116 connected?!!
+		return bLinkState;
 	}
 
 	bool setEnabled(const bool& b){
@@ -102,8 +104,8 @@ public:
 	}
 
 	bool getEnabled(const bool& bCheckRegisters = true){
-		if(bCheckRegisters) config.bEnabled = (bool)readRegister(FmcDevice::ENABLE);
-		return config.bEnabled;
+		if(bCheckRegisters) bEnabled = (bool)readRegister(FmcDevice::ENABLE);
+		return bEnabled;
 	}
 
 	bool setPortVoltage(const float& v){
@@ -121,8 +123,8 @@ public:
 	}
 
 	const float& getPortVoltage(const bool& bCheckRegisters = true){
-		if(bCheckRegisters ||  config.get().voltage == 0) config.get().voltage = readRegister(FmcDevice::PORTVOLTAGE) / 10.0f;
-		return config.get().voltage;
+		if(bCheckRegisters ||  config.getSettings().voltage == 0) config.getSettings().voltage = readRegister(FmcDevice::PORTVOLTAGE) / 10.0f;
+		return config.getSettings().voltage;
 	}
 
 	unsigned int readRegister(const FmcRegister& reg){
@@ -137,9 +139,7 @@ protected:
 
 	FmcDeviceConfig config;
 
-	//float voltage = 0;
-	//float gvoltage = 0; // voltage for gui
-	//bool bLinkState = false;
-	//bool bEnabled = false;
+	bool bLinkState = false;
+	bool bEnabled = false;
 
 };

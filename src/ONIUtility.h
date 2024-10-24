@@ -46,3 +46,16 @@
 #endif
 
 #pragma once
+
+static inline uint64_t uint16_to_bin16(uint16_t u) {
+	uint64_t sum = 0;
+	uint64_t power = 1;
+	while (u) {
+		if (u & 1) {
+			sum += power;
+		}
+		power *= 16;
+		u /= 2;
+	}
+	return sum;
+}

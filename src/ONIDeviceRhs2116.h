@@ -22,9 +22,10 @@
 #include <syncstream>
 
 
+#include "ONIConfig.h"
 #include "ONIDevice.h"
-#include "ONIDeviceConfig.h"
 #include "ONIRegister.h"
+#include "ONISettingTypes.h"
 #include "ONIUtility.h"
 
 #pragma once
@@ -124,182 +125,9 @@ public:
 	static inline const Rhs2116Register POS014 = Rhs2116Register(0x6e, "POS014");
 	static inline const Rhs2116Register POS015 = Rhs2116Register(0x6f, "POS015");
 
-	enum Rhs2116DspCutoff{
-		Differential = 0,
-		Dsp3309Hz,
-		Dsp1374Hz,
-		Dsp638Hz,
-		Dsp308Hz,
-		Dsp152Hz,
-		Dsp75Hz,
-		Dsp37Hz,
-		Dsp19Hz,
-		Dsp9336mHz,
-		Dsp4665mHz,
-		Dsp2332mHz,
-		Dsp1166mHz,
-		Dsp583mHz,
-		Dsp291mHz,
-		Dsp146mHz,
-		Off
-	};
-
-	enum Rhs2116AnalogLowCutoff{
-		Low1000Hz = 0,
-		Low500Hz,
-		Low300Hz,
-		Low250Hz,
-		Low200Hz,
-		Low150Hz,
-		Low100Hz,
-		Low75Hz,
-		Low50Hz,
-		Low30Hz,
-		Low25Hz,
-		Low20Hz,
-		Low15Hz,
-		Low10Hz,
-		Low7500mHz,
-		Low5000mHz,
-		Low3090mHz,
-		Low2500mHz,
-		Low2000mHz,
-		Low1500mHz,
-		Low1000mHz,
-		Low750mHz,
-		Low500mHz,
-		Low300mHz,
-		Low250mHz,
-		Low100mHz
-	};
-
-	enum Rhs2116AnalogHighCutoff{
-		High20000Hz = 0,
-		High15000Hz,
-		High10000Hz,
-		High7500Hz,
-		High5000Hz,
-		High3000Hz,
-		High2500Hz,
-		High2000Hz,
-		High1500Hz,
-		High1000Hz,
-		High750Hz,
-		High500Hz,
-		High300Hz,
-		High250Hz,
-		High200Hz,
-		High150Hz,
-		High100Hz,
-	};
+	
 
 
-	const unsigned int AnalogLowCutoffRegisters [26][3]{
-		{ 10, 0, 0 },
-		{ 13, 0, 0 },
-		{ 15, 0, 0 },
-		{ 17, 0, 0 },
-		{ 18, 0, 0 },
-		{ 21, 0, 0 },
-		{ 25, 0, 0 },
-		{ 28, 0, 0 },
-		{ 34, 0, 0 },
-		{ 44, 0, 0 },
-		{ 48, 0, 0 },
-		{ 54, 0, 0 },
-		{ 62, 0, 0 },
-		{ 5, 1, 0 },
-		{ 18, 1, 0 },
-		{ 40, 1, 0 },
-		{ 20, 2, 0 },
-		{ 42, 2, 0 },
-		{ 8, 3, 0 },
-		{ 9, 4, 0 },
-		{ 44, 6, 0 },
-		{ 49, 9, 0 },
-		{ 35, 17, 0 },
-		{ 1, 40, 0 },
-		{ 56, 54, 0 },
-		{ 16, 60, 1 }
-	};
-
-	const unsigned int AnalogHighCutoffRegisters [17][4]{
-		{ 8, 0, 4, 0 },
-		{ 11, 0, 8, 0 },
-		{ 17, 0, 16, 0 },
-		{ 22, 0, 23, 0 },
-		{ 33, 0, 37, 0 },
-		{ 3, 1, 13, 1 },
-		{ 13, 1, 25, 1 },
-		{ 27, 1, 44, 1 },
-		{ 1, 2, 23, 2 },
-		{ 46, 2, 30, 3 },
-		{ 41, 3, 36, 4 },
-		{ 30, 5, 43, 6 },
-		{ 6, 9, 2, 11 },
-		{ 42, 10, 5, 13 },
-		{ 24, 13, 7, 16 },
-		{ 44, 17, 8, 21 },
-		{ 38, 26, 5, 31 }
-	};
-	const unsigned int AnalogHighCutoffToFastSettleSamples [17]{
-		4, 5, 8, 10, 15, 25, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30
-	};
-
-#pragma pack(push, 1)
-	struct Rhs2116LowCutReg{
-		unsigned RL_Asel1:7;
-		unsigned RL_Asel2:6;
-		unsigned RL_Asel3:1;
-		unsigned unused:2;
-	};
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-	struct Rhs2116HighCutReg{
-		unsigned RH1_sel1:6;
-		unsigned RH1_sel2:5;
-		unsigned unused:5;
-	};
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-	struct Rhs2116Format{
-		unsigned dspCutoff:4;
-		unsigned dspEnable:1;
-		unsigned absmode:1;
-		unsigned twoscomp:1;
-		unsigned weakMISO:1;
-		unsigned digout1HiZ:1;
-		unsigned digout1:1;
-		unsigned digout2HiZ:1;
-		unsigned digout2:1;
-		unsigned digoutOD:1;
-		unsigned unused:3;
-	};
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-	struct Rhs2116Bias{
-		unsigned muxBias:6;
-		unsigned adcBias:6;
-		unsigned unused:4;
-	};
-#pragma pack(pop)
-
-#pragma pack(push, 1)
-	struct Rhs2116DataFrame{
-		uint64_t hubTime;
-		uint16_t ac[16];
-		uint16_t dc[16];
-		uint16_t unused;
-		uint64_t acqTime;
-		float acf[16];
-		float dcf[16];
-		long double deltaTime;
-		uint64_t sampleIDX;
-	};
-#pragma pack(pop)
 
 	struct acquisition_clock_compare {
 		inline bool operator() (const Rhs2116DataFrame& lhs, const Rhs2116DataFrame& rhs){
@@ -332,13 +160,19 @@ public:
 	};
 
 	void deviceSetup(){
-		//config.setup(deviceName);
-		getFormat(true);
+		config.setup(this);
+		getDspCutOff(true);
 		getAnalogLowCutoff(true);
 		getAnalogLowCutoffRecovery(true);
 		getAnalogHighCutoff(true);
-
-		setBufferSizeSamples(bufferSize);
+		//setFormat(config.getSettings().format);
+		//setDspCutOff(config.getSettings().dspCutoff);
+		//setAnalogLowCutoff(config.getSettings().lowCutoff);
+		//setAnalogLowCutoffRecovery(config.getSettings().lowCutoffRecovery);
+		//setAnalogHighCutoff(config.getSettings().highCutoff);
+		setDrawBufferStride(config.getSettings().drawStride);
+		setBufferSizeSamples(config.getSettings().bufferSize);
+		config.syncSettings();
 	}
 
 	bool setEnabled(const bool& b){
@@ -370,9 +204,9 @@ public:
 	Rhs2116AnalogLowCutoff getAnalogLowCutoff(const bool& bCheckRegisters = true){
 		if(bCheckRegisters){
 			unsigned int bw2 = readRegister(Rhs2116Device::BW2);
-			lowCutoff = getLowCutoffFromReg(bw2);
+			config.getSettings().lowCutoff = getLowCutoffFromReg(bw2);
 		}
-		return lowCutoff;
+		return config.getSettings().lowCutoff;
 	}
 
 	bool setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff lowcut){
@@ -393,9 +227,9 @@ public:
 	Rhs2116AnalogLowCutoff getAnalogLowCutoffRecovery(const bool& bCheckRegisters = true){
 		if(bCheckRegisters){
 			unsigned int bw3 = readRegister(Rhs2116Device::BW3);
-			lowCutoffRecovery = getLowCutoffFromReg(bw3);
+			config.getSettings().lowCutoffRecovery = getLowCutoffFromReg(bw3);
 		}
-		return lowCutoffRecovery;
+		return config.getSettings().lowCutoffRecovery;
 	}
 
 	bool setAnalogHighCutoff(Rhs2116AnalogHighCutoff hicut){
@@ -428,9 +262,9 @@ public:
 			unsigned int bw0 = readRegister(Rhs2116Device::BW0);
 			unsigned int bw1 = readRegister(Rhs2116Device::BW1);
 			unsigned int fast = readRegister(Rhs2116Device::FASTSETTLESAMPLES);
-			highCutoff = getHighCutoffFromReg(bw0, bw1, fast);
+			config.getSettings().highCutoff = getHighCutoffFromReg(bw0, bw1, fast);
 		}
-		return highCutoff;
+		return config.getSettings().highCutoff;
 	}
 
 	bool setFormat(Rhs2116Format format){
@@ -444,6 +278,11 @@ public:
 		if(bCheckRegisters){
 			unsigned int uformat = readRegister(Rhs2116Device::FORMAT);
 			format = *(reinterpret_cast<Rhs2116Format*>(&uformat));
+			if(format.dspEnable == 0){
+				config.getSettings().dspCutoff = Rhs2116DspCutoff::Off; // is this a bug? that seems to be default status
+			}else{
+				config.getSettings().dspCutoff = (Rhs2116DspCutoff)format.dspCutoff;
+			}
 		}
 		return format;
 	}
@@ -458,11 +297,20 @@ public:
 			format.dspCutoff = cutoff;
 		}
 		
+		//config.getSettings().dspCutoff = cutoff;//???
+
 		//std::vector<std::string> dspCutoffStrs = ofSplitString(std::string(dspCutoffOptions), "\\0");
 		//LOGDEBUG("Setting DSP Cutoff to: %s", dspCutoffStrs[format.dspCutoff].c_str());
 
 		return setFormat(format);
+
 	}
+
+	const Rhs2116DspCutoff& getDspCutOff(const bool& bCheckRegisters = true){
+		getFormat(bCheckRegisters);
+		return config.getSettings().dspCutoff;
+	}
+
 
 	const std::vector<Rhs2116DataFrame>& getRawDataFrames(){
 		const std::lock_guard<std::mutex> lock(mutex);
@@ -481,24 +329,24 @@ public:
 
 	void setDrawBufferStride(const size_t& samples){
 		mutex.lock();
-		drawStride = samples;
-		drawBufferSize = bufferSize / drawStride;
+		config.getSettings().drawStride = samples;
+		config.getSettings().drawBufferSize = config.getSettings().bufferSize / config.getSettings().drawStride;
 		currentDrawBufferIDX = 0;
 		drawDataFrames.clear();
-		drawDataFrames.resize(drawBufferSize);
+		drawDataFrames.resize(config.getSettings().drawBufferSize);
 		mutex.unlock();
-		LOGINFO("Draw Buffer size: %i (samples)", drawBufferSize);
+		LOGINFO("Draw Buffer size: %i (samples)", config.getSettings().drawBufferSize);
 	}
 
 	void setBufferSizeSamples(const size_t& samples){
 		mutex.lock();
-		bufferSize = samples;
+		config.getSettings().bufferSize = samples;
 		currentBufferIDX = 0;
 		rawDataFrames.clear();
-		rawDataFrames.resize(bufferSize);
+		rawDataFrames.resize(config.getSettings().bufferSize);
 		mutex.unlock();
-		LOGINFO("Raw  Buffer size: %i (samples)", bufferSize);
-		setDrawBufferStride(drawStride);
+		LOGINFO("Raw  Buffer size: %i (samples)", config.getSettings().bufferSize);
+		setDrawBufferStride(config.getSettings().drawStride);
 	}
 
 	void setBufferSizeMillis(const int& millis){
@@ -526,50 +374,47 @@ public:
 	//uint64_t cnt = 0;
 	
 	inline void gui(){
-		/*
-		//ImGui::Begin(deviceName.c_str());
-		ImGui::PushID(deviceName.c_str());
+		
+		config.gui();
+		if(config.applySettings()){
+			LOGDEBUG("Rhs2116 Device settings changed");
+			//getDspCutOff(true);
+			//getAnalogLowCutoff(true);
+			//getAnalogLowCutoffRecovery(true);
+			//getAnalogHighCutoff(true);
+			//getDrawBufferStride(true);
+			//getBufferSizeSamples(true);
+			setDspCutOff(config.getChangedSettings().dspCutoff);
+			setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
+			setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
+			setAnalogHighCutoff(config.getChangedSettings().highCutoff);
+			setDrawBufferStride(config.getChangedSettings().drawStride);
+			setBufferSizeSamples(config.getChangedSettings().bufferSize);
+			//config.syncSettings();
+		}
 
-		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
-		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
-		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
 
-		ImGui::SetNextItemWidth(200);
-		int dspFormatItem = format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
-		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
-		if(dspFormatItem != Rhs2116DspCutoff::Off && dspFormatItem != format.dspCutoff) setDspCutOff((Rhs2116DspCutoff)dspFormatItem);
-		if(dspFormatItem == Rhs2116DspCutoff::Off && format.dspEnable == 1) setDspCutOff((Rhs2116DspCutoff)dspFormatItem);
 
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffItem = getAnalogLowCutoff(false);
-		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
-		if(lowCutoffItem != lowCutoff) setAnalogLowCutoff((Rhs2116AnalogLowCutoff)lowCutoffItem);
-
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffRecoveryItem = getAnalogLowCutoffRecovery(false);
-		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
-		if(lowCutoffRecoveryItem != lowCutoffRecovery) setAnalogLowCutoffRecovery((Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem);
-
-		ImGui::SetNextItemWidth(200);
-		int highCutoffItem = getAnalogHighCutoff(false);
-		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
-		if(highCutoffItem != highCutoff) setAnalogHighCutoff((Rhs2116AnalogHighCutoff)highCutoffItem);
-		mutex.lock();
-		ImGui::Text("Frame delta: %i", frameDeltaSFX);
-		ImGui::Text("Sample cont: %i", sampleCounter);
-		ImGui::Text("Div delta  : %f", div);
-		mutex.unlock();
-		ImGui::PopID();
-		//ImGui::End();
-		*/
+		
+		
 	}
 
-	bool saveConfig(std::string filePath){
-		return true;//config.save(filePath);
+	bool saveConfig(std::string presetName){
+		return config.save(presetName);
 	}
 
-	bool loadConfig(std::string filePath){
-		return true;//config.load(filePath);
+	bool loadConfig(std::string presetName){
+		bool bOk = config.load(presetName);
+		if(bOk){
+			setDspCutOff(config.getSettings().dspCutoff);
+			setAnalogLowCutoff(config.getSettings().lowCutoff);
+			setAnalogLowCutoffRecovery(config.getSettings().lowCutoffRecovery);
+			setAnalogHighCutoff(config.getSettings().highCutoff);
+			setDrawBufferStride(config.getSettings().drawStride);
+			setBufferSizeSamples(config.getSettings().bufferSize);
+			config.syncSettings();
+		}
+		return bOk;
 	}
 
 	uint64_t lastAcquisitionTime = 0;
@@ -592,14 +437,14 @@ public:
 			rawDataFrames[currentBufferIDX].dcf[probe] = -19.23 * (rawDataFrames[currentBufferIDX].dc[probe] - 512) / 1000.0f; // -19.23 mV × (ADC result – 512) divide by 1000 for V?
 		}
 
-		if(currentBufferIDX % drawStride == 0){
+		if(currentBufferIDX % config.getSettings().drawStride == 0){
 			//for(int i = 0; i < 16; ++i){
 			//	acProbes[i][currentDrawBufferIDX] =  0.195f * (rawDataFrames[currentBufferIDX].ac[i] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
 			//	dcProbes[i][currentDrawBufferIDX] = -19.23 * (rawDataFrames[currentBufferIDX].dc[i] - 512) / 1000.0f; // -19.23 mV × (ADC result – 512) divide by 1000 for V?
 			//}
 			//deltaTimes[currentDrawBufferIDX] = rawDataFrames[currentBufferIDX].deltaTime;
 			drawDataFrames[currentDrawBufferIDX] = rawDataFrames[currentBufferIDX];
-			currentDrawBufferIDX = (currentDrawBufferIDX + 1) % drawBufferSize;
+			currentDrawBufferIDX = (currentDrawBufferIDX + 1) % config.getSettings().drawBufferSize;
 			//frameTimer.stop();
 			//LOGDEBUG("RHS2116 Frame Timer %f", frameTimer.avg<fu::micros>());
 			//frameTimer.start();
@@ -653,7 +498,7 @@ public:
 		lastAcquisitionTime = rawDataFrames[currentBufferIDX].acqTime;
 		lastSampleIDX = rawDataFrames[currentBufferIDX].sampleIDX;
 		
-		currentBufferIDX = (currentBufferIDX + 1) % bufferSize;
+		currentBufferIDX = (currentBufferIDX + 1) % config.getSettings().bufferSize;
 
 		//frameTimer.fcount();
 
@@ -703,34 +548,37 @@ protected:
 
 private:
 
-	uint64_t hubClockFirst = -1;
-
-	std::vector<Rhs2116DataFrame> rawDataFrames;
-
-	size_t bufferSize = 100;
-	size_t currentBufferIDX = 0;
-	size_t lastBufferIDX = 0;
-
-	std::vector<Rhs2116DataFrame> drawDataFrames;
-
-	size_t drawStride = 100;
-	size_t currentDrawBufferIDX = 0;
-	size_t drawBufferSize = 0;
-
-	const int sampleRatekSs = 30000; // see above, cannot seem to change this using BIAS registers!!
+	//uint64_t hubClockFirst = -1;
 
 	std::mutex mutex;
 
+	std::vector<Rhs2116DataFrame> rawDataFrames;
+	std::vector<Rhs2116DataFrame> drawDataFrames;
+
+	size_t currentBufferIDX = 0;
+	size_t currentDrawBufferIDX = 0;
+
+	size_t lastBufferIDX = 0;
+
+	const int sampleRatekSs = 30000; // see above, cannot seem to change this using BIAS registers!!
+
 	bool bEnabled = false;
+
+	Rhs2116DeviceConfig config;
+
+	//size_t bufferSize = 100;
+	//size_t drawBufferSize = 0;
+	//size_t drawStride = 100;
+	
 	Rhs2116Format format;
 
-	Rhs2116AnalogLowCutoff lowCutoff;
-	Rhs2116AnalogLowCutoff lowCutoffRecovery;
-	Rhs2116AnalogHighCutoff highCutoff;
+	//Rhs2116AnalogLowCutoff lowCutoff;
+	//Rhs2116AnalogLowCutoff lowCutoffRecovery;
+	//Rhs2116AnalogHighCutoff highCutoff;
 
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Rhs2116Device::Rhs2116Format& format) {
+inline std::ostream& operator<<(std::ostream& os, const Rhs2116Format& format) {
 
 	os << "[unsigned: " << *(unsigned int*)&format << "] ";
 	os << "[dspCutOff: " << format.dspCutoff << "] ";

@@ -22,22 +22,10 @@
 #include <syncstream>
 
 #include "ONIRegister.h"
+#include "ONISettingTypes.h"
 #include "ONIUtility.h"
 
 #pragma once
-
-static inline uint64_t uint16_to_bin16(uint16_t u) {
-	uint64_t sum = 0;
-	uint64_t power = 1;
-	while (u) {
-		if (u & 1) {
-			sum += power;
-		}
-		power *= 16;
-		u /= 2;
-	}
-	return sum;
-}
 
 //class ONIContext; // pre-declare for friend class?
 
@@ -57,6 +45,9 @@ static std::string ONIDeviceTypeIDStr(const ONIDeviceTypeID& typeID){
 	}
 };
 
+//template<typename ONIDeviceTypeSettings>
+//class ONIDeviceConfig; // pre declare for friend class
+
 class ONIDevice{
 
 public:
@@ -72,6 +63,7 @@ public:
 		std::ostringstream os; os << ONIDeviceTypeIDStr(deviceTypeID) << " (" << type.idx << ")";
 		deviceName = os.str();
 		this->acq_clock_khz = acq_clock_khz;
+		reset(); // always call device specific setup/reset
 		deviceSetup(); // always call device specific setup/reset
 	}
 
@@ -79,7 +71,6 @@ public:
 		firstFrameTime = -1;
 		bContextNeedsRestart = false;
 		bContextNeedsReset = false;
-		deviceSetup(); // always call device specific setup/reset
 	}
 
 	virtual void deviceSetup() = 0; // this should always set the config name and do whatever else is device specific for setup/reset
@@ -93,8 +84,8 @@ public:
 	}
 
 	virtual inline void gui() = 0;
-	virtual bool saveConfig(std::string filePath) = 0;
-	virtual bool loadConfig(std::string filePath) = 0;
+	virtual bool saveConfig(std::string presetName) = 0;
+	virtual bool loadConfig(std::string presetName) = 0;
 
 	virtual inline void process(oni_frame_t* frame, const uint64_t & sampleIDX) = 0;
 
@@ -106,7 +97,10 @@ public:
 		return bContextNeedsReset;
 	}
 
-	//inline boo l isDeviceType(unsigned int deviceID){ return (deviceID == deviceType.id); };
+	inline long double getAcqDeltaTimeMicros(const uint64_t& t){
+		if(firstFrameTime == -1) firstFrameTime = t;
+		return (t - firstFrameTime) / (long double)acq_clock_khz * 1000000; // 250000000
+	}
 
 protected:
 
@@ -155,10 +149,8 @@ protected:
 		return true;
 	}
 
-	inline long double getAcqDeltaTimeMicros(const uint64_t& t){
-		if(firstFrameTime == -1) firstFrameTime = t;
-		return (t - firstFrameTime) / (long double)acq_clock_khz * 1000000; // 250000000
-	}
+	//friend class ONIDeviceConfig<FmcDeviceSettings>; // pre declare firend for direct member access
+	//friend class ONIDeviceConfig<HeartBeatDeviceSettings>; // pre declare firend for direct member access
 
 	bool bContextNeedsRestart = false;
 	bool bContextNeedsReset = false;
