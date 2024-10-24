@@ -21,39 +21,16 @@
 #include <mutex>
 #include <syncstream>
 
-//#include "ofxImGui.h"
 
-
-
-//#define LOG_OF 1
-
+#include "ONIDevice.h"
+#include "ONIDeviceConfig.h"
+#include "ONIDeviceFmc.h"
+#include "ONIDeviceHeartBeat.h"
+#include "ONIDeviceRhs2116.h"
+#include "ONIUtility.h"
 
 #pragma once
 
-#ifdef ONI_LOG_FU
-#include "ofxFutilities.h"
-#define LOGDEBUG(fmt, ...) fu::debugf(fmt, __VA_ARGS__);
-#define LOGINFO(fmt, ...)  fu::infof(fmt, __VA_ARGS__);
-#define LOGALERT(fmt, ...) fu::alertf(fmt, __VA_ARGS__);
-#define LOGERROR(fmt, ...) fu::errorf(fmt, __VA_ARGS__);
-#define LOGFATAL(fmt, ...) fu::fatalf(fmt, __VA_ARGS__);
-#elif ONI_LOG_OF
-#include "ofMain.h"
-#define LOGDEBUG(fmt, ...) ofLog(OF_LOG_VERBOSE, fmt, __VA_ARGS__);
-#define LOGINFO(fmt, ...)  ofLog(OF_LOG_NOTICE, fmt, __VA_ARGS__);
-#define LOGALERT(fmt, ...) ofLog(OF_LOG_WARNING, fmt, __VA_ARGS__);
-#define LOGERROR(fmt, ...) ofLog(OF_LOG_ERROR, fmt, __VA_ARGS__);
-#define LOGFATAL(fmt, ...) ofLog(OF_LOG_FATAL_ERROR, fmt, __VA_ARGS__);
-#else
-#define LOGDEBUG(fmt, ...) printf(fmt, __VA_ARGS__); printf("\n");
-#define LOGINFO(fmt, ...)  printf(fmt, __VA_ARGS__); printf("\n");
-#define LOGALERT(fmt, ...) printf(fmt, __VA_ARGS__); printf("\n");
-#define LOGERROR(fmt, ...) printf(fmt, __VA_ARGS__); printf("\n");
-#define LOGFATAL(fmt, ...) printf(fmt, __VA_ARGS__); printf("\n");
-#endif
-
-
-#include "ONIDevice.h"
 
 class ONIContextOption{
 
