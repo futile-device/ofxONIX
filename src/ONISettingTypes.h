@@ -54,8 +54,6 @@ struct HeartBeatDeviceSettings{
 inline bool operator==(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs){ return (lhs.frequencyHz == rhs.frequencyHz); }
 inline bool operator!=(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs) { return !(lhs == rhs); }
 
-
-
 enum Rhs2116DspCutoff{
 	Differential = 0,
 	Dsp3309Hz,
@@ -238,9 +236,9 @@ struct Rhs2116DataFrame{
 	uint16_t dc[16];
 	uint16_t unused;
 	uint64_t acqTime;
-	float acf[16];
-	float dcf[16];
 	long double deltaTime;
+	float ac_uV[16];
+	float dc_mV[16];
 	uint64_t sampleIDX;
 };
 #pragma pack(pop)
@@ -267,3 +265,25 @@ inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSett
 																									lhs.highCutoff == rhs.highCutoff); }
 inline bool operator!=(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs) { return !(lhs == rhs); }
 
+struct Rhs2116MultiDeviceSettings{
+
+	size_t bufferSize = 60000;
+
+	Rhs2116DspCutoff dspCutoff = Off;
+
+	Rhs2116AnalogLowCutoff lowCutoff = Low100mHz;
+	Rhs2116AnalogLowCutoff lowCutoffRecovery = Low250Hz;
+	Rhs2116AnalogHighCutoff highCutoff = High10000Hz;
+
+	std::vector< std::vector<bool> > channelMap;
+
+};
+
+
+inline bool operator==(const Rhs2116MultiDeviceSettings& lhs, const Rhs2116MultiDeviceSettings& rhs){ return (lhs.bufferSize == rhs.bufferSize &&
+																									lhs.dspCutoff == rhs.dspCutoff &&
+																									lhs.lowCutoff == rhs.lowCutoff &&
+																									lhs.lowCutoffRecovery == rhs.lowCutoffRecovery &&
+																									lhs.highCutoff == rhs.highCutoff &&
+																									lhs.channelMap == rhs.channelMap); }
+inline bool operator!=(const Rhs2116MultiDeviceSettings& lhs, const Rhs2116MultiDeviceSettings& rhs) { return !(lhs == rhs); }

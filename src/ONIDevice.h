@@ -21,6 +21,7 @@
 #include <mutex>
 #include <syncstream>
 
+#include "ONIDataBuffer.h"
 #include "ONIRegister.h"
 #include "ONISettingTypes.h"
 #include "ONIUtility.h"
@@ -30,9 +31,10 @@
 //class ONIContext; // pre-declare for friend class?
 
 enum ONIDeviceTypeID{
-	HEARTBEAT	= 12,
-	FMC			= 23,
-	RHS2116		= 31,
+	HEARTBEAT		= 12,
+	FMC				= 23,
+	RHS2116			= 31,
+	RHS2116MULTI	= 666,
 	NONE		= 2048
 };
 
@@ -41,14 +43,54 @@ static std::string ONIDeviceTypeIDStr(const ONIDeviceTypeID& typeID){
 	case HEARTBEAT: {return "HeartBeat Device"; break;}
 	case FMC: {return "FMC Device"; break;}
 	case RHS2116: {return "RHS2116 Device"; break;}
+	case RHS2116MULTI: {return "RHS2116MULTI Device"; break;}
 	case NONE: {return "No Device"; break;}
 	}
 };
+class ONIFrameProcessor;
 
-//template<typename ONIDeviceTypeSettings>
-//class ONIDeviceConfig; // pre declare for friend class
+class ONIFrameProcessor{
 
-class ONIDevice{
+public:
+
+	virtual ~ONIFrameProcessor(){};
+
+	virtual inline void process(oni_frame_t* frame) = 0;
+
+	void subscribeProcessor(const std::string& processorName, ONIFrameProcessor * processor){
+		auto it = processors.find(processorName);
+		if(it == processors.end()){
+			LOGINFO("Adding processor %s", processorName.c_str());
+			processors[processorName] = processor;
+		}else{
+			LOGALERT("Processor %s already exists", processorName.c_str());
+		}
+	}
+
+	void unsubscribeProcessor(const std::string& processorName, ONIFrameProcessor * processor){
+		auto it = processors.find(processorName);
+		if(it == processors.end()){
+			LOGALERT("No processor %s", processorName.c_str());
+		}else{
+			LOGINFO("Deleting processor %s", processorName.c_str());
+			processors.erase(it);
+		}
+	}
+
+	std::mutex& getMutex(){
+		return mutex;
+	}
+
+protected:
+
+	std::mutex mutex;
+
+	std::map<std::string, ONIFrameProcessor*> processors;
+
+};
+
+
+class ONIDevice : public ONIFrameProcessor {
 
 public:
 
@@ -83,11 +125,15 @@ public:
 		return deviceTypeID;
 	}
 
+	inline const unsigned int& getDeviceTableID(){
+		return deviceType.idx;
+	}
+
 	virtual inline void gui() = 0;
 	virtual bool saveConfig(std::string presetName) = 0;
 	virtual bool loadConfig(std::string presetName) = 0;
 
-	virtual inline void process(oni_frame_t* frame, const uint64_t & sampleIDX) = 0;
+	//virtual inline void process(oni_frame_t* frame) = 0; // in ONIFrameProcessor
 
 	const inline bool& getContexteNeedsRestart(){
 		return bContextNeedsRestart;
@@ -165,5 +211,26 @@ protected:
 	long double firstFrameTime = -1;
 	uint64_t acq_clock_khz = -1; // 250000000
 
+	
+
 };
 
+//template<typename FrameDataType>
+class ONIProbeDevice : public ONIDevice{
+
+public:
+
+	inline const size_t& getNumProbes(){
+		return numProbes;
+	}
+
+	inline const long double& getSampleFrequencyHz(){
+		return sampleFrequencyHz;
+	}
+
+protected:
+
+	size_t numProbes = 16;
+	long double sampleFrequencyHz = 30.1932367151e3;
+
+};

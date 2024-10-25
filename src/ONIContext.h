@@ -26,9 +26,12 @@
 #include "ONIDeviceFmc.h"
 #include "ONIDeviceHeartBeat.h"
 #include "ONIDeviceRhs2116.h"
+#include "ONIDeviceRhs2116Multi.h"
 #include "ONIRegister.h"
 #include "ONISettingTypes.h"
 #include "ONIUtility.h"
+
+
 
 #pragma once
 
@@ -213,13 +216,38 @@ public:
 			if(ImGui::CollapsingHeader(device.second->getName().c_str(), true)) device.second->gui();
 		}
 		
+		if(rhs2116Multi == nullptr){
+			rhs2116Multi = new Rhs2116MultiDevice;
+			rhs2116Multi->setup(&ctx, acq_clock_khz);
+			for(auto device : config.devices()){
+				if(device.second->getDeviceTypeID() == RHS2116){
+					rhs2116Multi->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
+					//rhs2116Multi->devices[device.second->getDeviceTableID()] = reinterpret_cast<Rhs2116Device*>(device.second);
+				}
+			}
+			//rhs2116Multi->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
+			//rhs2116Multi->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
+			//rhs2116Multi->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
+			//rhs2116Multi->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
+			//rhs2116Multi->saveConfig("default");
+			rhs2116Multi->loadConfig("default");
+			//std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
+			//rhs2116Multi->setChannelMap(t);
+			//rhs2116Multi->saveConfig("default");
+		}
+
+		if(rhs2116Multi != nullptr){
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) rhs2116Multi->gui();
+		}
+
 		ImGui::PopID();
 		ImGui::End();
 
 		bOpenOnFirstStart = false;
 		
 	}
-
+	Rhs2116MultiDevice * rhs2116Multi = nullptr;
 	inline void update(){
 
 		if(!bIsContextSetup) return;
@@ -624,7 +652,7 @@ private:
 					//sampleCount = fu::time::now<fu::micros>();
 
 					//unique_lock<std::mutex> lock(audioMutex);
-					device->process(frame, sampleCount);
+					device->process(frame);
 
 					//if(device->getDeviceONIDeviceTypeID() == ONIDevice::ONIDeviceTypeID::HEARTBEAT){
 					//	Rhs2116Device* rhd2116Device1 = (Rhs2116Device*)getDevice(256);
@@ -656,6 +684,8 @@ private:
 		}
 
 		config.devices().clear();
+		delete rhs2116Multi;
+		rhs2116Multi = nullptr;
 
 	}
 

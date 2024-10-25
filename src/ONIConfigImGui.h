@@ -67,17 +67,15 @@ public:
 
 	inline void gui(){
 
-
-
 	}
 
 	bool save(std::string presetName){
-		//LOGINFO("Saving Context config: %s", filePath);
+		//LOGINFO("Saving Context config: %s", filePath.c_str());
 		return true;
 	}
 
 	bool load(std::string presetName){
-		//LOGINFO("Loading Context config: %s", filePath);
+		//LOGINFO("Loading Context config: %s", filePath.c_str());
 		return true;
 	}
 
@@ -103,6 +101,10 @@ public:
 
 	_FmcDeviceConfig(){};
 	~_FmcDeviceConfig(){};
+
+	void deviceConfigSetup(){
+		// nothing
+	}
 
 	inline void process(oni_frame_t* frame){
 		//nothing
@@ -169,13 +171,13 @@ public:
 
 	bool save(std::string presetName){
 		std::string filePath = getPresetFilePath(presetName, device->getName());
-		LOGINFO("Saving FMC config: %s", filePath);
+		LOGINFO("Saving FMC config: %s", filePath.c_str());
 		return fu::Serializer.saveClass(filePath, *this, ARCHIVE_XML);
 	}
 
 	bool load(std::string presetName){
 		std::string filePath = getPresetFilePath(presetName, device->getName());
-		LOGINFO("Loading FMC config: %s", filePath);
+		LOGINFO("Loading FMC config: %s", filePath.c_str());
 		return fu::Serializer.loadClass(filePath, *this, ARCHIVE_XML);
 	}
 
@@ -206,7 +208,17 @@ class _HeartBeatDeviceConfig : public ONIDeviceConfig<HeartBeatDeviceSettings> {
 public:
 
 	_HeartBeatDeviceConfig(){};
-	~_HeartBeatDeviceConfig(){};
+	~_HeartBeatDeviceConfig(){
+		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
+		std::string processorName = device->getName() + " GUI PROC";
+		device->unsubscribeProcessor(processorName, this);
+	};
+
+	void deviceConfigSetup(){
+		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
+		std::string processorName = device->getName() + " GUI PROC";
+		device->subscribeProcessor(processorName, this);
+	}
 
 	inline void process(oni_frame_t* frame){
 		bHeartBeat = !bHeartBeat;
@@ -230,13 +242,13 @@ public:
 
 	bool save(std::string presetName){
 		std::string filePath = getPresetFilePath(presetName, device->getName());
-		LOGINFO("Saving HeartBeat config: %s", filePath);
+		LOGINFO("Saving HeartBeat config: %s", filePath.c_str());
 		return fu::Serializer.saveClass(filePath, *this, ARCHIVE_XML);
 	}
 
 	bool load(std::string presetName){
 		std::string filePath = getPresetFilePath(presetName, device->getName());
-		LOGINFO("Loading HeartBeat config: %s", filePath);
+		LOGINFO("Loading HeartBeat config: %s", filePath.c_str());
 		return fu::Serializer.loadClass(filePath, *this, ARCHIVE_XML);;
 	}
 
@@ -275,7 +287,25 @@ class _Rhs2116DeviceConfig : public ONIDeviceConfig<Rhs2116DeviceSettings> {
 public:
 
 	_Rhs2116DeviceConfig(){};
-	~_Rhs2116DeviceConfig(){};
+	~_Rhs2116DeviceConfig(){
+		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
+		std::string processorName = device->getName() + " GUI PROC";
+		device->unsubscribeProcessor(processorName, this);
+	};
+
+	void deviceConfigSetup(){
+		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
+		std::string processorName = device->getName() + " GUI PROC";
+		device->subscribeProcessor(processorName, this);
+	}
+
+	void defaults(){
+		changedSettings.bufferSize = 60000;
+		changedSettings.dspCutoff = Rhs2116DspCutoff::Dsp308Hz;
+		changedSettings.lowCutoff = Rhs2116AnalogLowCutoff::Low100mHz;
+		changedSettings.lowCutoffRecovery = Rhs2116AnalogLowCutoff::Low250Hz;
+		changedSettings.highCutoff = Rhs2116AnalogHighCutoff::High10000Hz;
+	}
 
 	inline void process(oni_frame_t* frame){
 
@@ -327,19 +357,202 @@ public:
 
 	bool save(std::string presetName){
 		std::string filePath = getPresetFilePath(presetName, device->getName());
-		LOGINFO("Saving Rhs2116 config: %s", filePath);
+		LOGINFO("Saving Rhs2116 config: %s", filePath.c_str());
 		return fu::Serializer.saveClass(filePath, *this, ARCHIVE_XML);;
 	}
 
 	bool load(std::string presetName){
 		std::string filePath = getPresetFilePath(presetName, device->getName());
-		LOGINFO("Loading Rhs2116 config: %s", filePath);
-		return fu::Serializer.loadClass(filePath, *this, ARCHIVE_XML);;
+		LOGINFO("Loading Rhs2116 config: %s", filePath.c_str());
+		bool bOk = fu::Serializer.loadClass(filePath, *this, ARCHIVE_XML);
+		if(!bOk){
+			LOGALERT("Problem loading config - reset to defaults");
+			defaults();
+			return save(presetName);
+		}
+		return bOk;
 	}
 
 
 protected:
 
+	ONIDataBuffer<Rhs2116DataFrame> buffer;
+
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int version){
+		ar & BOOST_SERIALIZATION_NVP(currentSettings);
+	}
+
+};
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+
+
+template<class Archive>
+void serialize(Archive & ar, Rhs2116MultiDeviceSettings & settings, const unsigned int version) {
+	ar & BOOST_SERIALIZATION_NVP(settings.bufferSize);
+	ar & BOOST_SERIALIZATION_NVP(settings.dspCutoff);
+	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoff);
+	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoffRecovery);
+	ar & BOOST_SERIALIZATION_NVP(settings.highCutoff);
+	ar & BOOST_SERIALIZATION_NVP(settings.channelMap);
+};
+
+class _Rhs2116MultiDeviceConfig : public ONIDeviceConfig<Rhs2116MultiDeviceSettings> {
+
+public:
+
+	_Rhs2116MultiDeviceConfig(){};
+	~_Rhs2116MultiDeviceConfig(){
+		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
+		std::string processorName = device->getName() + " GUI PROC";
+		device->unsubscribeProcessor(processorName, this);
+	};
+
+	void deviceConfigSetup(){
+		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
+		std::string processorName = device->getName() + " GUI PROC";
+		device->subscribeProcessor(processorName, this);
+	}
+
+	void defaults(){
+
+		changedSettings.bufferSize = 60000;
+		changedSettings.dspCutoff = Rhs2116DspCutoff::Dsp308Hz;
+		changedSettings.lowCutoff = Rhs2116AnalogLowCutoff::Low100mHz;
+		changedSettings.lowCutoffRecovery = Rhs2116AnalogLowCutoff::Low250Hz;
+		changedSettings.highCutoff = Rhs2116AnalogHighCutoff::High10000Hz;
+
+		// do I need to resize? always assume square?
+
+		resetChannelMap();
+
+		currentSettings = changedSettings;
+		bApplySettings = true;
+		
+	}
+
+	inline void process(oni_frame_t* frame){
+
+	}
+
+	inline void gui(){
+
+		//ImGui::Begin(deviceName.c_str());
+		ImGui::PushID(device->getName().c_str());
+
+		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
+		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
+		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
+
+		ImGui::SetNextItemWidth(200);
+		int dspFormatItem = currentSettings.dspCutoff; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
+		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
+
+
+		ImGui::SetNextItemWidth(200);
+		int lowCutoffItem = currentSettings.lowCutoff; //getAnalogLowCutoff(false);
+		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
+
+
+		ImGui::SetNextItemWidth(200);
+		int lowCutoffRecoveryItem = currentSettings.lowCutoffRecovery; //getAnalogLowCutoffRecovery(false);
+		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
+
+		ImGui::SetNextItemWidth(200);
+		int highCutoffItem = currentSettings.highCutoff; //getAnalogHighCutoff(false);
+		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
+
+		changedSettings.dspCutoff = (Rhs2116DspCutoff)dspFormatItem;
+		changedSettings.lowCutoff = (Rhs2116AnalogLowCutoff)lowCutoffItem;
+		changedSettings.lowCutoffRecovery = (Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem;
+		changedSettings.highCutoff = (Rhs2116AnalogHighCutoff)highCutoffItem;
+
+		ImGui::Separator();
+
+		if(ImGui::Button("ChannelMap")){
+			ImGui::OpenPopup("ChannelMapPopup");
+		}
+
+		ImGui::SameLine();
+
+		if(ImGui::Button("Save")){
+			save("default");
+		}
+
+		bool unused;
+		if(ImGui::BeginPopupModal("ChannelMapPopup", &unused, ImGuiWindowFlags_AlwaysAutoResize)){
+			const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
+			ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5, 0.5));
+			for(size_t y = 0; y < numProbes; ++y){
+				for(size_t x = 0; x < numProbes; ++x){
+					if (x > 0) ImGui::SameLine();
+					ImGui::PushID(y * numProbes + x);
+					char buf[16];
+					std::sprintf(buf, "%02dx%02d", x, y % 16);
+					if (ImGui::Selectable(buf, changedSettings.channelMap[y][x] != 0, ImGuiSelectableFlags_NoAutoClosePopups, ImVec2(20, 20))){
+						for(size_t xx = 0; xx < numProbes; ++xx) changedSettings.channelMap[y][xx] = false; // toggle off everything in this row
+						changedSettings.channelMap[y][x] = true;
+					}
+					ImGui::PopID();
+				}
+			}
+			ImGui::PopStyleVar();
+			ImGui::Separator();
+			if (ImGui::Button("Done", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); } ImGui::SameLine();
+			if (ImGui::Button("Reset", ImVec2(120, 0))) {resetChannelMap(); };
+			ImGui::EndPopup();
+		}
+
+		ImGui::PopID();
+
+		if(changedSettings != currentSettings) bApplySettings = true;
+
+	}
+
+	void resetChannelMap(){
+
+		const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
+
+		changedSettings.channelMap.clear();
+		changedSettings.channelMap.resize(numProbes);
+		for(size_t y = 0; y < numProbes; ++y){
+			changedSettings.channelMap[y].resize(numProbes);
+		}
+
+		for(size_t y = 0; y < numProbes; ++y){
+			for(size_t x = 0; x < numProbes; ++x){
+				changedSettings.channelMap[y][x] = 0;
+				if(x == y) changedSettings.channelMap[y][x] = 1;
+			}
+		}
+
+	}
+
+	bool save(std::string presetName){
+		std::string filePath = getPresetFilePath(presetName, device->getName());
+		LOGINFO("Saving Rhs2116Multi config: %s", filePath.c_str());
+		return fu::Serializer.saveClass(filePath, *this, ARCHIVE_XML);;
+	}
+
+	bool load(std::string presetName){
+		std::string filePath = getPresetFilePath(presetName, device->getName());
+		LOGINFO("Loading Rhs2116Multi config: %s", filePath.c_str());
+		bool bOk = fu::Serializer.loadClass(filePath, *this, ARCHIVE_XML);
+		if(!bOk){
+			LOGALERT("Problem loading config - reset to defaults");
+			defaults();
+			return save(presetName);
+		}
+		return bOk;
+	}
+
+
+protected:
+
+	ONIDataBuffer<Rhs2116DataFrame> buffer;
 
 	friend class boost::serialization::access;
 	template<class Archive>
@@ -352,6 +565,8 @@ protected:
 
 // later we can set which device config to use with specific #define for USE_IMGUI etc
 typedef _ContextConfig ContextConfig;
-typedef _Rhs2116DeviceConfig Rhs2116DeviceConfig;
+
 typedef _FmcDeviceConfig FmcDeviceConfig;
 typedef _HeartBeatDeviceConfig HeartBeatDeviceConfig;
+typedef _Rhs2116DeviceConfig Rhs2116DeviceConfig;
+typedef _Rhs2116MultiDeviceConfig Rhs2116MultiDeviceConfig;

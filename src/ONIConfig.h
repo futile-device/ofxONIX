@@ -35,14 +35,12 @@ public:
 
 	virtual ~ONIConfig(){};
 
-	virtual inline void process(oni_frame_t* frame) = 0;
-
 	virtual inline void gui() = 0;
 
 	virtual bool save(std::string presetName) = 0;
 	virtual bool load(std::string presetName) = 0;
 
-	std::string getName(){ return deviceName; };
+	//std::string getName(){ return deviceName; };
 
 	inline bool applySettings(const bool& bAutoReset = true){
 		if(bApplySettings && bAutoReset){
@@ -78,13 +76,21 @@ protected:
 };
 
 template<typename ONIDeviceTypeSettings>
-class ONIDeviceConfig : public ONIConfig<ONIDeviceTypeSettings>{
+class ONIDeviceConfig : public ONIConfig<ONIDeviceTypeSettings>, public ONIFrameProcessor{
 
 public:
 
 	virtual ~ONIDeviceConfig(){};
 
-	virtual void setup(ONIDevice* device){ syncSettings(); this->device = device; };
+	virtual void setup(ONIDevice* device){ 
+		this->device = device;
+		deviceConfigSetup();
+		syncSettings();
+	};
+
+	virtual void deviceConfigSetup() = 0; // always called during the setup
+
+	//virtual inline void process(oni_frame_t* frame) = 0; // in ONIFrameProcessor
 
 protected:
 
