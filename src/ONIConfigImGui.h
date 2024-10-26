@@ -61,7 +61,7 @@ public:
 	_ContextConfig(){};
 	~_ContextConfig(){};
 
-	inline void process(oni_frame_t* frame){
+	inline void process(ONIFrame& frame){
 		//nothing
 	}
 
@@ -106,7 +106,7 @@ public:
 		// nothing
 	}
 
-	inline void process(oni_frame_t* frame){
+	inline void process(ONIFrame& frame){
 		//nothing
 	}
 
@@ -220,9 +220,9 @@ public:
 		device->subscribeProcessor(processorName, this);
 	}
 
-	inline void process(oni_frame_t* frame){
+	inline void process(ONIFrame& frame){
 		bHeartBeat = !bHeartBeat;
-		deltaTime = (uint64_t)device->getAcqDeltaTimeMicros(frame->time);
+		deltaTime = frame.getDeltaTime();
 	}
 
 	inline void gui(){
@@ -274,12 +274,12 @@ protected:
 template<class Archive>
 void serialize(Archive & ar, Rhs2116DeviceSettings & settings, const unsigned int version) {
 	ar & BOOST_SERIALIZATION_NVP(settings.bufferSize);
-	ar & BOOST_SERIALIZATION_NVP(settings.drawBufferSize);
-	ar & BOOST_SERIALIZATION_NVP(settings.drawStride);
+	ar & BOOST_SERIALIZATION_NVP(settings.bufferUpdateFrames);
 	ar & BOOST_SERIALIZATION_NVP(settings.dspCutoff);
 	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoff);
 	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoffRecovery);
 	ar & BOOST_SERIALIZATION_NVP(settings.highCutoff);
+	ar & BOOST_SERIALIZATION_NVP(settings.channelMap);
 };
 
 class _Rhs2116DeviceConfig : public ONIDeviceConfig<Rhs2116DeviceSettings> {
@@ -288,19 +288,22 @@ public:
 
 	_Rhs2116DeviceConfig(){};
 	~_Rhs2116DeviceConfig(){
+		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
-		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, this);
+		//std::string processorName = device->getName() + " GUI PROC";
+		//device->unsubscribeProcessor(processorName, this);
 	};
 
 	void deviceConfigSetup(){
+		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
 		device->subscribeProcessor(processorName, this);
 	}
 
 	void defaults(){
-		changedSettings.bufferSize = 60000;
+		changedSettings.bufferSize = 2 * 30000; // round off for display!! reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
+		changedSettings.bufferUpdateFrames = 100;
 		changedSettings.dspCutoff = Rhs2116DspCutoff::Dsp308Hz;
 		changedSettings.lowCutoff = Rhs2116AnalogLowCutoff::Low100mHz;
 		changedSettings.lowCutoffRecovery = Rhs2116AnalogLowCutoff::Low250Hz;
@@ -308,6 +311,10 @@ public:
 	}
 
 	inline void process(oni_frame_t* frame){
+
+	}
+
+	inline void process(ONIFrame& frame){
 
 	}
 
@@ -376,7 +383,8 @@ public:
 
 protected:
 
-	ONIDataBuffer<Rhs2116DataFrame> buffer;
+	std::mutex mutex;
+	//ONIDataBuffer<Rhs2116DataFrame> buffer;
 
 	friend class boost::serialization::access;
 	template<class Archive>
@@ -390,17 +398,8 @@ protected:
 
 
 
-template<class Archive>
-void serialize(Archive & ar, Rhs2116MultiDeviceSettings & settings, const unsigned int version) {
-	ar & BOOST_SERIALIZATION_NVP(settings.bufferSize);
-	ar & BOOST_SERIALIZATION_NVP(settings.dspCutoff);
-	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoff);
-	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoffRecovery);
-	ar & BOOST_SERIALIZATION_NVP(settings.highCutoff);
-	ar & BOOST_SERIALIZATION_NVP(settings.channelMap);
-};
 
-class _Rhs2116MultiDeviceConfig : public ONIDeviceConfig<Rhs2116MultiDeviceSettings> {
+class _Rhs2116MultiDeviceConfig : public _Rhs2116DeviceConfig {
 
 public:
 
@@ -415,15 +414,18 @@ public:
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
 		device->subscribeProcessor(processorName, this);
+		//buffer.resize(currentSettings.bufferSize);
 	}
 
 	void defaults(){
 
-		changedSettings.bufferSize = 60000;
+		changedSettings.bufferSize = 2 * 30000; // round off for display!! reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
 		changedSettings.dspCutoff = Rhs2116DspCutoff::Dsp308Hz;
 		changedSettings.lowCutoff = Rhs2116AnalogLowCutoff::Low100mHz;
 		changedSettings.lowCutoffRecovery = Rhs2116AnalogLowCutoff::Low250Hz;
 		changedSettings.highCutoff = Rhs2116AnalogHighCutoff::High10000Hz;
+
+		buffer.resize(currentSettings.bufferSize);
 
 		// do I need to resize? always assume square?
 
@@ -438,52 +440,61 @@ public:
 
 	}
 
+	inline void process(ONIFrame& frame){
+		if(buffer.size() == 0) return;
+		buffer.push(*reinterpret_cast<Rhs2116MultiFrame*>(&frame));
+	}
+
 	inline void gui(){
 
-		//ImGui::Begin(deviceName.c_str());
+		_Rhs2116DeviceConfig::gui();
+
 		ImGui::PushID(device->getName().c_str());
-
-		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
-		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
-		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
-
-		ImGui::SetNextItemWidth(200);
-		int dspFormatItem = currentSettings.dspCutoff; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
-		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
-
-
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffItem = currentSettings.lowCutoff; //getAnalogLowCutoff(false);
-		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
-
-
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffRecoveryItem = currentSettings.lowCutoffRecovery; //getAnalogLowCutoffRecovery(false);
-		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
-
-		ImGui::SetNextItemWidth(200);
-		int highCutoffItem = currentSettings.highCutoff; //getAnalogHighCutoff(false);
-		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
-
-		changedSettings.dspCutoff = (Rhs2116DspCutoff)dspFormatItem;
-		changedSettings.lowCutoff = (Rhs2116AnalogLowCutoff)lowCutoffItem;
-		changedSettings.lowCutoffRecovery = (Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem;
-		changedSettings.highCutoff = (Rhs2116AnalogHighCutoff)highCutoffItem;
 
 		ImGui::Separator();
 
-		if(ImGui::Button("ChannelMap")){
-			ImGui::OpenPopup("ChannelMapPopup");
+		const size_t& sampleFrequencyHz = reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
+
+		int bufferSizeSeconds = currentSettings.bufferSize / sampleFrequencyHz;
+		int lastBufferSizeSeconds = bufferSizeSeconds;
+
+		ImGui::InputInt("Buffer Size (s)", &bufferSizeSeconds); 
+		bufferSizeSeconds = std::clamp(bufferSizeSeconds, 0, 10);
+
+		if(bufferSizeSeconds != lastBufferSizeSeconds) {
+			currentSettings.bufferSize = changedSettings.bufferSize = sampleFrequencyHz * bufferSizeSeconds;
+			LOGINFO("Resize frame buffer: %i", currentSettings.bufferSize);
+			mutex.lock();
+			buffer.resize(currentSettings.bufferSize);
+			mutex.unlock();
+		}
+		
+		ImGui::InputInt("Buffer Update (frames)", &changedSettings.bufferUpdateFrames); 
+		changedSettings.bufferUpdateFrames = std::clamp(changedSettings.bufferUpdateFrames, 1, (int)(sampleFrequencyHz * bufferSizeSeconds));
+
+		if(currentSettings.bufferUpdateFrames != changedSettings.bufferUpdateFrames){
+			mutex.lock();
+			currentSettings.bufferUpdateFrames = changedSettings.bufferUpdateFrames;
+		
+			
+			
+			mutex.unlock();
+		}
+		
+		ImGui::Separator();
+
+		if(ImGui::Button("Channel Map")){
+			ImGui::OpenPopup("Channel Map");
 		}
 
 		ImGui::SameLine();
 
-		if(ImGui::Button("Save")){
+		if(ImGui::Button("Save Config")){
 			save("default");
 		}
 
 		bool unused;
-		if(ImGui::BeginPopupModal("ChannelMapPopup", &unused, ImGuiWindowFlags_AlwaysAutoResize)){
+		if(ImGui::BeginPopupModal("Channel Map", &unused, ImGuiWindowFlags_AlwaysAutoResize)){
 			const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
 			ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5, 0.5));
 			for(size_t y = 0; y < numProbes; ++y){
@@ -531,13 +542,13 @@ public:
 
 	}
 
-	bool save(std::string presetName){
-		std::string filePath = getPresetFilePath(presetName, device->getName());
-		LOGINFO("Saving Rhs2116Multi config: %s", filePath.c_str());
-		return fu::Serializer.saveClass(filePath, *this, ARCHIVE_XML);;
-	}
+	//bool save(std::string presetName){
+	//	std::string filePath = getPresetFilePath(presetName, device->getName());
+	//	LOGINFO("Saving Rhs2116Multi config: %s", filePath.c_str());
+	//	return fu::Serializer.saveClass(filePath, *this, ARCHIVE_XML);;
+	//}
 
-	bool load(std::string presetName){
+	bool load(std::string presetName) override {
 		std::string filePath = getPresetFilePath(presetName, device->getName());
 		LOGINFO("Loading Rhs2116Multi config: %s", filePath.c_str());
 		bool bOk = fu::Serializer.loadClass(filePath, *this, ARCHIVE_XML);
@@ -546,13 +557,14 @@ public:
 			defaults();
 			return save(presetName);
 		}
+		buffer.resize(currentSettings.bufferSize);
 		return bOk;
 	}
 
 
 protected:
 
-	ONIDataBuffer<Rhs2116DataFrame> buffer;
+	ONIDataBuffer<Rhs2116MultiFrame> buffer;
 
 	friend class boost::serialization::access;
 	template<class Archive>

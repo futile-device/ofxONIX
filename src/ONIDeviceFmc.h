@@ -77,10 +77,14 @@ public:
 	}
 
 	inline void process(oni_frame_t* frame){
-		const std::lock_guard<std::mutex> lock(mutex);
-		for(auto it : processors){
-			it.second->process(frame);
-		}
+		//const std::lock_guard<std::mutex> lock(mutex);
+
+	}
+
+	inline void process(ONIFrame& frame){
+		//for(auto it : processors){
+		//	it.second->process(frame);
+		//}
 	}
 
 	bool getLinkState(const bool& bCheckRegisters = true){

@@ -79,14 +79,14 @@ public:
 
 	inline void process(oni_frame_t* frame){
 		const std::lock_guard<std::mutex> lock(mutex);
+		HeartBeatFrame processedFrame(frame, (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time));
+		process(processedFrame);
+	}
+
+	inline void process(ONIFrame& frame){
 		for(auto it : processors){
 			it.second->process(frame);
 		}
-		//config.process(frame);
-		//config.bHeartBeat = !config.bHeartBeat;
-		//config.deltaTime = (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time);
-		//LOGDEBUG("HEARTBEAT: %i %i %i %s", frame->dev_idx, (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time), frame->data_sz, deviceName.c_str());
-		//fu::debug << (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time) << fu::endl;
 	}
 
 	bool setEnabled(const bool& b){

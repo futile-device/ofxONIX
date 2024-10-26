@@ -229,45 +229,11 @@ struct Rhs2116Bias{
 };
 #pragma pack(pop)
 
-#pragma pack(push, 1)
-struct Rhs2116DataFrame{
-	uint64_t hubTime;
-	uint16_t ac[16];
-	uint16_t dc[16];
-	uint16_t unused;
-	uint64_t acqTime;
-	long double deltaTime;
-	float ac_uV[16];
-	float dc_mV[16];
-	uint64_t sampleIDX;
-};
-#pragma pack(pop)
 
 struct Rhs2116DeviceSettings{
 
-	size_t bufferSize = 60000;
-	size_t drawBufferSize = 600; // hmm should we save this?; maybe not
-	size_t drawStride = 100;
-
-	Rhs2116DspCutoff dspCutoff = Off;
-
-	Rhs2116AnalogLowCutoff lowCutoff = Low100mHz;
-	Rhs2116AnalogLowCutoff lowCutoffRecovery = Low250Hz;
-	Rhs2116AnalogHighCutoff highCutoff = High10000Hz;
-
-};
-
-inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs){ return (lhs.bufferSize == rhs.bufferSize &&
-																									lhs.drawBufferSize == lhs.drawBufferSize &&
-																									lhs.dspCutoff == rhs.dspCutoff &&
-																									lhs.lowCutoff == rhs.lowCutoff &&
-																									lhs.lowCutoffRecovery == rhs.lowCutoffRecovery &&
-																									lhs.highCutoff == rhs.highCutoff); }
-inline bool operator!=(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs) { return !(lhs == rhs); }
-
-struct Rhs2116MultiDeviceSettings{
-
-	size_t bufferSize = 60000;
+	int bufferSize = 0;
+	int bufferUpdateFrames = 0;
 
 	Rhs2116DspCutoff dspCutoff = Off;
 
@@ -280,10 +246,11 @@ struct Rhs2116MultiDeviceSettings{
 };
 
 
-inline bool operator==(const Rhs2116MultiDeviceSettings& lhs, const Rhs2116MultiDeviceSettings& rhs){ return (lhs.bufferSize == rhs.bufferSize &&
+inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs){ return (lhs.bufferSize == rhs.bufferSize &&
+																									lhs.bufferUpdateFrames == rhs.bufferUpdateFrames &&
 																									lhs.dspCutoff == rhs.dspCutoff &&
 																									lhs.lowCutoff == rhs.lowCutoff &&
 																									lhs.lowCutoffRecovery == rhs.lowCutoffRecovery &&
 																									lhs.highCutoff == rhs.highCutoff &&
 																									lhs.channelMap == rhs.channelMap); }
-inline bool operator!=(const Rhs2116MultiDeviceSettings& lhs, const Rhs2116MultiDeviceSettings& rhs) { return !(lhs == rhs); }
+inline bool operator!=(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs) { return !(lhs == rhs); }
