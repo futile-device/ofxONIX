@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="19">
+<someClass class_id="0" tracking_level="0" version="0">
+	<currentSettings class_id="1" tracking_level="0" version="0">
+		<settings.voltage>4.700000095e+00</settings.voltage>
+	</currentSettings>
+</someClass>
+</boost_serialization>
+

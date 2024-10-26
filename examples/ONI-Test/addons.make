@@ -1,0 +1,9 @@
+ofxBoost1.81
+ofxOpenCv
+ofxCv
+ofxImGui
+ofxOsc
+ofxMidi
+ofxFutilities
+ofxImPlot
+ofxONI

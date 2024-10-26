@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<!DOCTYPE boost_serialization>
+<boost_serialization signature="serialization::archive" version="19">
+<someClass class_id="0" tracking_level="0" version="0">
+	<currentSettings class_id="1" tracking_level="0" version="0">
+		<settings.bufferSize>150966</settings.bufferSize>
+		<settings.drawBufferSize>503</settings.drawBufferSize>
+		<settings.drawStride>300</settings.drawStride>
+		<settings.dspCutoff>16</settings.dspCutoff>
+		<settings.lowCutoff>25</settings.lowCutoff>
+		<settings.lowCutoffRecovery>3</settings.lowCutoffRecovery>
+		<settings.highCutoff>17</settings.highCutoff>
+	</currentSettings>
+</someClass>
+</boost_serialization>
+
