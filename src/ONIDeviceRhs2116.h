@@ -30,13 +30,7 @@
 
 #pragma once
 
-//struct ONIProbeStatistics{
-//	float sum;
-//	float mean;
-//	float ss;
-//	float variance;
-//	float deviation;
-//};
+
 
 class Rhs2116Device : public ONIProbeDevice{
 

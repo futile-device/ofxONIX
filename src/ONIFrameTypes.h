@@ -57,11 +57,14 @@ public:
 	inline const unsigned int& getDeviceTableID(){ return deviceTableID; };
 	inline const size_t& getNumProbes() const { return numProbes; };
 	inline const uint64_t& getDeltaTime() const { return deltaTime; };
+	inline const uint64_t& getAcquisitionTime() const { return acqTime; };
 
 protected:
 
+	
 	unsigned int deviceTableID = 0;
 	uint64_t deltaTime = 0;
+	uint64_t acqTime = 0;
 	size_t numProbes = 0;
 
 };
@@ -81,7 +84,7 @@ public:
 
 	inline void convert(oni_frame_t* frame, const uint64_t& deltaTime = 0){
 		memcpy(&rawFrame, frame->data, frame->data_sz);  // copy the data payload including hub clock
-		rawFrame.acqTime = frame->time;					 // copy the acquisition clock
+		this->acqTime = rawFrame.acqTime = frame->time;					 // copy the acquisition clock
 		this->deltaTime = deltaTime;
 		this->deviceTableID = frame->dev_idx;
 		for(size_t probe = 0; probe < numProbes; ++probe){
@@ -111,11 +114,11 @@ class Rhs2116MultiFrame : public ONIFrame{
 
 public:
 
-	Rhs2116MultiFrame(){ numProbes = 0; };
+	Rhs2116MultiFrame(){ 
+		numProbes = 32; 
+	};
 	Rhs2116MultiFrame(const std::vector<Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
-		numProbes = 16 * frames.size();
-		ac_uV.resize(numProbes);
-		dc_mV.resize(numProbes);
+		numProbes = 32;//16 * frames.size();
 		convert(frames, channelMap); 
 	}
 	~Rhs2116MultiFrame(){};
@@ -123,6 +126,8 @@ public:
 	inline void convert(oni_frame_t* frame, const uint64_t& deltaTime = 0){}; // nothing
 	inline void convert(const std::vector<Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
 		//this->frames = frames;
+		ac_uV.resize(numProbes);
+		dc_mV.resize(numProbes);
 		size_t deviceCount = 0;
 		for(const Rhs2116Frame& frame : frames){
 			for(size_t probe = 0; probe < frame.getNumProbes(); ++probe){
@@ -135,6 +140,7 @@ public:
 			++deviceCount;
 		}
 		this->deltaTime = frames[0].getDeltaTime(); // for now just use device 1??
+		this->acqTime = frames[0].getAcquisitionTime();
 		this->deviceTableID = 999;
 	}
 
@@ -142,6 +148,17 @@ public:
 
 	std::vector<float> ac_uV;
 	std::vector<float> dc_mV;
+
+	// copy assignment (copy-and-swap idiom)
+	Rhs2116MultiFrame& Rhs2116MultiFrame::operator=(Rhs2116MultiFrame other) noexcept{
+		std::swap(deltaTime, other.deltaTime);
+		std::swap(acqTime, other.acqTime);
+		std::swap(deviceTableID, other.deviceTableID);
+		std::swap(numProbes, other.numProbes);
+		std::swap(ac_uV, other.ac_uV);
+		std::swap(dc_mV, other.dc_mV);
+		return *this;
+	}
 
 	inline bool operator==(const Rhs2116MultiFrame& other){ 
 		for(size_t probe = 0; probe < numProbes; ++probe){
@@ -153,6 +170,12 @@ public:
 	}
 	inline bool operator!=(const Rhs2116MultiFrame& other) { return !(this == &other); }
 
+};
+
+struct acquisition_clock_compare {
+	inline bool operator() (const ONIFrame& lhs, const ONIFrame& rhs){
+		return (lhs.getAcquisitionTime() < rhs.getAcquisitionTime());
+	}
 };
 
 class HeartBeatFrame : public ONIFrame{
@@ -168,6 +191,7 @@ public:
 	inline void convert(oni_frame_t* frame, const uint64_t& deltaTime = 0){
 		//memcpy(&rawFrame, frame->data, frame->data_sz);  // copy the data payload including hub clock
 		//rawFrame.acqTime = frame->time;					 // copy the acquisition clock
+		this->acqTime = frame->time;
 		this->deltaTime = deltaTime;
 	}
 

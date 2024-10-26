@@ -231,10 +231,7 @@ struct Rhs2116Bias{
 
 
 struct Rhs2116DeviceSettings{
-
-	int bufferSize = 0;
-	int bufferUpdateFrames = 0;
-
+	
 	Rhs2116DspCutoff dspCutoff = Off;
 
 	Rhs2116AnalogLowCutoff lowCutoff = Low100mHz;
@@ -246,9 +243,7 @@ struct Rhs2116DeviceSettings{
 };
 
 
-inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs){ return (lhs.bufferSize == rhs.bufferSize &&
-																									lhs.bufferUpdateFrames == rhs.bufferUpdateFrames &&
-																									lhs.dspCutoff == rhs.dspCutoff &&
+inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs){ return (lhs.dspCutoff == rhs.dspCutoff &&
 																									lhs.lowCutoff == rhs.lowCutoff &&
 																									lhs.lowCutoffRecovery == rhs.lowCutoffRecovery &&
 																									lhs.highCutoff == rhs.highCutoff &&

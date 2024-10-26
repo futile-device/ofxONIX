@@ -265,7 +265,7 @@ public:
 		mutex.lock();
 		//LOGINFO("Incoming %i", frame.getDeviceTableID());
 		//mutex.unlock();
-		if(frames.size() != devices.size() - 1){
+		if(frames.size() < devices.size()){
 			if(frames.size() == 0 && frame.getDeviceTableID() != devices.begin()->first){ // it's not starting with 256? TODO: seems like the FPGA iterates backwards?
 				mutex.unlock();
 				LOGERROR("First Rhs2116 multi frame is not: %i %i", frame.getDeviceTableID(), devices.begin()->first);
@@ -273,19 +273,18 @@ public:
 			}
 			//LOGINFO("Push %i", frame.getDeviceTableID());
 			frames.push_back(*reinterpret_cast<Rhs2116Frame*>(&frame));
-			mutex.unlock();
-			return;
-		}else{
+		}
+		if(frames.size() == devices.size()){
 			//LOGINFO("Process %i", frame.getDeviceTableID());
 			Rhs2116MultiFrame processedFrame(frames, channelIDX);
 			frames.clear();
-			mutex.unlock();
+			
 			for(auto it : processors){
 				it.second->process(processedFrame);
 			}
 		}
 
-
+		mutex.unlock();
 	}
 
 	//uint64_t lastAcquisitionTime = 0;
