@@ -40,7 +40,7 @@ public:
 		resize(size);
 	}
 
-	void resize(size_t size){
+	void resize(const size_t& size){
 		buffer.clear();
 		buffer.resize(size);
 		currentIDX = 0;
@@ -52,7 +52,7 @@ public:
 
 	inline void push(const DataType& data){
 		buffer[currentIDX] = data;
-		updateIDX();
+		increaseIDX();
 	}
 
 	DataType& at(const size_t& index){
@@ -90,6 +90,10 @@ public:
 
 	inline std::vector<DataType>& getBuffer(){
 		return buffer;
+	}
+
+	inline const size_t& size(){
+		return buffer.size();
 	}
 
 protected:

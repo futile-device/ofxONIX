@@ -234,6 +234,7 @@ public:
 			//std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
 			//rhs2116Multi->setChannelMap(t);
 			//rhs2116Multi->saveConfig("default");
+			//startAcquisition();
 		}
 
 		if(rhs2116Multi != nullptr){
@@ -652,6 +653,7 @@ private:
 					//sampleCount = fu::time::now<fu::micros>();
 
 					//unique_lock<std::mutex> lock(audioMutex);
+					//fu::debug << "DEV: " << frame->dev_idx << " " << frame->time << " " << device->getName() << fu::endl;
 					device->process(frame);
 
 					//if(device->getDeviceONIDeviceTypeID() == ONIDevice::ONIDeviceTypeID::HEARTBEAT){
@@ -661,7 +663,7 @@ private:
 					//	rhd2116Device2->printSampleCount();
 					//}
 					
-					//fu::debug << "DEV: " << frame->dev_idx << " " << frame->time << " " << device->getName() << fu::endl;
+					
 
 				}
 

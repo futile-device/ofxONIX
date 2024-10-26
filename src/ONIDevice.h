@@ -24,6 +24,7 @@
 #include "ONIDataBuffer.h"
 #include "ONIRegister.h"
 #include "ONISettingTypes.h"
+#include "ONIFrameTypes.h"
 #include "ONIUtility.h"
 
 #pragma once
@@ -47,7 +48,7 @@ static std::string ONIDeviceTypeIDStr(const ONIDeviceTypeID& typeID){
 	case NONE: {return "No Device"; break;}
 	}
 };
-class ONIFrameProcessor;
+
 
 class ONIFrameProcessor{
 
@@ -55,9 +56,10 @@ public:
 
 	virtual ~ONIFrameProcessor(){};
 
-	virtual inline void process(oni_frame_t* frame) = 0;
+	virtual inline void process(ONIFrame& frame) = 0;
 
 	void subscribeProcessor(const std::string& processorName, ONIFrameProcessor * processor){
+		const std::lock_guard<std::mutex> lock(mutex);
 		auto it = processors.find(processorName);
 		if(it == processors.end()){
 			LOGINFO("Adding processor %s", processorName.c_str());
@@ -68,6 +70,7 @@ public:
 	}
 
 	void unsubscribeProcessor(const std::string& processorName, ONIFrameProcessor * processor){
+		const std::lock_guard<std::mutex> lock(mutex);
 		auto it = processors.find(processorName);
 		if(it == processors.end()){
 			LOGALERT("No processor %s", processorName.c_str());
@@ -133,7 +136,7 @@ public:
 	virtual bool saveConfig(std::string presetName) = 0;
 	virtual bool loadConfig(std::string presetName) = 0;
 
-	//virtual inline void process(oni_frame_t* frame) = 0; // in ONIFrameProcessor
+	virtual inline void process(oni_frame_t* frame) = 0;
 
 	const inline bool& getContexteNeedsRestart(){
 		return bContextNeedsRestart;

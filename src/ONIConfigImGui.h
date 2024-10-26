@@ -30,6 +30,7 @@
 
 
 #include "ofxImGui.h"
+#include "ofxImPlot.h"
 #include "ofxFutilities.h"
 
 static const std::string configPath = "config/";
@@ -61,7 +62,7 @@ public:
 	_ContextConfig(){};
 	~_ContextConfig(){};
 
-	inline void process(oni_frame_t* frame){
+	inline void process(ONIFrame& frame){
 		//nothing
 	}
 
@@ -106,7 +107,7 @@ public:
 		// nothing
 	}
 
-	inline void process(oni_frame_t* frame){
+	inline void process(ONIFrame& frame){
 		//nothing
 	}
 
@@ -220,9 +221,9 @@ public:
 		device->subscribeProcessor(processorName, this);
 	}
 
-	inline void process(oni_frame_t* frame){
+	inline void process(ONIFrame& frame){
 		bHeartBeat = !bHeartBeat;
-		deltaTime = (uint64_t)device->getAcqDeltaTimeMicros(frame->time);
+		deltaTime = frame.getDeltaTime();
 	}
 
 	inline void gui(){
@@ -273,13 +274,11 @@ protected:
 
 template<class Archive>
 void serialize(Archive & ar, Rhs2116DeviceSettings & settings, const unsigned int version) {
-	ar & BOOST_SERIALIZATION_NVP(settings.bufferSize);
-	ar & BOOST_SERIALIZATION_NVP(settings.drawBufferSize);
-	ar & BOOST_SERIALIZATION_NVP(settings.drawStride);
 	ar & BOOST_SERIALIZATION_NVP(settings.dspCutoff);
 	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoff);
 	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoffRecovery);
 	ar & BOOST_SERIALIZATION_NVP(settings.highCutoff);
+	ar & BOOST_SERIALIZATION_NVP(settings.channelMap);
 };
 
 class _Rhs2116DeviceConfig : public ONIDeviceConfig<Rhs2116DeviceSettings> {
@@ -288,26 +287,39 @@ public:
 
 	_Rhs2116DeviceConfig(){};
 	~_Rhs2116DeviceConfig(){
+		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
-		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, this);
+		//std::string processorName = device->getName() + " GUI PROC";
+		//device->unsubscribeProcessor(processorName, this);
 	};
 
 	void deviceConfigSetup(){
+		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
 		device->subscribeProcessor(processorName, this);
 	}
 
 	void defaults(){
-		changedSettings.bufferSize = 60000;
+
+		bufferSize = 2 * 30000; // round off for display!! reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
+		bufferStepSize = 100;
+
 		changedSettings.dspCutoff = Rhs2116DspCutoff::Dsp308Hz;
 		changedSettings.lowCutoff = Rhs2116AnalogLowCutoff::Low100mHz;
 		changedSettings.lowCutoffRecovery = Rhs2116AnalogLowCutoff::Low250Hz;
 		changedSettings.highCutoff = Rhs2116AnalogHighCutoff::High10000Hz;
+
+		//changedSettings.bufferStepSize = 100;
+		//buffer.resize(currentSettings.bufferSize);
+
 	}
 
 	inline void process(oni_frame_t* frame){
+
+	}
+
+	inline void process(ONIFrame& frame){
 
 	}
 
@@ -370,17 +382,25 @@ public:
 			defaults();
 			return save(presetName);
 		}
+		//buffer.resize(currentSettings.bufferSize);
 		return bOk;
 	}
 
 
 protected:
 
-	ONIDataBuffer<Rhs2116DataFrame> buffer;
+	
+	uint64_t bufferFrameCounter = 0;
+	int bufferSize = 0;
+	int bufferStepSize = 0;
+
+	ONIDataBuffer<Rhs2116Frame> buffer;
 
 	friend class boost::serialization::access;
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version){
+		ar & BOOST_SERIALIZATION_NVP(bufferSize);
+		ar & BOOST_SERIALIZATION_NVP(bufferStepSize);
 		ar & BOOST_SERIALIZATION_NVP(currentSettings);
 	}
 
@@ -390,17 +410,8 @@ protected:
 
 
 
-template<class Archive>
-void serialize(Archive & ar, Rhs2116MultiDeviceSettings & settings, const unsigned int version) {
-	ar & BOOST_SERIALIZATION_NVP(settings.bufferSize);
-	ar & BOOST_SERIALIZATION_NVP(settings.dspCutoff);
-	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoff);
-	ar & BOOST_SERIALIZATION_NVP(settings.lowCutoffRecovery);
-	ar & BOOST_SERIALIZATION_NVP(settings.highCutoff);
-	ar & BOOST_SERIALIZATION_NVP(settings.channelMap);
-};
 
-class _Rhs2116MultiDeviceConfig : public ONIDeviceConfig<Rhs2116MultiDeviceSettings> {
+class _Rhs2116MultiDeviceConfig : public _Rhs2116DeviceConfig {
 
 public:
 
@@ -409,22 +420,31 @@ public:
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
 		device->unsubscribeProcessor(processorName, this);
+		bThread = false;
+		if(thread.joinable()) thread.join();
 	};
 
 	void deviceConfigSetup(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
 		device->subscribeProcessor(processorName, this);
+		//buffer.resize(currentSettings.bufferSize);
+		bThread = true;
+		thread = std::thread(&_Rhs2116MultiDeviceConfig::processBufferThread, this);
+
 	}
 
 	void defaults(){
 
-		changedSettings.bufferSize = 60000;
 		changedSettings.dspCutoff = Rhs2116DspCutoff::Dsp308Hz;
 		changedSettings.lowCutoff = Rhs2116AnalogLowCutoff::Low100mHz;
 		changedSettings.lowCutoffRecovery = Rhs2116AnalogLowCutoff::Low250Hz;
 		changedSettings.highCutoff = Rhs2116AnalogHighCutoff::High10000Hz;
 
+		bufferSize = 2 * 30000; // round off for display!! reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
+		bufferStepSize = 100;
+		bufferProcessDelay = 1;
+		resetBuffer();
 		// do I need to resize? always assume square?
 
 		resetChannelMap();
@@ -437,53 +457,60 @@ public:
 	inline void process(oni_frame_t* frame){
 
 	}
+	
+	inline void process(ONIFrame& frame){
+		const std::lock_guard<std::mutex> lock(mutex);
+		if(buffer.size() == 0) return;
+		if(bufferFrameCounter % bufferStepSize == 0) buffer.push(*reinterpret_cast<Rhs2116MultiFrame*>(&frame));
+		++bufferFrameCounter;
+		if(bufferFrameCounter >= buffer.size() * bufferStepSize) bStartedAcquire = true;
+	}
 
 	inline void gui(){
 
-		//ImGui::Begin(deviceName.c_str());
+		_Rhs2116DeviceConfig::gui();
+
 		ImGui::PushID(device->getName().c_str());
-
-		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
-		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
-		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
-
-		ImGui::SetNextItemWidth(200);
-		int dspFormatItem = currentSettings.dspCutoff; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
-		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
-
-
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffItem = currentSettings.lowCutoff; //getAnalogLowCutoff(false);
-		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
-
-
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffRecoveryItem = currentSettings.lowCutoffRecovery; //getAnalogLowCutoffRecovery(false);
-		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
-
-		ImGui::SetNextItemWidth(200);
-		int highCutoffItem = currentSettings.highCutoff; //getAnalogHighCutoff(false);
-		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
-
-		changedSettings.dspCutoff = (Rhs2116DspCutoff)dspFormatItem;
-		changedSettings.lowCutoff = (Rhs2116AnalogLowCutoff)lowCutoffItem;
-		changedSettings.lowCutoffRecovery = (Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem;
-		changedSettings.highCutoff = (Rhs2116AnalogHighCutoff)highCutoffItem;
 
 		ImGui::Separator();
 
-		if(ImGui::Button("ChannelMap")){
-			ImGui::OpenPopup("ChannelMapPopup");
+		const size_t& sampleFrequencyHz = reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
+
+		int bufferSizeSeconds = bufferSize / sampleFrequencyHz;
+		int lastBufferSizeSeconds = bufferSizeSeconds;
+
+		ImGui::InputInt("Buffer Size (s)", &bufferSizeSeconds); 
+		bufferSizeSeconds = std::clamp(bufferSizeSeconds, 0, 10);
+
+		if(bufferSizeSeconds != lastBufferSizeSeconds) {
+			bufferSize = sampleFrequencyHz * bufferSizeSeconds;
+			LOGINFO("Resize frame buffer: %i", bufferSize);
+			resetBuffer();
+		}
+		int lastBufferStepSize = bufferStepSize;
+		ImGui::InputInt("Buffer Step Size (frames)", &bufferStepSize); 
+		bufferStepSize = std::clamp(bufferStepSize, 1, (int)(sampleFrequencyHz * bufferSizeSeconds));
+
+		ImGui::InputInt("Buffer Process Delay (ms)", &bufferProcessDelay);
+
+		if(bufferStepSize != lastBufferStepSize){
+			resetBuffer();
+		}
+		
+		ImGui::Separator();
+
+		if(ImGui::Button("Channel Map")){
+			ImGui::OpenPopup("Channel Map");
 		}
 
 		ImGui::SameLine();
 
-		if(ImGui::Button("Save")){
+		if(ImGui::Button("Save Config")){
 			save("default");
 		}
 
 		bool unused;
-		if(ImGui::BeginPopupModal("ChannelMapPopup", &unused, ImGuiWindowFlags_AlwaysAutoResize)){
+		if(ImGui::BeginPopupModal("Channel Map", &unused, ImGuiWindowFlags_AlwaysAutoResize)){
 			const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
 			ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5, 0.5));
 			for(size_t y = 0; y < numProbes; ++y){
@@ -508,9 +535,120 @@ public:
 
 		ImGui::PopID();
 
+		bufferPlot();
+		probePlot();
+
 		if(changedSettings != currentSettings) bApplySettings = true;
 
 	}
+
+	//--------------------------------------------------------------
+	void bufferPlot(){
+		
+		const std::lock_guard<std::mutex> lock(mutex);
+
+		const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
+		size_t frameCount = buffer.size();
+
+		if(frameCount == 0) return;
+
+		ImGui::Begin("Buffered");
+		ImGui::PushID("BufferPlot");
+
+		ImPlot::BeginPlot("Data Frames", ImVec2(-1,-1));
+		ImPlot::SetupAxes("mS","mV");
+
+
+		for (int probe = 0; probe < numProbes; probe++) {
+
+			ImGui::PushID(probe);
+			ImPlot::SetNextLineStyle(ImPlot::GetColormapColor(probe));
+
+			int offset = 0;
+
+			//ImPlot::SetupAxesLimits(time[0], time[frameCount - 1] - 1, -5.0f, 5.0f, ImGuiCond_Always);
+			ImPlot::SetupAxesLimits(0, frontProbeDataBuffers.probeTimeStamps[probe][frameCount - 1] - 1, -5.0f, 5.0f, ImGuiCond_Always);
+			ImPlot::PlotLine("##probe", &frontProbeDataBuffers.probeTimeStamps[probe][0], &frontProbeDataBuffers.acProbeVoltages[probe][0], frameCount, ImPlotLineFlags_None, offset);
+
+			//ImPlot::SetupAxesLimits(0, frameCount - 1, -6.0f, 6.0f, ImGuiCond_Always);
+			//ImPlot::PlotLine("###probe", data, frameCount, 1, 0, ImPlotLineFlags_None, offset);
+
+
+			ImGui::PopID();
+
+		}
+
+		ImPlot::EndPlot();
+		ImGui::PopID();
+		ImGui::End();
+
+	}
+
+	//--------------------------------------------------------------
+	static void Sparkline(const char* id, const float* values, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size) {
+		ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0));
+		if (ImPlot::BeginPlot(id, size, ImPlotFlags_CanvasOnly)){
+			ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
+			ImPlot::SetupAxesLimits(0, count - 1, min_v, max_v, ImGuiCond_Always);
+			ImPlot::SetNextLineStyle(col);
+			//ImPlot::SetNextFillStyle(col, 0.25);
+			ImPlot::PlotLine(id, values, count, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+			ImPlot::EndPlot();
+		}
+		ImPlot::PopStyleVar();
+	}
+
+	//--------------------------------------------------------------
+	void probePlot(){
+
+		const std::lock_guard<std::mutex> lock(mutex);
+
+		const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
+		size_t frameCount = buffer.size();
+
+		if(frameCount == 0) return;
+
+		ImGui::Begin("Probes");
+		ImGui::PushID("Probe Plot");
+		static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
+			ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
+
+		static bool anim = true;
+		static int offset = 0;
+
+		ImGui::BeginTable("##table", 3, flags, ImVec2(-1,0));
+		ImGui::TableSetupColumn("Electrode", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+		ImGui::TableSetupColumn("Voltage", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+		ImGui::TableSetupColumn("AC Signal");
+
+		ImGui::TableHeadersRow();
+		ImPlot::PushColormap(ImPlotColormap_Cool);
+
+		for (int probe = 0; probe < numProbes; probe++){
+
+			ImGui::TableNextRow();
+
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Probe %d", probe);
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%.3f mV \n%.3f avg \n%.3f dev \n%i N", frontProbeDataBuffers.acProbeVoltages[probe][offset], frontProbeDataBuffers.acProbeStats[probe].mean, frontProbeDataBuffers.acProbeStats[probe].deviation, frameCount);
+			ImGui::TableSetColumnIndex(2);
+
+			ImGui::PushID(probe);
+
+			Sparkline("##spark", &frontProbeDataBuffers.acProbeVoltages[probe][0], frameCount, -5.0f, 5.0f, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 120));
+
+			ImGui::PopID();
+
+		}
+
+		ImPlot::PopColormap();
+		ImGui::EndTable();
+		ImGui::PopID();
+		ImGui::End();
+
+	}
+
 
 	void resetChannelMap(){
 
@@ -531,13 +669,13 @@ public:
 
 	}
 
-	bool save(std::string presetName){
+	bool save(std::string presetName) override {
 		std::string filePath = getPresetFilePath(presetName, device->getName());
 		LOGINFO("Saving Rhs2116Multi config: %s", filePath.c_str());
 		return fu::Serializer.saveClass(filePath, *this, ARCHIVE_XML);;
 	}
 
-	bool load(std::string presetName){
+	bool load(std::string presetName) override {
 		std::string filePath = getPresetFilePath(presetName, device->getName());
 		LOGINFO("Loading Rhs2116Multi config: %s", filePath.c_str());
 		bool bOk = fu::Serializer.loadClass(filePath, *this, ARCHIVE_XML);
@@ -546,17 +684,138 @@ public:
 			defaults();
 			return save(presetName);
 		}
+		resetBuffer();
 		return bOk;
 	}
 
+	void resetBuffer(){
+		const std::lock_guard<std::mutex> lock(mutex);
+		bStartedAcquire = false;
+		size_t frameCount = bufferSize / bufferStepSize;
+		buffer.resize(frameCount);
+		bufferFrameCounter = 0;
+
+		const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
+		frontProbeDataBuffers.acProbeVoltages.resize(numProbes);
+		frontProbeDataBuffers.dcProbeVoltages.resize(numProbes);
+		frontProbeDataBuffers.acProbeStats.resize(numProbes);
+		frontProbeDataBuffers.dcProbeStats.resize(numProbes);
+		frontProbeDataBuffers.probeTimeStamps.resize(numProbes);
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			frontProbeDataBuffers.acProbeVoltages[probe].resize(frameCount);
+			frontProbeDataBuffers.dcProbeVoltages[probe].resize(frameCount);
+			frontProbeDataBuffers.probeTimeStamps[probe].resize(frameCount);
+		}
+
+		backProbeDataBuffers = frontProbeDataBuffers;
+
+	}
+	std::atomic_bool bStartedAcquire = false;
+	void processBufferThread(){
+		while(bThread){
+			if(true){
+				mutex.lock();
+				std::vector<Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
+				mutex.unlock();
+				if(frameBuffer.size() != 0){
+
+					const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
+					size_t frameCount = frameBuffer.size();
+
+					std::sort(frameBuffer.begin(), frameBuffer.end(), acquisition_clock_compare());
+
+					for(size_t probe = 0; probe < numProbes; ++probe){
+
+						backProbeDataBuffers.acProbeStats[probe].sum = 0;
+						backProbeDataBuffers.dcProbeStats[probe].sum = 0;
+
+						for(size_t frame = 0; frame < frameCount; ++frame){
+
+							if(frameBuffer[frame].ac_uV.size() == 0){
+								frameBuffer[frame].ac_uV.resize(numProbes);
+								frameBuffer[frame].dc_mV.resize(numProbes);
+							}
+
+							backProbeDataBuffers.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
+							backProbeDataBuffers.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_uV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
+							backProbeDataBuffers.dcProbeVoltages[probe][frame] = frameBuffer[frame].dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
+
+							backProbeDataBuffers.acProbeStats[probe].sum += backProbeDataBuffers.acProbeVoltages[probe][frame];
+							backProbeDataBuffers.dcProbeStats[probe].sum += backProbeDataBuffers.dcProbeVoltages[probe][frame];
+
+						}
+
+						backProbeDataBuffers.acProbeStats[probe].mean = backProbeDataBuffers.acProbeStats[probe].sum / frameCount;
+						backProbeDataBuffers.dcProbeStats[probe].mean = backProbeDataBuffers.dcProbeStats[probe].sum / frameCount;
+
+						backProbeDataBuffers.acProbeStats[probe].ss = 0;
+						backProbeDataBuffers.dcProbeStats[probe].ss = 0;
+
+						for(size_t frame = 0; frame < frameCount; ++frame){
+							float acdiff = backProbeDataBuffers.acProbeVoltages[probe][frame] - backProbeDataBuffers.acProbeStats[probe].mean;
+							float dcdiff = backProbeDataBuffers.dcProbeVoltages[probe][frame] - backProbeDataBuffers.dcProbeStats[probe].mean;
+							backProbeDataBuffers.acProbeStats[probe].ss += acdiff * acdiff; 
+							backProbeDataBuffers.dcProbeStats[probe].ss += dcdiff * dcdiff;
+						}
+
+						backProbeDataBuffers.acProbeStats[probe].variance = backProbeDataBuffers.acProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+						backProbeDataBuffers.acProbeStats[probe].deviation = sqrt(backProbeDataBuffers.acProbeStats[probe].variance);
+
+						backProbeDataBuffers.dcProbeStats[probe].variance = backProbeDataBuffers.dcProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+						backProbeDataBuffers.dcProbeStats[probe].deviation = sqrt(backProbeDataBuffers.dcProbeStats[probe].variance);
+
+					}
+
+					mutex.lock();
+					std::swap(backProbeDataBuffers, frontProbeDataBuffers);
+					mutex.unlock();
+					ofSleepMillis(bufferProcessDelay);
+				}
+			}
+
+		}
+		
+	}
+	struct ONIProbeStatistics{
+		float sum;
+		float mean;
+		float ss;
+		float variance;
+		float deviation;
+	};
+
+	struct ProbeDataBuffers{
+		std::vector< std::vector<float> > acProbeVoltages;
+		std::vector< std::vector<float> > dcProbeVoltages;
+		std::vector< std::vector<float> > probeTimeStamps;
+		std::vector<ONIProbeStatistics> acProbeStats;
+		std::vector<ONIProbeStatistics> dcProbeStats;
+	};
+
+	ProbeDataBuffers frontProbeDataBuffers;
+	ProbeDataBuffers backProbeDataBuffers;
 
 protected:
 
-	ONIDataBuffer<Rhs2116DataFrame> buffer;
+	std::thread thread;
+	std::mutex mutex;
+	std::atomic_bool bThread = false;
+
+	uint64_t bufferFrameCounter = 0;
+	int bufferSize = 0;
+	int bufferStepSize = 0;
+	int bufferProcessDelay = 0;
+
+	ONIDataBuffer<Rhs2116MultiFrame> buffer;
+	ONIDataBuffer<Rhs2116MultiFrame> drawBuffer;
 
 	friend class boost::serialization::access;
 	template<class Archive>
 	void serialize(Archive & ar, const unsigned int version){
+		ar & BOOST_SERIALIZATION_NVP(bufferSize);
+		ar & BOOST_SERIALIZATION_NVP(bufferStepSize);
+		ar & BOOST_SERIALIZATION_NVP(bufferProcessDelay);
 		ar & BOOST_SERIALIZATION_NVP(currentSettings);
 	}
 
