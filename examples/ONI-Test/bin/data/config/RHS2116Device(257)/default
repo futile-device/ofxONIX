@@ -2,14 +2,17 @@
 <!DOCTYPE boost_serialization>
 <boost_serialization signature="serialization::archive" version="19">
 <someClass class_id="0" tracking_level="0" version="0">
+	<bufferSize>60000</bufferSize>
+	<bufferStepSize>100</bufferStepSize>
 	<currentSettings class_id="1" tracking_level="0" version="0">
-		<settings.bufferSize>150966</settings.bufferSize>
-		<settings.drawBufferSize>503</settings.drawBufferSize>
-		<settings.drawStride>300</settings.drawStride>
 		<settings.dspCutoff>16</settings.dspCutoff>
 		<settings.lowCutoff>25</settings.lowCutoff>
 		<settings.lowCutoffRecovery>3</settings.lowCutoffRecovery>
 		<settings.highCutoff>17</settings.highCutoff>
+		<settings.channelMap class_id="2" tracking_level="0" version="0">
+			<count>0</count>
+			<item_version>0</item_version>
+		</settings.channelMap>
 	</currentSettings>
 </someClass>
 </boost_serialization>
