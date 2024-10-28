@@ -442,7 +442,7 @@ public:
 		changedSettings.highCutoff = Rhs2116AnalogHighCutoff::High10000Hz;
 
 		bufferSize = 2 * 30000; // round off for display!! reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
-		bufferStepSize = 100;
+		bufferStepSize = 300;
 		bufferProcessDelay = 1;
 		resetBuffer();
 		// do I need to resize? always assume square?
@@ -804,7 +804,7 @@ protected:
 
 	uint64_t bufferFrameCounter = 0;
 	int bufferSize = 0;
-	int bufferStepSize = 0;
+	int bufferStepSize = 300;
 	int bufferProcessDelay = 0;
 
 	ONIDataBuffer<Rhs2116MultiFrame> buffer;
