@@ -78,6 +78,8 @@ public:
 		numProbes += device->getNumProbes();
 		channelIDX.resize(numProbes);
 		lastDeviceIDX = device->getDeviceTableID();
+		expectDevceIDXNext.push_back(device->getDeviceTableID());
+		multiFrameBuffer.resize(multiFrameBuffer.size() + 1);
 	}
 
 	void deviceSetup(){
@@ -167,39 +169,55 @@ public:
 		return bOk;
 	}
 
-	std::vector<Rhs2116Frame> frames;
-	unsigned int lastDeviceIDX = 0;
+
+	std::vector<oni_frame_t> deviceFrames;
+	std::vector<unsigned int> expectDevceIDXNext;// = {257,256};
+	uint64_t nextDeviceCounter = 0;
+
 	inline void process(oni_frame_t* frame) override {
-
-
+		//const std::lock_guard<std::mutex> lock(mutex);
+		//unsigned int nextDeviceIndex = nextDeviceCounter % devices.size();
+		//if(frame->dev_idx != expectDevceIDXNext[nextDeviceIndex]){
+		//	LOGERROR("Unexpected frame order");
+		//}else{
+		//	// push or add the multiframe
+		//	if((nextDeviceCounter + 1) % devices.size() == 0){ // we have chexked off all the expectedIDs in order
+		//		// process the multi frame
+		//	}
+		//	++nextDeviceCounter;
+		//}
 		
 	}
 
+
+	std::vector<Rhs2116Frame> multiFrameBuffer;
+	unsigned int lastDeviceIDX = 0;
+
 	inline void process(ONIFrame& frame) override {
 
-		mutex.lock();
-		//LOGINFO("Incoming %i", frame.getDeviceTableID());
-		//mutex.unlock();
-		if(frames.size() < devices.size()){
-			if(frames.size() == 0 && frame.getDeviceTableID() != devices.begin()->first){ // it's not starting with 256? TODO: seems like the FPGA iterates backwards?
-				mutex.unlock();
-				LOGERROR("First Rhs2116 multi frame is not: %i %i", frame.getDeviceTableID(), devices.begin()->first);
-				return;
+		const std::lock_guard<std::mutex> lock(mutex);
+
+		unsigned int nextDeviceIndex = nextDeviceCounter % devices.size();
+
+		if(frame.getDeviceTableID() != expectDevceIDXNext[nextDeviceIndex]){
+			LOGERROR("Unexpected frame order");
+		}else{
+			// push or add the multiframe
+			multiFrameBuffer[nextDeviceIndex] = *reinterpret_cast<Rhs2116Frame*>(&frame);
+			//std::swap(multiFrameBuffer[nextDeviceCounter], *reinterpret_cast<Rhs2116Frame*>(&frame));
+			if((nextDeviceCounter + 1) % devices.size() == 0){ // we have chexked off all the expectedIDs in order
+				// process the multi frame
+				Rhs2116MultiFrame processedFrame(multiFrameBuffer, channelIDX);
+
+				for(auto it : processors){
+					it.second->process(processedFrame);
+				}
+
 			}
-			//LOGINFO("Push %i", frame.getDeviceTableID());
-			frames.push_back(*reinterpret_cast<Rhs2116Frame*>(&frame));
-		}
-		if(frames.size() == devices.size()){
-			//LOGINFO("Process %i", frame.getDeviceTableID());
-			Rhs2116MultiFrame processedFrame(frames, channelIDX);
-			frames.clear();
-			
-			for(auto it : processors){
-				it.second->process(processedFrame);
-			}
+			++nextDeviceCounter;
 		}
 
-		mutex.unlock();
+
 	}
 
 	unsigned int readRegister(const Rhs2116Register& reg) override {

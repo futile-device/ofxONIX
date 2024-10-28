@@ -519,8 +519,17 @@ public:
 					char buf[16];
 					std::sprintf(buf, "%02dx%02d", x, y % 16);
 					if (ImGui::Selectable(buf, changedSettings.channelMap[y][x] != 0, ImGuiSelectableFlags_NoAutoClosePopups, ImVec2(20, 20))){
-						for(size_t xx = 0; xx < numProbes; ++xx) changedSettings.channelMap[y][xx] = false; // toggle off everything in this row
+						size_t swapIDXx, swapIDXy = 0;
+						for(size_t xx = 0; xx < numProbes; ++xx) {
+							if(changedSettings.channelMap[y][xx]) swapIDXx = xx; 
+							changedSettings.channelMap[y][xx] = false; // toggle off everything in this row
+						}
+						for(size_t yy = 0; yy < numProbes; ++yy){
+							if(changedSettings.channelMap[yy][swapIDXx]) swapIDXy = yy;
+							changedSettings.channelMap[yy][swapIDXx] = false; // toggle off everything in this col
+						}
 						changedSettings.channelMap[y][x] = true;
+						changedSettings.channelMap[swapIDXy][swapIDXx] = true;
 					}
 					ImGui::PopID();
 				}

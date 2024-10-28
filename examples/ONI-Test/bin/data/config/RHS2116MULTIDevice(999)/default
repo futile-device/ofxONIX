@@ -4,7 +4,7 @@
 <someClass class_id="0" tracking_level="0" version="0">
 	<bufferSize>150000</bufferSize>
 	<bufferStepSize>300</bufferStepSize>
-	<bufferProcessDelay>5</bufferProcessDelay>
+	<bufferProcessDelay>1</bufferProcessDelay>
 	<currentSettings class_id="1" tracking_level="0" version="0">
 		<settings.dspCutoff>4</settings.dspCutoff>
 		<settings.lowCutoff>25</settings.lowCutoff>
