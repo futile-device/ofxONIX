@@ -85,10 +85,10 @@ public:
 		this->acqTime = rawFrame.acqTime = frame->time;					 // copy the acquisition clock
 		this->deltaTime = deltaTime;
 		this->deviceTableID = frame->dev_idx;
-		for(size_t probe = 0; probe < numProbes; ++probe){
-			ac_uV[probe] = 0.195f * (rawFrame.ac[probe] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
-			dc_mV[probe] = -19.23 * (rawFrame.dc[probe] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
-		}
+		//for(size_t probe = 0; probe < numProbes; ++probe){
+		//	ac_uV[probe] = 0.195f * (rawFrame.ac[probe] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
+		//	dc_mV[probe] = -19.23 * (rawFrame.dc[probe] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
+		//}
 	}
 
 	Rhs2116RawDataFrame rawFrame;

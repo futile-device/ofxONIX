@@ -508,7 +508,7 @@ public:
 			save("default");
 		}
 
-		bool unused;
+		bool unused = true;
 		if(ImGui::BeginPopupModal("Channel Map", &unused, ImGuiWindowFlags_AlwaysAutoResize)){
 			const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
 			ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5, 0.5));
@@ -537,7 +537,6 @@ public:
 		drawMutex.lock();
 		std::swap(backProbeDataBuffers, frontProbeDataBuffers);
 		drawMutex.unlock();
-
 		bufferPlot();
 		probePlot();
 
@@ -722,8 +721,8 @@ public:
 	std::atomic_bool bStartedAcquire = false;
 	void processBufferThread(){
 		while(bThread){
-			if(frameTimer.finished()){
-				frameTimer.restart();
+			if(true){ //frameTimer.finished()
+				//frameTimer.restart();
 				mutex.lock();
 				std::vector<Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
 				mutex.unlock();
@@ -774,7 +773,7 @@ public:
 					drawMutex.unlock();
 					
 				}
-				//ofSleepMillis(bufferProcessDelay);
+				ofSleepMillis(bufferProcessDelay);
 			}
 
 		}
