@@ -76,8 +76,6 @@ public:
 	Rhs2116Frame(){ numProbes = 16; };
 	Rhs2116Frame(oni_frame_t* frame, const uint64_t& deltaTime = 0){
 		numProbes = 16;
-		ac_uV.resize(numProbes);
-		dc_mV.resize(numProbes);
 		convert(frame, deltaTime); 
 	}
 	~Rhs2116Frame(){};
@@ -95,8 +93,8 @@ public:
 
 	Rhs2116RawDataFrame rawFrame;
 
-	std::vector<float> ac_uV;
-	std::vector<float> dc_mV;
+	float ac_uV[16];
+	float dc_mV[16];
 
 	inline bool operator==(const Rhs2116Frame& other){ 
 		for(size_t probe = 0; probe < numProbes; ++probe){
@@ -110,24 +108,27 @@ public:
 
 };
 
+#define MAX_NUM_MULTIPROBES 64
+
 class Rhs2116MultiFrame : public ONIFrame{
 
 public:
 
 	Rhs2116MultiFrame(){ 
-		numProbes = 32; 
+		numProbes = 0; 
 	};
 	Rhs2116MultiFrame(const std::vector<Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
-		numProbes = 32;//16 * frames.size();
+		//numProbes = 32;//16 * frames.size();
 		convert(frames, channelMap); 
 	}
 	~Rhs2116MultiFrame(){};
 
 	inline void convert(oni_frame_t* frame, const uint64_t& deltaTime = 0){}; // nothing
 	inline void convert(const std::vector<Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
+		numProbes = frames.size() * 16;
 		//this->frames = frames;
-		ac_uV.resize(numProbes);
-		dc_mV.resize(numProbes);
+		//ac_uV.resize(numProbes);
+		//dc_mV.resize(numProbes);
 		size_t deviceCount = 0;
 		for(const Rhs2116Frame& frame : frames){
 			for(size_t probe = 0; probe < frame.getNumProbes(); ++probe){
@@ -135,7 +136,6 @@ public:
 				size_t thisProbeIDX = channelMap[thisChannelIDX];
 				ac_uV[thisProbeIDX] = frame.ac_uV[probe];
 				dc_mV[thisProbeIDX] = frame.dc_mV[probe];
-
 			}
 			++deviceCount;
 		}
@@ -146,8 +146,8 @@ public:
 
 	//Rhs2116Frame frames;
 
-	std::vector<float> ac_uV;
-	std::vector<float> dc_mV;
+	float ac_uV[MAX_NUM_MULTIPROBES];
+	float dc_mV[MAX_NUM_MULTIPROBES];
 
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116MultiFrame& Rhs2116MultiFrame::operator=(Rhs2116MultiFrame other) noexcept{

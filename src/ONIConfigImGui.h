@@ -441,9 +441,9 @@ public:
 		changedSettings.lowCutoffRecovery = Rhs2116AnalogLowCutoff::Low250Hz;
 		changedSettings.highCutoff = Rhs2116AnalogHighCutoff::High10000Hz;
 
-		bufferSize = 2 * 30000; // round off for display!! reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
+		bufferSize = 5 * 30000; // round off for display!! reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
 		bufferStepSize = 300;
-		bufferProcessDelay = 1;
+		bufferProcessDelay = 0;
 		resetBuffer();
 		// do I need to resize? always assume square?
 
@@ -463,7 +463,7 @@ public:
 		if(buffer.size() == 0) return;
 		if(bufferFrameCounter % bufferStepSize == 0) buffer.push(*reinterpret_cast<Rhs2116MultiFrame*>(&frame));
 		++bufferFrameCounter;
-		if(bufferFrameCounter >= buffer.size() * bufferStepSize) bStartedAcquire = true;
+		//if(bufferFrameCounter >= buffer.size() * bufferStepSize) bStartedAcquire = true;
 	}
 
 	inline void gui(){
@@ -474,27 +474,26 @@ public:
 
 		ImGui::Separator();
 
-		const size_t& sampleFrequencyHz = reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
+		size_t sampleFrequencyHz = 30000;//reinterpret_cast<ONIProbeDevice*>(device)->getSampleFrequencyHz();
 
 		int bufferSizeSeconds = bufferSize / sampleFrequencyHz;
-		int lastBufferSizeSeconds = bufferSizeSeconds;
 
-		ImGui::InputInt("Buffer Size (s)", &bufferSizeSeconds); 
-		bufferSizeSeconds = std::clamp(bufferSizeSeconds, 0, 10);
-
-		if(bufferSizeSeconds != lastBufferSizeSeconds) {
+		if(ImGui::InputInt("Buffer Size (s)", &bufferSizeSeconds)){
+			bufferSizeSeconds = std::clamp(bufferSizeSeconds, 0, 10);
 			bufferSize = sampleFrequencyHz * bufferSizeSeconds;
-			LOGINFO("Resize frame buffer: %i", bufferSize);
+			//LOGINFO("Resize frame buffer: %i", bufferSize);
 			resetBuffer();
 		}
-		int lastBufferStepSize = bufferStepSize;
-		ImGui::InputInt("Buffer Step Size (frames)", &bufferStepSize); 
-		bufferStepSize = std::clamp(bufferStepSize, 1, (int)(sampleFrequencyHz * bufferSizeSeconds));
-
-		ImGui::InputInt("Buffer Process Delay (ms)", &bufferProcessDelay);
-
-		if(bufferStepSize != lastBufferStepSize){
+		
+		if(ImGui::InputInt("Buffer Step Size (frames)", &bufferStepSize)){
+			bufferStepSize = std::clamp(bufferStepSize, 1, (int)(sampleFrequencyHz * bufferSizeSeconds));
 			resetBuffer();
+		}
+		
+
+		if(ImGui::InputInt("Buffer Process Delay (ms)", &bufferProcessDelay)){
+			bufferProcessDelay = std::clamp(bufferProcessDelay, 0, 20);
+			frameTimer.start<fu::millis>(bufferProcessDelay);
 		}
 		
 		ImGui::Separator();
@@ -535,17 +534,21 @@ public:
 
 		ImGui::PopID();
 
+		drawMutex.lock();
+		std::swap(backProbeDataBuffers, frontProbeDataBuffers);
+		drawMutex.unlock();
+
 		bufferPlot();
 		probePlot();
 
 		if(changedSettings != currentSettings) bApplySettings = true;
 
 	}
-
+	std::mutex drawMutex;
 	//--------------------------------------------------------------
 	void bufferPlot(){
 		
-		const std::lock_guard<std::mutex> lock(mutex);
+		//const std::lock_guard<std::mutex> lock(mutex);
 
 		const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
 		size_t frameCount = buffer.size();
@@ -601,7 +604,7 @@ public:
 	//--------------------------------------------------------------
 	void probePlot(){
 
-		const std::lock_guard<std::mutex> lock(mutex);
+		//const std::lock_guard<std::mutex> lock(mutex);
 
 		const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
 		size_t frameCount = buffer.size();
@@ -694,7 +697,9 @@ public:
 		size_t frameCount = bufferSize / bufferStepSize;
 		buffer.resize(frameCount);
 		bufferFrameCounter = 0;
+		frameTimer.start<fu::millis>(bufferProcessDelay);
 
+		drawMutex.lock();
 		const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
 		frontProbeDataBuffers.acProbeVoltages.resize(numProbes);
 		frontProbeDataBuffers.dcProbeVoltages.resize(numProbes);
@@ -709,17 +714,21 @@ public:
 		}
 
 		backProbeDataBuffers = frontProbeDataBuffers;
+		drawMutex.unlock();
 
 	}
+
+	fu::Timer frameTimer;
 	std::atomic_bool bStartedAcquire = false;
 	void processBufferThread(){
 		while(bThread){
-			if(true){
+			if(frameTimer.finished()){
+				frameTimer.restart();
 				mutex.lock();
 				std::vector<Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
 				mutex.unlock();
 				if(frameBuffer.size() != 0){
-
+					drawMutex.lock();
 					const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
 					size_t frameCount = frameBuffer.size();
 
@@ -731,11 +740,6 @@ public:
 						backProbeDataBuffers.dcProbeStats[probe].sum = 0;
 
 						for(size_t frame = 0; frame < frameCount; ++frame){
-
-							if(frameBuffer[frame].ac_uV.size() == 0){
-								frameBuffer[frame].ac_uV.resize(numProbes);
-								frameBuffer[frame].dc_mV.resize(numProbes);
-							}
 
 							backProbeDataBuffers.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
 							backProbeDataBuffers.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_uV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
@@ -767,11 +771,10 @@ public:
 
 					}
 
-					mutex.lock();
-					std::swap(backProbeDataBuffers, frontProbeDataBuffers);
-					mutex.unlock();
-					ofSleepMillis(bufferProcessDelay);
+					drawMutex.unlock();
+					
 				}
+				//ofSleepMillis(bufferProcessDelay);
 			}
 
 		}

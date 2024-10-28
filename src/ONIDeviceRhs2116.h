@@ -36,20 +36,7 @@ class Rhs2116Device : public ONIProbeDevice{
 
 public:
 
-	//struct acquisition_clock_compare {
-	//	inline bool operator() (const Rhs2116DataFrame& lhs, const Rhs2116DataFrame& rhs){
-	//		return (lhs.acqTime < rhs.acqTime);
-	//	}
-	//};
-
-	//struct hub_clock_compare {
-	//	inline bool operator() (const Rhs2116DataFrame& lhs, const Rhs2116DataFrame& rhs){
-	//		return (lhs.hubTime < rhs.hubTime);
-	//	}
-	//};
-
 	Rhs2116Device(){
-
 		numProbes = 16;							// default for base ONIProbeDevice
 		sampleFrequencyHz = 30.1932367151e3;	// default for base ONIProbeDevice
 	};
@@ -170,68 +157,6 @@ public:
 		getFormat(bCheckRegisters);
 		return config.getSettings().dspCutoff;
 	}
-
-
-	//const std::vector<Rhs2116DataFrame>& getRawDataFrames(){
-	//	const std::lock_guard<std::mutex> lock(mutex);
-	//	return rawDataFrames;
-	//}
-
-	//const std::vector<Rhs2116DataFrame>& getDrawDataFrames(){
-	//	const std::lock_guard<std::mutex> lock(mutex);
-	//	return drawDataFrames;
-	//}
-
-	//Rhs2116DataFrame getLastDataFrame(){
-	//	const std::lock_guard<std::mutex> lock(mutex);
-	//	return rawDataFrames[lastBufferIDX];
-	//}
-
-	//void setDrawBufferStride(const size_t& samples){
-	//	mutex.lock();
-	//	config.getSettings().drawStride = samples;
-	//	config.getSettings().drawBufferSize = config.getSettings().bufferSize / config.getSettings().drawStride;
-	//	currentDrawBufferIDX = 0;
-	//	drawDataFrames.clear();
-	//	drawDataFrames.resize(config.getSettings().drawBufferSize);
-	//	mutex.unlock();
-	//	LOGINFO("Draw Buffer size: %i (samples)", config.getSettings().drawBufferSize);
-	//}
-
-	//void setBufferSizeSamples(const size_t& samples){
-	//	mutex.lock();
-	//	config.getSettings().bufferSize = samples;
-	//	currentBufferIDX = 0;
-	//	rawDataFrames.clear();
-	//	rawDataFrames.resize(config.getSettings().bufferSize);
-	//	mutex.unlock();
-	//	LOGINFO("Raw  Buffer size: %i (samples)", config.getSettings().bufferSize);
-	//	setDrawBufferStride(config.getSettings().drawStride);
-	//}
-
-	//void setBufferSizeMillis(const int& millis){
-	//	// TODO: I can't seem to change the ADC Bias and MUX settings to get different sample rates
-	//	// SO I am just going to assume 30kS/s sample rate for the RHS2116 hard coded to sampleRate
-	//	size_t samples = sampleFrequencyHz * millis / 1000;
-	//	setBufferSizeSamples(samples);
-	//}
-
-	//fu::Timer frameTimer;
-
-	//double getFrameTimerAvg(){
-	//	/*
-	//	const std::lock_guard<std::mutex> lock(mutex);
-	//	frameTimer.stop();
-	//	double t = frameTimer.avg<fu::micros>();
-	//	frameTimer.start();
-	//	return t;
-	//	*/
-	//	return 0;
-	//}
-
-	//std::vector<ONIProbeStatistics> probeStats;
-
-	//uint64_t cnt = 0;
 	
 	inline void gui(){
 		
@@ -239,19 +164,10 @@ public:
 		if(config.applySettings() || bForceGuiUpdate){
 			LOGDEBUG("Rhs2116 Device settings changed");
 			bForceGuiUpdate = false;
-			//getDspCutOff(true);
-			//getAnalogLowCutoff(true);
-			//getAnalogLowCutoffRecovery(true);
-			//getAnalogHighCutoff(true);
-			//getDrawBufferStride(true);
-			//getBufferSizeSamples(true);
 			if(config.getSettings().dspCutoff != config.getChangedSettings().dspCutoff) setDspCutOff(config.getChangedSettings().dspCutoff);
 			if(config.getSettings().lowCutoff != config.getChangedSettings().lowCutoff) setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
 			if(config.getSettings().lowCutoffRecovery != config.getChangedSettings().lowCutoffRecovery) setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
 			if(config.getSettings().highCutoff != config.getChangedSettings().highCutoff) setAnalogHighCutoff(config.getChangedSettings().highCutoff);
-			//if(config.getSettings().bufferSize != config.getChangedSettings().bufferSize) setBufferSizeSamples(config.getChangedSettings().bufferSize);
-			//setDrawBufferStride(config.getChangedSettings().drawStride);
-			//setBufferSizeSamples(config.getChangedSettings().bufferSize);
 			config.syncSettings();
 		}
 
@@ -272,8 +188,6 @@ public:
 			setAnalogLowCutoff(config.getSettings().lowCutoff);
 			setAnalogLowCutoffRecovery(config.getSettings().lowCutoffRecovery);
 			setAnalogHighCutoff(config.getSettings().highCutoff);
-			//setDrawBufferStride(config.getSettings().drawStride);
-			//setBufferSizeSamples(config.getSettings().bufferSize);
 			config.syncSettings();
 		}
 		return bOk;
@@ -291,101 +205,6 @@ public:
 			it.second->process(frame);
 		}
 	}
-
-	//uint64_t lastAcquisitionTime = 0;
-	//uint64_t lastSampleIDX = 0;
-	//uint64_t sampleCounter = 0;
-	//uint64_t frameDeltaSFX = 0;
-	//float div = 0;
-	//inline void process(oni_frame_t* frame){
-
-	//	const std::lock_guard<std::mutex> lock(mutex);
-		//for(auto it : processors){
-		//	it.second->process(frame);
-		//}
-
-	//	memcpy(&rawDataFrames[currentBufferIDX], frame->data, frame->data_sz);  // copy the data payload including hub clock
-	//	rawDataFrames[currentBufferIDX].acqTime = frame->time;					// copy the acquisition clock
-	//	rawDataFrames[currentBufferIDX].deltaTime = ONIDevice::getAcqDeltaTimeMicros(frame->time); //fu::time::now<fu::micros>() * 1000;
-	//	//rawDataFrames[currentBufferIDX].sampleIDX = fu::time::now<fu::micros>();
-	//	
-
-	//	for(size_t probe = 0; probe < 16; ++probe){
-	//		rawDataFrames[currentBufferIDX].ac_uV[probe] = 0.195f * (rawDataFrames[currentBufferIDX].ac[probe] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
-	//		rawDataFrames[currentBufferIDX].dc_mV[probe] = -19.23 * (rawDataFrames[currentBufferIDX].dc[probe] - 512) / 1000.0f; // -19.23 mV × (ADC result – 512) divide by 1000 for V?
-	//	}
-
-	//	if(currentBufferIDX % config.getSettings().drawStride == 0){
-	//		//for(int i = 0; i < 16; ++i){
-	//		//	acProbes[i][currentDrawBufferIDX] =  0.195f * (rawDataFrames[currentBufferIDX].ac[i] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
-	//		//	dcProbes[i][currentDrawBufferIDX] = -19.23 * (rawDataFrames[currentBufferIDX].dc[i] - 512) / 1000.0f; // -19.23 mV × (ADC result – 512) divide by 1000 for V?
-	//		//}
-	//		//deltaTimes[currentDrawBufferIDX] = rawDataFrames[currentBufferIDX].deltaTime;
-	//		drawDataFrames[currentDrawBufferIDX] = rawDataFrames[currentBufferIDX];
-	//		currentDrawBufferIDX = (currentDrawBufferIDX + 1) % config.getSettings().drawBufferSize;
-	//		//frameTimer.stop();
-	//		//LOGDEBUG("RHS2116 Frame Timer %f", frameTimer.avg<fu::micros>());
-	//		//frameTimer.start();
-	//	}
-
-	//	// nice way to sort
-	//	//size_t sorted_idx = currentBufferIDX;
-	//	//for(size_t i = 0; i < n_frames; ++i){
-	//	//	to[i] = rawDataFrames[sorted_idx];
-	//	//	sorted_idx = (sorted_idx + stride) % bufferSize;
-	//	//}
-
-	//	//for(size_t probe = 0; probe < 16; ++probe){
-	//	//	probeStats[probe].sum = 0;
-	//	//	for(size_t frame = 0; frame < bufferSize; ++frame){
-	//	//		probeStats[probe].sum += rawDataFrames[frame].ac[probe];
-	//	//	}
-	//	//	
-	//	//	probeStats[probe].mean = probeStats[probe].sum / bufferSize;
-	//	//	probeStats[probe].mean = 0.195f * (probeStats[probe].mean - 32768) / 1000.0f;
-	//	//	for(size_t frame = 0; frame < bufferSize; ++frame){
-	//	//		float acdiff = 0.195f * (rawDataFrames[frame].ac[probe] - 32768) / 1000.0f - probeStats[probe].mean;
-	//	//		probeStats[probe].ss += acdiff * acdiff; 
-	//	//	}
-	//	//	probeStats[probe].variance = probeStats[probe].ss / (bufferSize - 1);  // use population (N) or sample (n-1) deviation?
-	//	//	probeStats[probe].deviation = sqrt(probeStats[probe].variance);
-	//	//}
-	//	
-	//	//long double deltaFrameAcqTime = (rawDataFrames[currentBufferIDX].acqTime - rawDataFrames[lastBufferIDX].acqTime) / (long double)acq_clock_khz * 1000000;
-	//	//double deltaFrameTimer = frameTimer.elapsed<fu::micros>();
-	//	//fu::debug << rawDataFrames[currentBufferIDX].acqTime - rawDataFrames[lastBufferIDX].acqTime << " " << deltaFrameTimer << " " << deltaFrameAcqTime << fu::endl;
-	//	//if(deltaFrameTimer > 1000000.0 / sampleRatekSs) LOGDEBUG("RHS2116 Frame Buffer Underrun %f", deltaFrameTimer);
-	//	
-
-	//	//lastBufferIDX = currentBufferIDX;
-	//	/*
-	//	frameDeltaSFX = frameTimer.elapsed<fu::micros>(); //(rawDataFrames[currentBufferIDX].sampleIDX - lastSampleIDX);
-	//	if(frameDeltaSFX > 5) {
-	//		div = (float)frameDeltaSFX / sampleCounter;
-	//		//LOGDEBUG("Framt: %i %i %f", frameDeltaSFX, sampleCounter, (float)frameDeltaSFX / sampleCounter );
-	//		sampleCounter = 0;
-	//	}
-	//	sampleCounter++;
-	//	frameTimer.start();
-	//	float frameDeltaAQX = (rawDataFrames[currentBufferIDX].acqTime - lastAcquisitionTime) / (float)acq_clock_khz * 1000000;
-	//	if(frameDeltaAQX > 33.333333333333333f) LOGDEBUG("Underflow: %f", frameDeltaAQX);
-	//	*/
-
-	//	//if(currentBufferIDX % 30000 == 0) LOGDEBUG("Delta %s: %i %f %i %i %i", deviceName.c_str(), frameDeltaSFX, frameDeltaAQX, sampleIDX, lastSampleIDX, rawDataFrames[currentBufferIDX].sampleIDX);
-
-	//	lastAcquisitionTime = rawDataFrames[currentBufferIDX].acqTime;
-	//	lastSampleIDX = rawDataFrames[currentBufferIDX].sampleIDX;
-	//	
-	//	currentBufferIDX = (currentBufferIDX + 1) % config.getSettings().bufferSize;
-
-	//	//frameTimer.fcount();
-
-	//	//ofSleepMillis(1);
-	//	//sortedDataFrames = rawDataFrames;
-	//	//std::sort(sortedDataFrames.begin(), sortedDataFrames.end(), acquisition_clock_compare());
-	//	//++sampleCount;
-
-	//}
 
 	virtual unsigned int readRegister(const Rhs2116Register& reg){
 		return ONIDevice::readRegister(reg);
@@ -423,6 +242,7 @@ protected:
 			   regs[1] == r0.RH1_sel2 && 
 			   regs[2] == r1.RH1_sel1 && 
 			   regs[3] == r1.RH1_sel2 && regf == fast){
+				LOGINFO("AnalogHighCutoff %i", i);
 				return (Rhs2116AnalogHighCutoff)(i);
 			}
 		}

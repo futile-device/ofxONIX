@@ -2915,6 +2915,9 @@
     <ClInclude Include="..\..\..\..\addons\ofxONI\libs\liboni\include\riffa_driver.h">
       <Filter>addons\ofxONI\libs\liboni\include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\ONIFrameTypes.h">
+      <Filter>addons\ofxONI\src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc" />
