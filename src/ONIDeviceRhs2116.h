@@ -194,14 +194,20 @@ public:
 	}
 
 	inline void process(oni_frame_t* frame){
-		mutex.lock();
-		Rhs2116Frame processedFrame(frame, (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time));
-		mutex.unlock();
-		process(processedFrame);
+		//const std::lock_guard<std::mutex> lock(mutex);
+		if(postFrameProcessors.size() > 0){
+			Rhs2116Frame processedFrame(frame, (uint64_t)ONIDevice::getAcqDeltaTimeMicros(frame->time));
+			process(processedFrame);
+		}
+		for(auto it : preFrameProcessors){
+			it.second->process(frame);
+		}
+
 	}
 
 	inline void process(ONIFrame& frame){
-		for(auto it : processors){
+		//const std::lock_guard<std::mutex> lock(mutex);
+		for(auto it : postFrameProcessors){
 			it.second->process(frame);
 		}
 	}

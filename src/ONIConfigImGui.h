@@ -106,10 +106,8 @@ public:
 	void deviceConfigSetup(){
 		// nothing
 	}
-
-	inline void process(ONIFrame& frame){
-		//nothing
-	}
+	inline void process(oni_frame_t* frame){}; // nothing
+	inline void process(ONIFrame& frame){};    // nothing
 
 	inline void gui(){
 
@@ -212,14 +210,16 @@ public:
 	~_HeartBeatDeviceConfig(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, this);
+		device->unsubscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
 	};
 
 	void deviceConfigSetup(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, this);
+		device->subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
 	}
+
+	inline void process(oni_frame_t* frame){}; // nothing
 
 	inline void process(ONIFrame& frame){
 		bHeartBeat = !bHeartBeat;
@@ -290,14 +290,14 @@ public:
 		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		//std::string processorName = device->getName() + " GUI PROC";
-		//device->unsubscribeProcessor(processorName, this);
+		//device->unsubscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
 	};
 
 	void deviceConfigSetup(){
 		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, this);
+		device->subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
 	}
 
 	void defaults(){
@@ -419,7 +419,7 @@ public:
 	~_Rhs2116MultiDeviceConfig(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, this);
+		device->unsubscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
 		bThread = false;
 		if(thread.joinable()) thread.join();
 	};
@@ -427,7 +427,7 @@ public:
 	void deviceConfigSetup(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, this);
+		device->subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
 		//buffer.resize(currentSettings.bufferSize);
 		bThread = true;
 		thread = std::thread(&_Rhs2116MultiDeviceConfig::processBufferThread, this);
@@ -454,9 +454,7 @@ public:
 		
 	}
 
-	inline void process(oni_frame_t* frame){
-
-	}
+	inline void process(oni_frame_t* frame){}; // nothing
 	
 	inline void process(ONIFrame& frame){
 		const std::lock_guard<std::mutex> lock(mutex);
@@ -521,15 +519,15 @@ public:
 					if (ImGui::Selectable(buf, changedSettings.channelMap[y][x] != 0, ImGuiSelectableFlags_NoAutoClosePopups, ImVec2(20, 20))){
 						size_t swapIDXx, swapIDXy = 0;
 						for(size_t xx = 0; xx < numProbes; ++xx) {
-							if(changedSettings.channelMap[y][xx]) swapIDXx = xx; 
+							//if(changedSettings.channelMap[y][xx]) swapIDXx = xx; 
 							changedSettings.channelMap[y][xx] = false; // toggle off everything in this row
 						}
-						for(size_t yy = 0; yy < numProbes; ++yy){
-							if(changedSettings.channelMap[yy][swapIDXx]) swapIDXy = yy;
-							changedSettings.channelMap[yy][swapIDXx] = false; // toggle off everything in this col
-						}
+						//for(size_t yy = 0; yy < numProbes; ++yy){
+						//	if(changedSettings.channelMap[yy][x]) swapIDXy = yy;
+						//	changedSettings.channelMap[yy][x] = false; // toggle off everything in this col
+						//}
 						changedSettings.channelMap[y][x] = true;
-						changedSettings.channelMap[swapIDXy][swapIDXx] = true;
+						//changedSettings.channelMap[swapIDXy][swapIDXx] = true;
 					}
 					ImGui::PopID();
 				}

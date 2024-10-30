@@ -35,6 +35,8 @@ struct Rhs2116RawDataFrame{
 	uint16_t dc[16];
 	uint16_t unused;
 	uint64_t acqTime;
+	long double deltaTime;
+	uint32_t devIdx;
 	//long double deltaTime;
 	//float ac_uV[16];
 	//float dc_mV[16];
@@ -108,15 +110,20 @@ public:
 
 };
 
-#define MAX_NUM_MULTIPROBES 64
+#define MAX_NUM_MULTIDEVICES 4
+#define MAX_NUM_MULTIPROBES MAX_NUM_MULTIDEVICES * 16
+
 
 class Rhs2116MultiFrame : public ONIFrame{
 
 public:
 
-	Rhs2116MultiFrame(){ 
-		numProbes = 0; 
-	};
+	Rhs2116MultiFrame(){ numProbes = 0; };
+	Rhs2116MultiFrame(const std::vector<Rhs2116RawDataFrame>& frames, 
+					  const std::vector<size_t>& channelMap){
+		convert(frames, channelMap); 
+	}
+
 	Rhs2116MultiFrame(const std::vector<Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
 		//numProbes = 32;//16 * multiFrameBuffer.size();
 		convert(frames, channelMap); 
@@ -144,7 +151,33 @@ public:
 		this->deviceTableID = 999;
 	}
 
-	//Rhs2116Frame multiFrameBuffer;
+	inline void convert(const std::vector<Rhs2116RawDataFrame>& frames, const std::vector<size_t>& channelMap){
+
+		numProbes = frames.size() * 16;
+
+		for(int i = 0; i < frames.size(); ++i){
+
+			const Rhs2116RawDataFrame& frame = frames[i];
+
+			size_t frameProbe = 0;
+
+			for(size_t probe = i * 16; probe < i * 16 + 16; ++probe){
+
+				size_t mappedProbeIDX = channelMap[probe];
+
+				ac_uV[mappedProbeIDX] = 0.195f * (frame.ac[frameProbe] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
+				dc_mV[mappedProbeIDX] = -19.23 * (frame.dc[frameProbe] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
+
+				++frameProbe;
+			}
+
+		}
+
+		this->acqTime = frames[0].acqTime;					 // copy the acquisition clock from the first device?? maybe set sync time?
+		this->deltaTime = frames[0].deltaTime;
+		this->deviceTableID = frames[0].devIdx;
+
+	}
 
 	float ac_uV[MAX_NUM_MULTIPROBES];
 	float dc_mV[MAX_NUM_MULTIPROBES];

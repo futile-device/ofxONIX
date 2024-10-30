@@ -49,6 +49,10 @@ static std::string ONIDeviceTypeIDStr(const ONIDeviceTypeID& typeID){
 	}
 };
 
+enum FrameProcessorType{
+	PRE_FRAME_PROCESSOR = 0,
+	POST_FRAME_PROCESSOR
+};
 
 class ONIFrameProcessor{
 
@@ -57,9 +61,11 @@ public:
 	virtual ~ONIFrameProcessor(){};
 
 	virtual inline void process(ONIFrame& frame) = 0;
+	virtual inline void process(oni_frame_t* frame) = 0;
 
-	void subscribeProcessor(const std::string& processorName, ONIFrameProcessor * processor){
+	void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
+		std::map<std::string, ONIFrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
 		auto it = processors.find(processorName);
 		if(it == processors.end()){
 			LOGINFO("Adding processor %s", processorName.c_str());
@@ -69,8 +75,9 @@ public:
 		}
 	}
 
-	void unsubscribeProcessor(const std::string& processorName, ONIFrameProcessor * processor){
+	void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
+		std::map<std::string, ONIFrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
 		auto it = processors.find(processorName);
 		if(it == processors.end()){
 			LOGALERT("No processor %s", processorName.c_str());
@@ -88,7 +95,8 @@ protected:
 
 	std::mutex mutex;
 
-	std::map<std::string, ONIFrameProcessor*> processors;
+	std::map<std::string, ONIFrameProcessor*> preFrameProcessors;
+	std::map<std::string, ONIFrameProcessor*> postFrameProcessors;
 
 };
 
@@ -135,8 +143,6 @@ public:
 	virtual inline void gui() = 0;
 	virtual bool saveConfig(std::string presetName) = 0;
 	virtual bool loadConfig(std::string presetName) = 0;
-
-	virtual inline void process(oni_frame_t* frame) = 0;
 
 	const inline bool& getContexteNeedsRestart(){
 		return bContextNeedsRestart;

@@ -74,12 +74,12 @@ public:
 			LOGERROR("Device already added: %s", device->getName().c_str());
 		}
 		std::string processorName = deviceName + " MULTI PROC";
-		device->subscribeProcessor(processorName, this);
+		device->subscribeProcessor(processorName, FrameProcessorType::PRE_FRAME_PROCESSOR, this);
 		numProbes += device->getNumProbes();
 		channelIDX.resize(numProbes);
-		lastDeviceIDX = device->getDeviceTableID();
 		expectDevceIDXNext.push_back(device->getDeviceTableID());
 		multiFrameBuffer.resize(multiFrameBuffer.size() + 1);
+		multiFrameBufferRaw.resize(multiFrameBufferRaw.size() + 1);
 	}
 
 	void deviceSetup(){
@@ -169,33 +169,55 @@ public:
 		return bOk;
 	}
 
+	std::vector<Rhs2116Frame> multiFrameBuffer;
+	std::vector<Rhs2116RawDataFrame> multiFrameBufferRaw;
+	
 
-	std::vector<oni_frame_t> deviceFrames;
 	std::vector<unsigned int> expectDevceIDXNext;// = {257,256};
 	uint64_t nextDeviceCounter = 0;
 
 	inline void process(oni_frame_t* frame) override {
+
 		//const std::lock_guard<std::mutex> lock(mutex);
-		//unsigned int nextDeviceIndex = nextDeviceCounter % devices.size();
-		//if(frame->dev_idx != expectDevceIDXNext[nextDeviceIndex]){
-		//	LOGERROR("Unexpected frame order");
-		//}else{
-		//	// push or add the multiframe
-		//	if((nextDeviceCounter + 1) % devices.size() == 0){ // we have chexked off all the expectedIDs in order
-		//		// process the multi frame
-		//	}
-		//	++nextDeviceCounter;
+
+		if(postFrameProcessors.size() > 0){
+
+			unsigned int nextDeviceIndex = nextDeviceCounter % devices.size();
+
+			if(frame->dev_idx != expectDevceIDXNext[nextDeviceIndex]){
+				LOGERROR("Unexpected frame order");
+			}else{
+
+				// push or add the multiframe
+				std::memcpy(&multiFrameBufferRaw[nextDeviceIndex], frame->data, frame->data_sz); // copy the data payload including hub clock
+				multiFrameBufferRaw[nextDeviceIndex].acqTime = frame->time;						 // copy the acquisition clock
+				multiFrameBufferRaw[nextDeviceIndex].deltaTime = ONIDevice::getAcqDeltaTimeMicros(frame->time);
+				multiFrameBufferRaw[nextDeviceIndex].devIdx = frame->dev_idx;
+
+				if((nextDeviceCounter + 1) % devices.size() == 0){ // we have chexked off all the expectedIDs in order
+					// process the multi frame
+					Rhs2116MultiFrame processedFrame(multiFrameBufferRaw, channelIDX);
+
+					for(auto it : postFrameProcessors){
+						it.second->process(processedFrame);
+					}
+
+				}
+				++nextDeviceCounter;
+			}
+		}
+
+		//for(auto it : preFrameProcessors){
+		//	it.second->process(frame);
 		//}
 		
 	}
 
 
-	std::vector<Rhs2116Frame> multiFrameBuffer;
-	unsigned int lastDeviceIDX = 0;
 
 	inline void process(ONIFrame& frame) override {
 
-		const std::lock_guard<std::mutex> lock(mutex);
+		//const std::lock_guard<std::mutex> lock(mutex);
 
 		unsigned int nextDeviceIndex = nextDeviceCounter % devices.size();
 
@@ -209,14 +231,13 @@ public:
 				// process the multi frame
 				Rhs2116MultiFrame processedFrame(multiFrameBuffer, channelIDX);
 
-				for(auto it : processors){
+				for(auto it : postFrameProcessors){
 					it.second->process(processedFrame);
 				}
 
 			}
 			++nextDeviceCounter;
 		}
-
 
 	}
 
