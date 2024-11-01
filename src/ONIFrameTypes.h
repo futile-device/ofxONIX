@@ -98,6 +98,18 @@ public:
 	float ac_uV[16];
 	float dc_mV[16];
 
+	// copy assignment (copy-and-swap idiom)
+	Rhs2116Frame& Rhs2116Frame::operator=(Rhs2116Frame other) noexcept{
+		std::swap(deltaTime, other.deltaTime);
+		std::swap(acqTime, other.acqTime);
+		std::swap(deviceTableID, other.deviceTableID);
+		std::swap(numProbes, other.numProbes);
+		std::swap(ac_uV, other.ac_uV);
+		std::swap(dc_mV, other.dc_mV);
+		std::swap(rawFrame, other.rawFrame);
+		return *this;
+	}
+
 	inline bool operator==(const Rhs2116Frame& other){ 
 		for(size_t probe = 0; probe < numProbes; ++probe){
 			if(ac_uV[probe] != other.ac_uV[probe] || dc_mV[probe] != other.ac_uV[probe]){

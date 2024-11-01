@@ -21,8 +21,9 @@
 #include <mutex>
 #include <syncstream>
 
-#include "ONIConfig.h"
+#include "ONIContext.h"
 #include "ONIDevice.h"
+#include "ONIDeviceFmc.h"
 #include "ONISettingTypes.h"
 #include "ONIUtility.h"
 
@@ -33,41 +34,550 @@
 #include "ofxImPlot.h"
 #include "ofxFutilities.h"
 
+class ONIInterface : public ONIFrameProcessor{
 
-//class _ContextConfig : public ONIContextConfig<ContextSettings> {
-//
-//public:
-//
-//	_ContextConfig(){};
-//	~_ContextConfig(){};
-//
-//	inline void process(ONIFrame& frame){
-//		//nothing
-//	}
-//
-//	inline void gui(){
-//
-//	}
-//
-//	bool save(std::string presetName){
-//		//LOGINFO("Saving Context config: %s", filePath.c_str());
-//		return true;
-//	}
-//
-//	bool load(std::string presetName){
-//		//LOGINFO("Loading Context config: %s", filePath.c_str());
-//		return true;
-//	}
-//
-//protected:
-//
-//	friend class boost::serialization::access;
-//	template<class Archive>
-//	void serialize(Archive & ar, const unsigned int version){
-//		ar & BOOST_SERIALIZATION_NVP(settings);
-//	}
-//
-//};
+public:
+
+	//ONIInterface(){};
+	virtual ~ONIInterface(){};
+
+	// inherited from ONIFrameProcessor
+	//virtual inline void process(ONIFrame& frame) = 0;
+	//virtual inline void process(oni_frame_t* frame) = 0;
+	//void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){...}
+	//void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){...}
+	//std::mutex& getMutex(){...}
+
+	virtual inline void gui(ONIDevice& device) = 0;
+
+	virtual bool save(std::string presetName) = 0;
+	virtual bool load(std::string presetName) = 0;
+
+};
+
+class FmcInterface : public ONIInterface{
+
+public:
+
+	~FmcInterface(){};
+
+	inline void process(oni_frame_t* frame){}; // nothing
+	inline void process(ONIFrame& frame){}; // nothing
+	
+	inline void gui(ONIDevice& device){
+	
+		FmcDevice& fmc = *reinterpret_cast<FmcDevice*>(&device);
+
+		if(!bIsApplying) nextSettings = fmc.settings;
+
+		ImGui::PushID(fmc.getName().c_str());
+		ImGui::Text(fmc.getName().c_str());
+
+		ImGui::SetNextItemWidth(200);
+
+		ImGui::InputFloat("Port Voltage", &nextSettings.voltage, 0.1f, 0.1f, "%.1f"); 
+		nextSettings.voltage = std::clamp(nextSettings.voltage, 3.0f, 10.0f); // use some way of specifying min and max
+
+		if(nextSettings.voltage != fmc.settings.voltage){
+
+			ImGui::SameLine();
+
+			bIsApplying = true;
+			bool bConfirmed = false;
+
+			if(ImGui::Button("Apply")){
+				if(nextSettings.voltage >= 5.0f){
+					ImGui::OpenPopup("Overvoltage");
+				}else{
+					bConfirmed = true;
+				}
+			}
+
+			if(nextSettings.voltage >= 5.0f){
+				ImGui::SameLine();
+				ImGui::Text("WARNING Voltage exceeds 5.0v");
+			}
+
+			// Always center this window when appearing
+			ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+			ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+
+			if(ImGui::BeginPopupModal("Overvoltage", NULL)){
+				ImGui::Text("Voltages above 5.0v may damage the device!");
+				ImGui::Text("Do you really want to supply %.1f v to device?", nextSettings.voltage);
+				ImGui::Separator();
+				if (ImGui::Button("Yes", ImVec2(120, 0))) { bConfirmed = true; bIsApplying = true; ImGui::CloseCurrentPopup(); }
+				ImGui::SetItemDefaultFocus();
+				ImGui::SameLine();
+				if (ImGui::Button("Cancel", ImVec2(120, 0))) {  bConfirmed = false; bIsApplying = false; ImGui::CloseCurrentPopup(); }
+				ImGui::EndPopup();
+			}
+
+			if(bIsApplying && bConfirmed){
+				LOGINFO("Change voltage from %.1f to %.1f", fmc.settings.voltage, nextSettings.voltage);
+				fmc.setPortVoltage(nextSettings.voltage);
+				bIsApplying = false;
+			}
+
+		}
+
+		ImGui::Separator();
+		ImGui::Separator();
+		ImGui::PopID();
+
+	};
+
+	bool save(std::string presetName){
+		return false;
+	}
+
+	bool load(std::string presetName){
+		return false;
+	}
+
+protected:
+
+	FmcDeviceSettings nextSettings;
+	bool bIsApplying = false;
+
+};
+
+
+class HeartBeatInterface : public ONIInterface{
+
+public:
+
+	~HeartBeatInterface(){
+	
+	};
+
+	inline void process(oni_frame_t* frame){}; // nothing
+
+	inline void process(ONIFrame& frame){
+		bHeartBeat = !bHeartBeat;
+		deltaTime = frame.getDeltaTime();
+	};
+
+	inline void gui(ONIDevice& device){
+
+		HeartBeatDevice& hbd = *reinterpret_cast<HeartBeatDevice*>(&device);
+
+		hbd.subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+
+		ImGui::PushID(hbd.getName().c_str());
+		ImGui::Text(hbd.getName().c_str());
+
+		ImGui::RadioButton("HeartBeat", bHeartBeat); ImGui::SameLine();
+		ImGui::Text(" %0.3f (ms)", deltaTime / 1000.0f);
+
+		ImGui::Separator();
+		ImGui::Separator();
+
+		ImGui::PopID();
+		
+
+	}
+
+	bool save(std::string presetName){
+		return false;
+	}
+
+	bool load(std::string presetName){
+		return false;
+	}
+
+protected:
+
+	std::atomic_bool bHeartBeat = false;
+	std::atomic_uint64_t deltaTime = 0;
+
+	const std::string processorName = "HeartBeatGui";
+};
+
+
+class Rhs2116Interface : public ONIInterface{
+
+public:
+
+	~Rhs2116Interface(){
+
+	};
+
+	inline void process(oni_frame_t* frame){}; // nothing
+	inline void process(ONIFrame& frame){}; // nothing
+
+	inline void gui(ONIDevice& device){
+
+		Rhs2116Device& rhs = *reinterpret_cast<Rhs2116Device*>(&device);
+
+		//rhs.subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+
+		nextSettings = rhs.settings;
+
+		ImGui::PushID(rhs.getName().c_str());
+		ImGui::Text(rhs.getName().c_str());
+
+		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
+		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
+		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
+
+		ImGui::SetNextItemWidth(200);
+		int dspFormatItem = rhs.settings.dspCutoff; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
+		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
+
+
+		ImGui::SetNextItemWidth(200);
+		int lowCutoffItem = rhs.settings.lowCutoff; //getAnalogLowCutoff(false);
+		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
+
+
+		ImGui::SetNextItemWidth(200);
+		int lowCutoffRecoveryItem = rhs.settings.lowCutoffRecovery; //getAnalogLowCutoffRecovery(false);
+		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
+
+		ImGui::SetNextItemWidth(200);
+		int highCutoffItem = rhs.settings.highCutoff; //getAnalogHighCutoff(false);
+		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
+
+		nextSettings.dspCutoff = (Rhs2116DspCutoff)dspFormatItem;
+		nextSettings.lowCutoff = (Rhs2116AnalogLowCutoff)lowCutoffItem;
+		nextSettings.lowCutoffRecovery = (Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem;
+		nextSettings.highCutoff = (Rhs2116AnalogHighCutoff)highCutoffItem;
+
+		if(nextSettings.dspCutoff != rhs.settings.dspCutoff) rhs.setDspCutOff(nextSettings.dspCutoff);
+		if(nextSettings.lowCutoff != rhs.settings.lowCutoff) rhs.setAnalogLowCutoff(nextSettings.lowCutoff);
+		if(nextSettings.lowCutoffRecovery != rhs.settings.lowCutoffRecovery) rhs.setAnalogLowCutoffRecovery(nextSettings.lowCutoffRecovery);
+		if(nextSettings.highCutoff != rhs.settings.highCutoff) rhs.setAnalogHighCutoff(nextSettings.highCutoff);
+
+		ImGui::PopID();
+
+	}
+
+	bool save(std::string presetName){
+		return false;
+	}
+
+	bool load(std::string presetName){
+		return false;
+	}
+
+protected:
+
+	Rhs2116DeviceSettings nextSettings;
+
+	const std::string processorName = "Rhs2116Gui";
+};
+
+
+
+class Rhs2116MultiInterface : public ONIInterface{
+
+public:
+
+	~Rhs2116MultiInterface(){
+
+	};
+
+	inline void process(oni_frame_t* frame){
+	
+	};
+
+	inline void process(ONIFrame& frame){}; // nothing
+
+	inline void gui(ONIDevice& device){
+
+		Rhs2116MultiDevice& rhsm = *reinterpret_cast<Rhs2116MultiDevice*>(&device);
+
+		rhsm.subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+
+		nextSettings = rhsm.settings;
+
+		ImGui::PushID(rhsm.getName().c_str());
+		ImGui::Text(rhsm.getName().c_str());
+
+		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
+		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
+		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
+
+		ImGui::SetNextItemWidth(200);
+		int dspFormatItem = rhsm.settings.dspCutoff; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
+		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
+
+
+		ImGui::SetNextItemWidth(200);
+		int lowCutoffItem = rhsm.settings.lowCutoff; //getAnalogLowCutoff(false);
+		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
+
+
+		ImGui::SetNextItemWidth(200);
+		int lowCutoffRecoveryItem = rhsm.settings.lowCutoffRecovery; //getAnalogLowCutoffRecovery(false);
+		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
+
+		ImGui::SetNextItemWidth(200);
+		int highCutoffItem = rhsm.settings.highCutoff; //getAnalogHighCutoff(false);
+		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
+
+		nextSettings.dspCutoff = (Rhs2116DspCutoff)dspFormatItem;
+		nextSettings.lowCutoff = (Rhs2116AnalogLowCutoff)lowCutoffItem;
+		nextSettings.lowCutoffRecovery = (Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem;
+		nextSettings.highCutoff = (Rhs2116AnalogHighCutoff)highCutoffItem;
+
+		// TODO: THIS IS REALLY DUMB ASS SHITTY => SHOULD JUST BE ABLE TO COPY SETTINGS BUT INSTEAD I'M HAVING TO FORCE RE-READ THE REGISTERS (TRIPLE HANDLING)
+		if(nextSettings.dspCutoff != rhsm.settings.dspCutoff){
+			rhsm.setDspCutOff(nextSettings.dspCutoff);
+			//for(auto it : rhsm.devices) it.second->getDspCutOff(true); //settings = rhsm.settings;
+		}
+		if(nextSettings.lowCutoff != rhsm.settings.lowCutoff){
+			rhsm.setAnalogLowCutoff(nextSettings.lowCutoff);
+			//for(auto it : rhsm.devices) it.second->getAnalogLowCutoff(true);
+		}
+		if(nextSettings.lowCutoffRecovery != rhsm.settings.lowCutoffRecovery){
+			rhsm.setAnalogLowCutoffRecovery(nextSettings.lowCutoffRecovery);
+			//for(auto it : rhsm.devices) it.second->getAnalogLowCutoffRecovery(true);
+		}
+		if(nextSettings.highCutoff != rhsm.settings.highCutoff){
+			rhsm.setAnalogHighCutoff(nextSettings.highCutoff);
+			//for(auto it : rhsm.devices) it.second->getAnalogHighCutoff(true);
+		}
+
+		if(rhsm.settings != nextSettings){
+			rhsm.settings = nextSettings;
+			for(auto it : rhsm.devices) it.second->settings = rhsm.settings;
+		}
+		 // this is kinda shitty and should probably happen from inside Rhs2116MultiDevice!!
+
+		ImGui::PopID();
+
+
+	}
+
+	bool save(std::string presetName){
+		return false;
+	}
+
+	bool load(std::string presetName){
+		return false;
+	}
+
+protected:
+
+	Rhs2116DeviceSettings nextSettings;
+
+	const std::string processorName = "Rhs2116Gui";
+};
+
+
+
+class ContextInterface : public ONIInterface{
+
+public:
+
+	~ContextInterface(){};
+
+	inline void process(ONIFrame& frame){}; // nothing
+	inline void process(oni_frame_t* frame){}; // nothing
+	inline void gui(ONIDevice& device){}; //nothing
+
+	inline void gui(ONIContext& context){
+
+		static bool bOpenOnFirstStart = true;
+
+		ImGui::Begin("ONI Context");
+		ImGui::PushID("ONI Context");
+
+		if(context.bIsContextSetup){
+
+			if(ImGui::Button("Setup Context")){
+				context.setupContext();
+			}
+
+			ImGui::SameLine();
+
+			if(ImGui::Button("List Devices")){
+				context.printDeviceTable();
+			}
+
+			ImGui::SameLine();
+
+			std::string acqString = (context.bIsAcquiring ? "Stop Acquisition" : "Start Acquisition");
+
+			if(ImGui::Button(acqString.c_str())){
+				if(context.bIsAcquiring){
+					context.stopAcquisition();
+				}else{
+					context.startAcquisition();
+				}
+			}
+
+			ImGui::NewLine();
+
+			static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
+
+			ImVec2 outer_size = ImVec2(0.0f, 400.0f);
+
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(true);
+
+			if(ImGui::CollapsingHeader("Device List")){
+				if (ImGui::BeginTable("Device Types", 6, flags, outer_size)){
+					ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
+					ImGui::TableSetupColumn("Device IDX", ImGuiTableColumnFlags_WidthFixed, 50);
+					ImGui::TableSetupColumn("Hard ID", ImGuiTableColumnFlags_WidthFixed, 25);
+					ImGui::TableSetupColumn("Firmware", ImGuiTableColumnFlags_WidthFixed, 20);
+					ImGui::TableSetupColumn("Read Size", ImGuiTableColumnFlags_WidthFixed, 20);
+					ImGui::TableSetupColumn("Write Size", ImGuiTableColumnFlags_WidthFixed, 20);
+					ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_None);
+					ImGui::TableHeadersRow();
+
+					// Demonstrate using clipper for large vertical lists
+					ImGuiListClipper clipper;
+					clipper.Begin(context.deviceTypes.size());
+					while (clipper.Step()){
+						for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++){
+
+							const oni_device_t& type = context.deviceTypes[row];
+							ImGui::TableNextRow();
+
+							ImGui::TableSetColumnIndex(0); // Device IDX
+							ImGui::Text("%02i|%05u: 0x%02x.0x%02x", row, type.idx, (uint8_t)(type.idx >> 8), (uint8_t)type.idx);
+
+							ImGui::TableSetColumnIndex(1); // Device Type ID
+							ImGui::Text("%02d", type.id);
+
+							ImGui::TableSetColumnIndex(2); // Firmware Version
+							ImGui::Text("%02d", type.version);
+
+							ImGui::TableSetColumnIndex(3); // Read Size
+							ImGui::Text("%02u", type.read_size);
+
+							ImGui::TableSetColumnIndex(4); // Write Size
+							ImGui::Text("%02u", type.write_size);
+
+							ImGui::TableSetColumnIndex(5); // Description
+							ImGui::Text("%s", onix_device_str(type.id));
+
+						}
+					}
+					ImGui::EndTable();
+				}
+			}
+
+		}
+
+		for(auto device : context.oniDevices){
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if(ImGui::CollapsingHeader(device.second->getName().c_str(), true)){
+				//device.second->gui()
+				// ;
+				switch(device.first){
+				case 0: // heart beat device
+				{
+					heartBeatInterface.gui(*device.second);
+					break;
+				}
+				case 1: // fmc devices
+				case 2:
+				{
+					fmcInterface[device.first - 1].gui(*device.second);
+					break;
+				}
+				case 256:
+				case 257:
+				{
+					rhsInterface[device.first - 256].gui(*device.second);
+					break;
+				}
+				}
+			}
+		}
+
+		if(context.rhs2116Multi == nullptr){
+			context.rhs2116Multi = new Rhs2116MultiDevice;
+			context.rhs2116Multi->setup(&context.ctx, context.acq_clock_khz);
+			for(auto device : context.oniDevices){
+				if(device.second->getDeviceTypeID() == RHS2116){
+					context.rhs2116Multi->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
+					//rhs2116Multi->devices[device.second->getDeviceTableID()] = reinterpret_cast<Rhs2116Device*>(device.second);
+				}
+			}
+			//rhs2116Multi->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
+			//rhs2116Multi->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
+			//rhs2116Multi->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
+			//rhs2116Multi->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
+			//rhs2116Multi->saveConfig("default");
+			context.rhs2116Multi->loadConfig("default");
+			//std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
+			//rhs2116Multi->setChannelMap(t);
+			//rhs2116Multi->saveConfig("default");
+			//startAcquisition();
+		}
+
+		if(context.rhs2116Multi != nullptr){
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*context.rhs2116Multi); //context.rhs2116Multi->gui();
+		}
+
+		ImGui::PopID();
+		ImGui::End();
+
+		bOpenOnFirstStart = false;
+	
+	};
+
+	bool save(std::string presetName){
+		return false;
+	}
+
+	bool load(std::string presetName){
+		return false;
+	}
+
+protected:
+
+	FmcInterface fmcInterface[2];
+	HeartBeatInterface heartBeatInterface;
+	Rhs2116Interface rhsInterface[2];
+	Rhs2116MultiInterface multiInterface;
+
+};
+
+typedef Singleton<ContextInterface> ContextInterfaceSingleton;
+static ContextInterface& ONIGui = ContextInterfaceSingleton::Instance();
+
+/*
+class _ContextConfig : public ONIContextConfig<ContextSettings> {
+
+public:
+
+	_ContextConfig(){};
+	~_ContextConfig(){};
+
+	inline void process(ONIFrame& frame){
+		//nothing
+	}
+
+	inline void gui(){
+
+	}
+
+	bool save(std::string presetName){
+		//LOGINFO("Saving Context config: %s", filePath.c_str());
+		return true;
+	}
+
+	bool load(std::string presetName){
+		//LOGINFO("Loading Context config: %s", filePath.c_str());
+		return true;
+	}
+
+protected:
+
+	friend class boost::serialization::access;
+	template<class Archive>
+	void serialize(Archive & ar, const unsigned int version){
+		ar & BOOST_SERIALIZATION_NVP(settings);
+	}
+
+};
 
 
 template<class Archive>
@@ -811,9 +1321,11 @@ protected:
 
 
 // later we can set which device config to use with specific #define for USE_IMGUI etc
-//typedef _ContextConfig ContextConfig;
+typedef _ContextConfig ContextConfig;
 
 typedef _FmcDeviceConfig FmcDeviceConfig;
 typedef _HeartBeatDeviceConfig HeartBeatDeviceConfig;
 typedef _Rhs2116DeviceConfig Rhs2116DeviceConfig;
 typedef _Rhs2116MultiDeviceConfig Rhs2116MultiDeviceConfig;
+
+*/

@@ -98,9 +98,13 @@ inline std::ostream& operator<<(std::ostream& os, const oni_device_t& type) {
 
 }
 
+class ContextInterface; // pre declare for gui/config
+
 class ONIContext {
 
 public:
+
+	friend class ContextInterface;
 
 	static inline const ONIContextOption DEVICETABLE		= ONIContextOption(ONI_OPT_DEVICETABLE, "DEVICETABLE");
 	static inline const ONIContextOption NUMDEVICES			= ONIContextOption(ONI_OPT_NUMDEVICES, "NUMDEVICES");
@@ -122,133 +126,7 @@ public:
 	~ONIContext(){
 		closeContext();
 	};
-	
-	inline void gui(){
-		
-		static bool bOpenOnFirstStart = true;
 
-		ImGui::Begin("ONI Context");
-		ImGui::PushID("ONI Context");
-
-		if(bIsContextSetup){
-
-			if(ImGui::Button("Setup Context")){
-				setupContext();
-			}
-
-			ImGui::SameLine();
-
-			if(ImGui::Button("List Devices")){
-				printDeviceTable();
-			}
-
-			ImGui::SameLine();
-
-			std::string acqString = (bIsAcquiring ? "Stop Acquisition" : "Start Acquisition");
-
-			if(ImGui::Button(acqString.c_str())){
-				if(bIsAcquiring){
-					stopAcquisition();
-				}else{
-					startAcquisition();
-				}
-			}
-
-
-
-			ImGui::NewLine();
-
-			
-			static ImGuiTableFlags flags = ImGuiTableFlags_ScrollY | ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable | ImGuiTableFlags_Hideable;
-
-			ImVec2 outer_size = ImVec2(0.0f, 400.0f);
-
-			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(true);
-
-			if(ImGui::CollapsingHeader("Device List")){
-				if (ImGui::BeginTable("Device Types", 6, flags, outer_size)){
-					ImGui::TableSetupScrollFreeze(0, 1); // Make top row always visible
-					ImGui::TableSetupColumn("Device IDX", ImGuiTableColumnFlags_WidthFixed, 50);
-					ImGui::TableSetupColumn("Hard ID", ImGuiTableColumnFlags_WidthFixed, 25);
-					ImGui::TableSetupColumn("Firmware", ImGuiTableColumnFlags_WidthFixed, 20);
-					ImGui::TableSetupColumn("Read Size", ImGuiTableColumnFlags_WidthFixed, 20);
-					ImGui::TableSetupColumn("Write Size", ImGuiTableColumnFlags_WidthFixed, 20);
-					ImGui::TableSetupColumn("Description", ImGuiTableColumnFlags_None);
-					ImGui::TableHeadersRow();
-
-					// Demonstrate using clipper for large vertical lists
-					ImGuiListClipper clipper;
-					clipper.Begin(deviceTypes.size());
-					while (clipper.Step()){
-						for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++){
-
-							const oni_device_t& type = deviceTypes[row];
-							ImGui::TableNextRow();
-
-							ImGui::TableSetColumnIndex(0); // Device IDX
-							ImGui::Text("%02i|%05u: 0x%02x.0x%02x", row, type.idx, (uint8_t)(type.idx >> 8), (uint8_t)type.idx);
-
-							ImGui::TableSetColumnIndex(1); // Device Type ID
-							ImGui::Text("%02d", type.id);
-
-							ImGui::TableSetColumnIndex(2); // Firmware Version
-							ImGui::Text("%02d", type.version);
-
-							ImGui::TableSetColumnIndex(3); // Read Size
-							ImGui::Text("%02u", type.read_size);
-
-							ImGui::TableSetColumnIndex(4); // Write Size
-							ImGui::Text("%02u", type.write_size);
-
-							ImGui::TableSetColumnIndex(5); // Description
-							ImGui::Text("%s", onix_device_str(type.id));
-
-						}
-					}
-					ImGui::EndTable();
-				}
-			}
-			
-		}
-
-		for(auto device : config.devices()){
-			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
-			if(ImGui::CollapsingHeader(device.second->getName().c_str(), true)) device.second->gui();
-		}
-		
-		if(rhs2116Multi == nullptr){
-			rhs2116Multi = new Rhs2116MultiDevice;
-			rhs2116Multi->setup(&ctx, acq_clock_khz);
-			for(auto device : config.devices()){
-				if(device.second->getDeviceTypeID() == RHS2116){
-					rhs2116Multi->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
-					//rhs2116Multi->devices[device.second->getDeviceTableID()] = reinterpret_cast<Rhs2116Device*>(device.second);
-				}
-			}
-			//rhs2116Multi->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
-			//rhs2116Multi->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
-			//rhs2116Multi->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
-			//rhs2116Multi->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
-			//rhs2116Multi->saveConfig("default");
-			rhs2116Multi->loadConfig("default");
-			//std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
-			//rhs2116Multi->setChannelMap(t);
-			//rhs2116Multi->saveConfig("default");
-			//startAcquisition();
-		}
-
-		if(rhs2116Multi != nullptr){
-			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
-			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) rhs2116Multi->gui();
-		}
-
-		ImGui::PopID();
-		ImGui::End();
-
-		bOpenOnFirstStart = false;
-		
-	}
-	Rhs2116MultiDevice * rhs2116Multi = nullptr;
 	inline void update(){
 
 		if(!bIsContextSetup) return;
@@ -260,7 +138,7 @@ public:
 
 		ONIDevice* device_changed = NULL;
 
-		for(auto device : config.devices()){
+		for(auto device : oniDevices){
 			if(device.second->getContexteNeedsRestart()){
 				device_changed = (ONIDevice*)device.second;
 				bContextNeedsRestart = true;
@@ -342,7 +220,7 @@ public:
 				FmcDevice* fmc = new FmcDevice;
 				fmc->setup(&ctx, devices_t[i], acq_clock_khz);
 				fmc->reset();
-				config.devices()[devices_t[i].idx] = fmc;
+				oniDevices[devices_t[i].idx] = fmc;
 			}
 
 			if(devices_t[i].id == ONIDeviceTypeID::HEARTBEAT){ // 12 HeartBeat Device
@@ -350,7 +228,7 @@ public:
 				HeartBeatDevice* hbd = new HeartBeatDevice;
 				hbd->setup(&ctx, devices_t[i], acq_clock_khz);
 				hbd->reset();
-				config.devices()[devices_t[i].idx] = hbd;
+				oniDevices[devices_t[i].idx] = hbd;
 			}
 
 			if(devices_t[i].id == ONIDeviceTypeID::RHS2116){ // 31 RHS2116 Device
@@ -358,7 +236,7 @@ public:
 				Rhs2116Device* rhd2116 = new Rhs2116Device;
 				rhd2116->setup(&ctx, devices_t[i], acq_clock_khz);
 				rhd2116->reset();
-				config.devices()[devices_t[i].idx] = rhd2116;
+				oniDevices[devices_t[i].idx] = rhd2116;
 			}
 
 		}
@@ -372,8 +250,8 @@ public:
 	}
 
 	ONIDevice* getDevice(const unsigned int& idx){
-		auto it = config.devices().find(idx);
-		if(it == config.devices().end()){
+		auto it = oniDevices.find(idx);
+		if(it == oniDevices.end()){
 			LOGERROR("ONIDevice doesn't exist with idx: %i", idx);
 			return NULL;
 		}
@@ -475,21 +353,7 @@ public:
 		LOGINFO("...ONIContext closed");
 
 	}
-	std::atomic_uint64_t sampleCount = 0;
-	std::mutex audioMutex;
-	//void audioOut(ofSoundBuffer &outBuffer) {
-	//	for(size_t i = 0; i < outBuffer.getNumFrames(); i++){
-	//		//readFrame(sampleCount);
-	//		//audioMutex.lock();
-	//		//unique_lock<std::mutex> lock(audioMutex);
-	//		
-	//		readFrame();
-	//		++sampleCount;
-	//		
-	//		//audioMutex.unlock();
-	//	}
-	//}
-	//fu::Timer frameCtxTimer;
+
 private:
 
 	bool startContext(){
@@ -519,21 +383,10 @@ private:
 		if(bThread) stopFrameRead();
 		LOGDEBUG("Starting frame read thread");
 		bThread = true;
-		for(auto device : config.devices()){
+		for(auto device : oniDevices){
 			device.second->reset();
 		}
 
-		sampleCount = 0;
-
-		//ofSoundStreamSettings settings;
-		//settings.numOutputChannels = 1;
-		//settings.sampleRate = 192000;
-		//settings.bufferSize = 1024;
-		//settings.numBuffers = 4;
-		//settings.setOutListener(this);
-		//soundStream.setup(settings);
-
-		//soundStream.start();
 		thread = std::thread(&ONIContext::readFrame, this);
 	}
 
@@ -541,7 +394,6 @@ private:
 		LOGDEBUG("Stopping frame read thread");
 		if(!bThread) return;
 		bThread = false;
-		//soundStream.close();
 		if(thread.joinable()) thread.join();
 	}
 
@@ -627,14 +479,7 @@ private:
 
 		while(bThread){
 
-			//fu::debug << "something");
-
 			int rc = ONI_ESUCCESS;
-
-			//uint64_t sampleIDX = 0;
-			//audioMutex.lock();
-			//sampleIDX = sampleCount;
-			//audioMutex.unlock();
 
 			oni_frame_t *frame = NULL;
 			rc = oni_read_frame(ctx, &frame);
@@ -643,27 +488,15 @@ private:
 				LOGERROR("Frame read error: %s", oni_error_str(rc));
 			}else{
 				
-				auto it = config.devices().find((unsigned int)frame->dev_idx);
+				auto it = oniDevices.find((unsigned int)frame->dev_idx);
 
-				if(it == config.devices().end()){
+				if(it == oniDevices.end()){
 					LOGERROR("ONIDevice doesn't exist with idx: %i", frame->dev_idx);
 				}else{
 
 					auto device = it->second;
-					//sampleCount = fu::time::now<fu::micros>();
 
-					//unique_lock<std::mutex> lock(audioMutex);
-					//fu::debug << "DEV: " << frame->dev_idx << " " << frame->time << " " << device->getName() << fu::endl;
-					device->process(frame);
-
-					//if(device->getDeviceONIDeviceTypeID() == ONIDevice::ONIDeviceTypeID::HEARTBEAT){
-					//	Rhs2116Device* rhd2116Device1 = (Rhs2116Device*)getDevice(256);
-					//	Rhs2116Device* rhd2116Device2 = (Rhs2116Device*)getDevice(257);
-					//	rhd2116Device1->printSampleCount();
-					//	rhd2116Device2->printSampleCount();
-					//}
-					
-					
+					device->process(frame);	
 
 				}
 
@@ -671,8 +504,6 @@ private:
 
 			oni_destroy_frame(frame);
 
-			//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-			//frameCtxTimer.fcount();
 		}
 
 	}
@@ -681,11 +512,11 @@ private:
 
 		deviceTypes.clear();
 
-		for(auto device : config.devices()){
+		for(auto device : oniDevices){
 			delete device.second;
 		}
 
-		config.devices().clear();
+		oniDevices.clear();
 		delete rhs2116Multi;
 		rhs2116Multi = nullptr;
 
@@ -693,7 +524,9 @@ private:
 
 private:
 
-	ContextConfig config;
+	Rhs2116MultiDevice * rhs2116Multi = nullptr; // TODO: this better!!
+
+	//ContextConfig config;
 
 	bool bIsContextSetup = false;
 	bool bIsAcquiring = false;
@@ -712,7 +545,7 @@ private:
 
 	volatile oni_ctx ctx = NULL;
 
-	//std::map<unsigned int, ONIDevice*> oniDevices;
+	std::map<unsigned int, ONIDevice*> oniDevices;
 	std::vector<oni_device_t> deviceTypes = {};
 
 	int host_idx = -1;
@@ -723,7 +556,6 @@ private:
 	uint32_t acq_clock_khz = -1;
 	uint32_t sys_clock_khz = -1;
 
-	//char* reg_path = NULL;
 
 };
 

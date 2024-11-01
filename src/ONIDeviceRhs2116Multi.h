@@ -32,11 +32,13 @@
 
 #pragma once
 
+class Rhs2116MultiInterface;
 
 class Rhs2116MultiDevice : public Rhs2116Device{
 
 public:
 
+	friend class Rhs2116MultiInterface;
 
 	Rhs2116MultiDevice(){
 		numProbes = 0;							// default for base ONIProbeDevice
@@ -83,33 +85,33 @@ public:
 	}
 
 	void deviceSetup(){
-		config.setup(this);
+		//config.setup(this);
 		for(auto it : devices){
 			it.second->deviceSetup();
 		}
-		config.syncSettings();
+		//config.syncSettings();
 	}
 	
 	inline void gui(){
 		
-		config.gui();
-		if(config.applySettings()){
-			LOGDEBUG("Rhs2116 Multi Device settings changed");
-			if(config.getSettings().dspCutoff != config.getChangedSettings().dspCutoff) setDspCutOff(config.getChangedSettings().dspCutoff);
-			if(config.getSettings().lowCutoff != config.getChangedSettings().lowCutoff) setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
-			if(config.getSettings().lowCutoffRecovery != config.getChangedSettings().lowCutoffRecovery) setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
-			if(config.getSettings().highCutoff != config.getChangedSettings().highCutoff) setAnalogHighCutoff(config.getChangedSettings().highCutoff);
-			if(config.getSettings().channelMap != config.getChangedSettings().channelMap){
-				config.getSettings().channelMap = config.getChangedSettings().channelMap;
-				channelMapToIDX();
-			}
-			config.syncSettings();
+		//config.gui();
+		//if(config.applySettings()){
+		//	LOGDEBUG("Rhs2116 Multi Device settings changed");
+		//	if(settings.dspCutoff != config.getChangedSettings().dspCutoff) setDspCutOff(config.getChangedSettings().dspCutoff);
+		//	if(settings.lowCutoff != config.getChangedSettings().lowCutoff) setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
+		//	if(settings.lowCutoffRecovery != config.getChangedSettings().lowCutoffRecovery) setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
+		//	if(settings.highCutoff != config.getChangedSettings().highCutoff) setAnalogHighCutoff(config.getChangedSettings().highCutoff);
+		//	if(settings.channelMap != config.getChangedSettings().channelMap){
+		//		settings.channelMap = config.getChangedSettings().channelMap;
+		//		channelMapToIDX();
+		//	}
+		//	config.syncSettings();
 
-			for(auto it : devices){
-				it.second->deviceSetup();
-			}
+		//	for(auto it : devices){
+		//		it.second->deviceSetup();
+		//	}
 
-		}
+		//}
 
 	}
 
@@ -118,23 +120,23 @@ public:
 			channelIDX = map;
 			for(size_t y = 0; y < numProbes; ++y){
 				for(size_t x = 0; x < numProbes; ++x){
-					config.getSettings().channelMap[y][x] = false;
+					settings.channelMap[y][x] = false;
 				}
 				size_t xx = channelIDX[y];
-				config.getSettings().channelMap[y][xx] = true;
+				settings.channelMap[y][xx] = true;
 			}
-			config.syncSettings();
+			//config.syncSettings();
 		}else{
 			LOGERROR("Channel IDXs size doesn't equal number of probes");
 		}
 	}
 
 	void channelMapToIDX(){
-		if(config.getSettings().channelMap.size() == 0) return;
+		if(settings.channelMap.size() == 0) return;
 		for(size_t y = 0; y < numProbes; ++y){
 			size_t idx = 0;
 			for(size_t x = 0; x < numProbes; ++x){
-				if(config.getSettings().channelMap[y][x]){
+				if(settings.channelMap[y][x]){
 					idx = x;
 					break;
 				}
@@ -150,31 +152,28 @@ public:
 	}
 
 	bool saveConfig(std::string presetName){
-		return config.save(presetName);
+		//return config.save(presetName);
+		return false;
 	}
 
 	bool loadConfig(std::string presetName){
-		bool bOk = config.load(presetName);
-		if(bOk){
-			setDspCutOff(config.getSettings().dspCutoff);
-			setAnalogLowCutoff(config.getSettings().lowCutoff);
-			setAnalogLowCutoffRecovery(config.getSettings().lowCutoffRecovery);
-			setAnalogHighCutoff(config.getSettings().highCutoff);
-			channelMapToIDX();
-			for(auto it : devices){
-				it.second->deviceSetup();
-			}
-			config.syncSettings();
-		}
-		return bOk;
+		//bool bOk = config.load(presetName);
+		//if(bOk){
+		//	setDspCutOff(settings.dspCutoff);
+		//	setAnalogLowCutoff(settings.lowCutoff);
+		//	setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
+		//	setAnalogHighCutoff(settings.highCutoff);
+		//	channelMapToIDX();
+		//	for(auto it : devices){
+		//		it.second->deviceSetup();
+		//	}
+		//	config.syncSettings();
+		//}
+		//return bOk;
+		return false;
 	}
 
-	std::vector<Rhs2116Frame> multiFrameBuffer;
-	std::vector<Rhs2116RawDataFrame> multiFrameBufferRaw;
-	
 
-	std::vector<unsigned int> expectDevceIDXNext;// = {257,256};
-	uint64_t nextDeviceCounter = 0;
 
 	inline void process(oni_frame_t* frame) override {
 
@@ -272,13 +271,20 @@ protected:
 
 private:
 
+	std::vector<Rhs2116Frame> multiFrameBuffer;
+	std::vector<Rhs2116RawDataFrame> multiFrameBufferRaw;
+
+
+	std::vector<unsigned int> expectDevceIDXNext;// = {257,256};
+	uint64_t nextDeviceCounter = 0;
+
 	std::vector<size_t> channelIDX;
 
 	bool bEnabled = false;
 
-	Rhs2116MultiDeviceConfig config;
-
 	Rhs2116Format format;
 
+	Rhs2116DeviceSettings settings;
+	//Rhs2116MultiDeviceConfig config;
 
 };

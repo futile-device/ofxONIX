@@ -29,10 +29,13 @@
 
 #pragma once
 
+class HeartBeatInterface;
 
 class HeartBeatDevice : public ONIDevice{
 
 public:
+
+	friend class HeartBeatInterface;
 
 	//HeartBeatDevice(){};
 
@@ -43,33 +46,35 @@ public:
 	};
 
 	void deviceSetup(){
-		config.setup(this);
+		//config.setup(this);
 		getFrequencyHz(true);
-		//setFrequencyHz(config.getSettings().frequencyHz);
-		config.syncSettings();
+		//setFrequencyHz(settings.frequencyHz);
+		//config.syncSettings();
 	}
 
 	inline void gui(){
-		config.gui();
-		if(config.applySettings()){
-			LOGDEBUG("HeartBeat Device settings changed");
-			setFrequencyHz(config.getChangedSettings().frequencyHz);
-			config.syncSettings();
-		}
+		//config.gui();
+		//if(config.applySettings()){
+		//	LOGDEBUG("HeartBeat Device settings changed");
+		//	setFrequencyHz(config.getChangedSettings().frequencyHz);
+		//	config.syncSettings();
+		//}
 	}
 
 	bool saveConfig(std::string presetName){
 		//getFrequencyHz(true);
-		return config.save(presetName);
+		//return config.save(presetName);
+		return false;
 	}
 
 	bool loadConfig(std::string presetName){
-		bool bOk = config.load(presetName);
-		if(bOk){
-			setFrequencyHz(config.getSettings().frequencyHz);
-			config.syncSettings();
-		}
-		return bOk;
+		//bool bOk = config.load(presetName);
+		//if(bOk){
+		//	setFrequencyHz(settings.frequencyHz);
+		//	config.syncSettings();
+		//}
+		//return bOk;
+		return false;
 	}
 
 	void reset(){
@@ -118,10 +123,10 @@ public:
 		if(bCheckRegisters){
 			unsigned int clkHz = readRegister(HEARTBEAT_REG::CLK_HZ);
 			unsigned int clkDv = readRegister(HEARTBEAT_REG::CLK_DIV);
-			config.getSettings().frequencyHz = clkHz / clkDv;
-			LOGDEBUG("Heartbeat FrequencyHz: %i", config.getSettings().frequencyHz);
+			settings.frequencyHz = clkHz / clkDv;
+			LOGDEBUG("Heartbeat FrequencyHz: %i", settings.frequencyHz);
 		}
-		return config.getSettings().frequencyHz;
+		return settings.frequencyHz;
 	}
 
 	unsigned int readRegister(const HeartBeatRegister& reg){
@@ -134,7 +139,8 @@ public:
 
 protected:
 
-	HeartBeatDeviceConfig config;
+	//HeartBeatDeviceConfig config;
+	HeartBeatDeviceSettings settings;
 
 	bool bEnabled = false;
 

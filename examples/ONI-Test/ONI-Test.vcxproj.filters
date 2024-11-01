@@ -2918,6 +2918,9 @@
     <ClInclude Include="..\..\src\ONIFrameTypes.h">
       <Filter>addons\ofxONI\src</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\ONIInterface.h">
+      <Filter>addons\ofxONI\src</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc" />

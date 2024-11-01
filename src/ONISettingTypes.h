@@ -28,12 +28,12 @@
 
 #pragma once
 
-struct ContextSettings{
-	std::vector<std::string> configs;
-};
-
-inline bool operator==(const ContextSettings& lhs, const ContextSettings& rhs){ return (lhs.configs == rhs.configs); }
-inline bool operator!=(const ContextSettings& lhs, const ContextSettings& rhs) { return !(lhs == rhs); }
+//struct ContextSettings{
+//	std::vector<std::string> configs;
+//};
+//
+//inline bool operator==(const ContextSettings& lhs, const ContextSettings& rhs){ return (lhs.configs == rhs.configs); }
+//inline bool operator!=(const ContextSettings& lhs, const ContextSettings& rhs) { return !(lhs == rhs); }
 
 
 
@@ -232,6 +232,8 @@ struct Rhs2116Bias{
 
 struct Rhs2116DeviceSettings{
 	
+	Rhs2116Format format;
+
 	Rhs2116DspCutoff dspCutoff = Off;
 
 	Rhs2116AnalogLowCutoff lowCutoff = Low100mHz;
@@ -239,6 +241,17 @@ struct Rhs2116DeviceSettings{
 	Rhs2116AnalogHighCutoff highCutoff = High10000Hz;
 
 	std::vector< std::vector<bool> > channelMap;
+
+	// copy assignment (copy-and-swap idiom)
+	Rhs2116DeviceSettings& Rhs2116DeviceSettings::operator=(Rhs2116DeviceSettings other) noexcept{
+		std::swap(format, other.format);
+		std::swap(dspCutoff, other.dspCutoff);
+		std::swap(lowCutoff, other.lowCutoff);
+		std::swap(lowCutoffRecovery, other.lowCutoffRecovery);
+		std::swap(highCutoff, other.highCutoff);
+		std::swap(channelMap, other.channelMap);
+		return *this;
+	}
 
 };
 

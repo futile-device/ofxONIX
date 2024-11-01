@@ -59,3 +59,25 @@ static inline uint64_t uint16_to_bin16(uint16_t u) {
 	}
 	return sum;
 }
+
+static const std::string configPath = "config/";
+
+static std::string getPresetFilePath(std::string presetName, std::string deviceName){
+	std::vector<std::string> deviceFolderNameParts = ofSplitString(deviceName, " ");
+	ostringstream os;
+	os << configPath;
+	for(std::string part : deviceFolderNameParts) os << part;
+	ofDirectory dir;
+	dir.listDir(ofToDataPath(os.str())); // check if the dir exists
+	if(!dir.exists()) {
+		bool bOk = dir.createDirectory(ofToDataPath(os.str()));
+		if(bOk){
+			LOGINFO("Created preset directory: %s", os.str().c_str());
+		}else{
+			LOGINFO("FAILED to create preset directory: %s", os.str().c_str());
+		}
+	}
+	os << "/" << presetName;
+	fu::debug << os.str() << fu::endl;
+	return ofToDataPath(os.str());
+}

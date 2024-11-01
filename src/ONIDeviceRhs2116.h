@@ -30,11 +30,15 @@
 
 #pragma once
 
-
+class Rhs2116Interface;
+class Rhs2116MultiInterface;
 
 class Rhs2116Device : public ONIProbeDevice{
 
 public:
+
+	friend class Rhs2116Interface;
+	friend class Rhs2116MultiInterface;
 
 	Rhs2116Device(){
 		numProbes = 16;							// default for base ONIProbeDevice
@@ -46,12 +50,12 @@ public:
 	};
 
 	void deviceSetup(){
-		config.setup(this);
+		//config.setup(this);
 		getDspCutOff(true);
 		getAnalogLowCutoff(true);
 		getAnalogLowCutoffRecovery(true);
 		getAnalogHighCutoff(true);
-		config.syncSettings();
+		//config.syncSettings();
 	}
 
 	bool setEnabled(const bool& b){
@@ -76,9 +80,9 @@ public:
 	Rhs2116AnalogLowCutoff getAnalogLowCutoff(const bool& bCheckRegisters = true){
 		if(bCheckRegisters){
 			unsigned int bw2 = readRegister(RHS2116_REG::BW2);
-			config.getSettings().lowCutoff = getLowCutoffFromReg(bw2);
+			settings.lowCutoff = getLowCutoffFromReg(bw2);
 		}
-		return config.getSettings().lowCutoff;
+		return settings.lowCutoff;
 	}
 
 	bool setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff lowcut){
@@ -92,9 +96,9 @@ public:
 	Rhs2116AnalogLowCutoff getAnalogLowCutoffRecovery(const bool& bCheckRegisters = true){
 		if(bCheckRegisters){
 			unsigned int bw3 = readRegister(RHS2116_REG::BW3);
-			config.getSettings().lowCutoffRecovery = getLowCutoffFromReg(bw3);
+			settings.lowCutoffRecovery = getLowCutoffFromReg(bw3);
 		}
-		return config.getSettings().lowCutoffRecovery;
+		return settings.lowCutoffRecovery;
 	}
 
 	bool setAnalogHighCutoff(Rhs2116AnalogHighCutoff hicut){
@@ -115,9 +119,9 @@ public:
 			unsigned int bw0 = readRegister(RHS2116_REG::BW0);
 			unsigned int bw1 = readRegister(RHS2116_REG::BW1);
 			unsigned int fast = readRegister(RHS2116_REG::FASTSETTLESAMPLES);
-			config.getSettings().highCutoff = getHighCutoffFromReg(bw0, bw1, fast);
+			settings.highCutoff = getHighCutoffFromReg(bw0, bw1, fast);
 		}
-		return config.getSettings().highCutoff;
+		return settings.highCutoff;
 	}
 
 	bool setFormat(Rhs2116Format format){
@@ -130,14 +134,14 @@ public:
 	Rhs2116Format getFormat(const bool& bCheckRegisters = true){
 		if(bCheckRegisters){
 			unsigned int uformat = readRegister(RHS2116_REG::FORMAT);
-			format = *(reinterpret_cast<Rhs2116Format*>(&uformat));
-			if(format.dspEnable == 0){
-				config.getSettings().dspCutoff = Rhs2116DspCutoff::Off; // is this a bug? that seems to be default status
+			settings.format = *(reinterpret_cast<Rhs2116Format*>(&uformat));
+			if(settings.format.dspEnable == 0){
+				settings.dspCutoff = Rhs2116DspCutoff::Off; // is this a bug? that seems to be default status
 			}else{
-				config.getSettings().dspCutoff = (Rhs2116DspCutoff)format.dspCutoff;
+				settings.dspCutoff = (Rhs2116DspCutoff)settings.format.dspCutoff;
 			}
 		}
-		return format;
+		return settings.format;
 	}
 
 	bool setDspCutOff(Rhs2116DspCutoff cutoff){
@@ -155,42 +159,38 @@ public:
 
 	const Rhs2116DspCutoff& getDspCutOff(const bool& bCheckRegisters = true){
 		getFormat(bCheckRegisters);
-		return config.getSettings().dspCutoff;
+		return settings.dspCutoff;
 	}
 	
 	inline void gui(){
-		
-		config.gui();
-		if(config.applySettings() || bForceGuiUpdate){
-			LOGDEBUG("Rhs2116 Device settings changed");
-			bForceGuiUpdate = false;
-			if(config.getSettings().dspCutoff != config.getChangedSettings().dspCutoff) setDspCutOff(config.getChangedSettings().dspCutoff);
-			if(config.getSettings().lowCutoff != config.getChangedSettings().lowCutoff) setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
-			if(config.getSettings().lowCutoffRecovery != config.getChangedSettings().lowCutoffRecovery) setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
-			if(config.getSettings().highCutoff != config.getChangedSettings().highCutoff) setAnalogHighCutoff(config.getChangedSettings().highCutoff);
-			config.syncSettings();
-		}
-
-
-
-		
-		
+		//config.gui();
+		//if(config.applySettings() || bForceGuiUpdate){
+		//	LOGDEBUG("Rhs2116 Device settings changed");
+		//	bForceGuiUpdate = false;
+			//if(settings.dspCutoff != config.getChangedSettings().dspCutoff) setDspCutOff(config.getChangedSettings().dspCutoff);
+			//if(settings.lowCutoff != config.getChangedSettings().lowCutoff) setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
+			//if(settings.lowCutoffRecovery != config.getChangedSettings().lowCutoffRecovery) setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
+			//if(settings.highCutoff != config.getChangedSettings().highCutoff) setAnalogHighCutoff(config.getChangedSettings().highCutoff);
+		//	config.syncSettings();
+		//}
 	}
 
 	bool saveConfig(std::string presetName){
-		return config.save(presetName);
+		//return config.save(presetName);
+		return false;
 	}
 
 	bool loadConfig(std::string presetName){
-		bool bOk = config.load(presetName);
-		if(bOk){
-			setDspCutOff(config.getSettings().dspCutoff);
-			setAnalogLowCutoff(config.getSettings().lowCutoff);
-			setAnalogLowCutoffRecovery(config.getSettings().lowCutoffRecovery);
-			setAnalogHighCutoff(config.getSettings().highCutoff);
-			config.syncSettings();
-		}
-		return bOk;
+		//bool bOk = config.load(presetName);
+		//if(bOk){
+		//	setDspCutOff(settings.dspCutoff);
+		//	setAnalogLowCutoff(settings.lowCutoff);
+		//	setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
+		//	setAnalogHighCutoff(settings.highCutoff);
+		//	config.syncSettings();
+		//}
+		//return bOk;
+		return false;
 	}
 
 	inline void process(oni_frame_t* frame){
@@ -256,35 +256,17 @@ protected:
 
 
 
-private:
-
-	//uint64_t hubClockFirst = -1;
+protected:
 
 	bool bForceGuiUpdate = false;
 
-	//std::vector<Rhs2116DataFrame> rawDataFrames;
-	//std::vector<Rhs2116DataFrame> drawDataFrames;
-
-	//size_t currentBufferIDX = 0;
-	//size_t currentDrawBufferIDX = 0;
-
-	//size_t lastBufferIDX = 0;
-
-	
-
 	bool bEnabled = false;
 
-	Rhs2116DeviceConfig config;
-
-	//size_t bufferSize = 100;
-	//size_t drawBufferSize = 0;
-	//size_t drawStride = 100;
+	//Rhs2116DeviceConfig config;
 	
-	Rhs2116Format format;
+	
 
-	//Rhs2116AnalogLowCutoff lowCutoff;
-	//Rhs2116AnalogLowCutoff lowCutoffRecovery;
-	//Rhs2116AnalogHighCutoff highCutoff;
+	Rhs2116DeviceSettings settings;
 
 };
 

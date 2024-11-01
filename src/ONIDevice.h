@@ -60,10 +60,10 @@ public:
 
 	virtual ~ONIFrameProcessor(){};
 
-	virtual inline void process(ONIFrame& frame) = 0;
 	virtual inline void process(oni_frame_t* frame) = 0;
-
-	void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){
+	virtual inline void process(ONIFrame& frame) = 0;
+	
+	inline void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
 		std::map<std::string, ONIFrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
 		auto it = processors.find(processorName);
@@ -71,11 +71,11 @@ public:
 			LOGINFO("Adding processor %s", processorName.c_str());
 			processors[processorName] = processor;
 		}else{
-			LOGALERT("Processor %s already exists", processorName.c_str());
+			//LOGALERT("Processor %s already exists", processorName.c_str());
 		}
 	}
 
-	void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){
+	inline void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
 		std::map<std::string, ONIFrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
 		auto it = processors.find(processorName);

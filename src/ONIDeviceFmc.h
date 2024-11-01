@@ -29,9 +29,13 @@
 
 #pragma once
 
+class FmcInterface;
+
 class FmcDevice : public ONIDevice{
 
 public:
+
+	friend class FmcInterface;
 
 	//FmcDevice(){};
 
@@ -47,33 +51,35 @@ public:
 	//}
 
 	void deviceSetup(){
-		config.setup(this);
+		//config.setup(this);
 		getPortVoltage(true);
-		//setPortVoltage(config.getSettings().voltage);
-		config.syncSettings();
+		//setPortVoltage(settings.voltage);
+		//config.syncSettings();
 	}
 
 	inline void gui(){
-		config.gui();
-		if(config.applySettings()){
-			LOGDEBUG("FMC Device settings changed");
-			setPortVoltage(config.getChangedSettings().voltage);
-			config.syncSettings();
-		}
+		//config.gui();
+		//if(config.applySettings()){
+		//	LOGDEBUG("FMC Device settings changed");
+		//	setPortVoltage(config.getChangedSettings().voltage);
+		//	config.syncSettings();
+		//}
 	}
 
 	bool saveConfig(std::string presetName){
 		//getPortVoltage(true);
-		return config.save(presetName);
+		//return config.save(presetName);
+		return false;
 	}
 
 	bool loadConfig(std::string presetName){
-		bool bOk = config.load(presetName);
-		if(bOk){
-			setPortVoltage(config.getSettings().voltage);
-			config.syncSettings();
-		}
-		return bOk;
+		//bool bOk = config.load(presetName);
+		//if(bOk){
+		//	setPortVoltage(settings.voltage);
+		//	config.syncSettings();
+		//}
+		//return bOk;
+		return false;
 	}
 
 	inline void process(oni_frame_t* frame){
@@ -118,8 +124,8 @@ public:
 	}
 
 	const float& getPortVoltage(const bool& bCheckRegisters = true){
-		if(bCheckRegisters ||  config.getSettings().voltage == 0) config.getSettings().voltage = readRegister(FMC_REG::PORTVOLTAGE) / 10.0f;
-		return config.getSettings().voltage;
+		if(bCheckRegisters ||  settings.voltage == 0) settings.voltage = readRegister(FMC_REG::PORTVOLTAGE) / 10.0f;
+		return settings.voltage;
 	}
 
 	unsigned int readRegister(const FmcRegister& reg){
@@ -132,7 +138,8 @@ public:
 
 protected:
 
-	FmcDeviceConfig config;
+	//FmcDeviceConfig config;
+	FmcDeviceSettings settings;
 
 	bool bLinkState = false;
 	bool bEnabled = false;

@@ -98,27 +98,27 @@ protected:
 
 };
 
-template<typename ONIDeviceTypeSettings>
-class ONIContextConfig : public ONIConfig<ONIDeviceTypeSettings>{
-
-public:
-
-	virtual ~ONIContextConfig(){};
-
-	//virtual void setup(std::vector<ONIDevice*>& devices){ this->devices = devices; };
-
-	std::map<unsigned int, ONIDevice*>& devices(){ return oniDevices; }
-
-protected:
-
-	std::map<unsigned int, ONIDevice*> oniDevices;
-
-};
+//template<typename ONIDeviceTypeSettings>
+//class ONIContextConfig : public ONIConfig<ONIDeviceTypeSettings>{
+//
+//public:
+//
+//	virtual ~ONIContextConfig(){};
+//
+//	//virtual void setup(std::vector<ONIDevice*>& devices){ this->devices = devices; };
+//
+//	std::map<unsigned int, ONIDevice*>& devices(){ return oniDevices; }
+//
+//protected:
+//
+//	std::map<unsigned int, ONIDevice*> oniDevices;
+//
+//};
 
 
 #include "ONIConfigImGui.h"
 
 // later we can set which device config to use with specific #define for USE_IMGUI etc
-typedef _ContextConfig ContextConfig;
+//typedef _ContextConfig ContextConfig;
 typedef _FmcDeviceConfig FmcDeviceConfig;
 typedef _HeartBeatDeviceConfig HeartBeatDeviceConfig;
