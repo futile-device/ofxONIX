@@ -899,8 +899,6 @@
     <ClInclude Include="..\..\..\..\addons\ofxImPlot\src\ofxImPlot.h" />
     <ClInclude Include="..\..\..\..\addons\ofxImPlot\libs\implot\implot.h" />
     <ClInclude Include="..\..\..\..\addons\ofxImPlot\libs\implot\implot_internal.h" />
-    <ClInclude Include="..\..\..\..\addons\ofxONI\src\ONIConfig.h" />
-    <ClInclude Include="..\..\..\..\addons\ofxONI\src\ONIConfigImGui.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONI\src\ONIContext.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONI\src\ONIDataBuffer.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONI\src\ONIDevice.h" />

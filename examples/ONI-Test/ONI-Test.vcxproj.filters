@@ -2858,12 +2858,6 @@
     <ClInclude Include="..\..\..\..\addons\ofxImPlot\libs\implot\implot_internal.h">
       <Filter>addons\ofxImPlot\libs\implot</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\addons\ofxONI\src\ONIConfig.h">
-      <Filter>addons\ofxONI\src</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\addons\ofxONI\src\ONIConfigImGui.h">
-      <Filter>addons\ofxONI\src</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\addons\ofxONI\src\ONIContext.h">
       <Filter>addons\ofxONI\src</Filter>
     </ClInclude>

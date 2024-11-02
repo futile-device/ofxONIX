@@ -45,7 +45,7 @@ public:
 	}
 
 	size_t resize(const size_t& size, const size_t& step){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		buffer.clear();
 		buffer.resize(size);
 		this->bufferSampleRateStep = step;
@@ -57,6 +57,7 @@ public:
 	size_t resize(const int& bufferSizeMillis, const int& bufferStepMillis, const size_t& sampleFrequencyHz){
 		long double framesPerMillis = 1.0 / sampleFrequencyHz * 1000.0;
 		size_t bufferStepFrameSize = bufferStepMillis / framesPerMillis;
+		if(bufferStepMillis == 0) bufferStepFrameSize = 1;
 		size_t bufferFrameSizeRequired = bufferSizeMillis / framesPerMillis / bufferStepFrameSize;
 		return resize(bufferFrameSizeRequired, bufferStepFrameSize);
 	}
@@ -66,7 +67,7 @@ public:
 	}
 
 	inline void push(const DataType& data){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		if(bufferSampleCount % bufferSampleRateStep == 0){
 			buffer[currentBufferIndex] = data;
 			currentBufferIndex = (currentBufferIndex + 1) % buffer.size();
@@ -76,29 +77,29 @@ public:
 	}
 
 	inline bool isFrameNew(){ // should I really auto reset? means it can only be called once per cycle
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		bool b = bIsFrameNew;
 		bIsFrameNew = false;
 		return b;
 	}
 
 	inline DataType& at(const size_t& index){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		return buffer[index];
 	}
 
 	inline DataType& getCurrentBuffer(){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		return buffer[currentBufferIndex];
 	}
 
 	inline DataType& getLastBuffer(){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		return buffer[getLastIndex()];
 	}
 
 	inline DataType& getNextBuffer(){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		return buffer[nextIDX()];
 	}
 
@@ -111,27 +112,27 @@ public:
 	}
 
 	inline size_t getOffsetIndex(const size_t& offset){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		return (currentBufferIndex + offset) % buffer.size();
 	}
 
 	inline std::vector<DataType>& getBuffer(){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		return buffer;
 	}
 
 	inline size_t getCurrentIndex(){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		return currentBufferIndex;
 	}
 
 	inline size_t getBufferCount(){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		return bufferSampleCount;
 	}
 
 	inline size_t size(){
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 		return buffer.size();
 	}
 

@@ -22,7 +22,6 @@
 #include <syncstream>
 
 
-#include "ONIConfig.h"
 #include "ONIDevice.h"
 #include "ONIRegister.h"
 #include "ONISettingTypes.h"
@@ -78,7 +77,7 @@ public:
 		std::string processorName = deviceName + " MULTI PROC";
 		device->subscribeProcessor(processorName, FrameProcessorType::PRE_FRAME_PROCESSOR, this);
 		numProbes += device->getNumProbes();
-		channelIDX.resize(numProbes);
+		resetChannelMap();
 		expectDevceIDXNext.push_back(device->getDeviceTableID());
 		multiFrameBuffer.resize(multiFrameBuffer.size() + 1);
 		multiFrameBufferRaw.resize(multiFrameBufferRaw.size() + 1);
@@ -228,14 +227,29 @@ public:
 		return settings.dspCutoff;
 	}
 
+	void resetChannelMap(){
 
-	void setChannelMap(const std::vector<size_t>& map){
-		if(settings.channelMap.size() != map.size()){
-			settings.channelMap.resize(numProbes);
-			for(size_t y = 0; y < numProbes; ++y){
-				settings.channelMap[y].resize(numProbes);
+		settings.channelMap.clear();
+		settings.channelMap.resize(numProbes);
+		for(size_t y = 0; y < numProbes; ++y){
+			settings.channelMap[y].resize(numProbes);
+			for(size_t x = 0; x < numProbes; ++x){
+				settings.channelMap[y][x] = 0;
+				if(x == y) settings.channelMap[y][x] = 1;
 			}
 		}
+
+		channelMapToIDX();
+
+	}
+
+	void setChannelMap(const std::vector<size_t>& map){
+		//if(settings.channelMap.size() != map.size()){
+		//	settings.channelMap.resize(numProbes);
+		//	for(size_t y = 0; y < numProbes; ++y){
+		//		settings.channelMap[y].resize(numProbes);
+		//	}
+		//}
 		if(map.size() == numProbes){
 			channelIDX = map;
 			for(size_t y = 0; y < numProbes; ++y){
@@ -252,6 +266,7 @@ public:
 	}
 
 	void channelMapToIDX(){
+		if(channelIDX.size() == 0) return;
 		if(settings.channelMap.size() == 0) return;
 		for(size_t y = 0; y < numProbes; ++y){
 			size_t idx = 0;

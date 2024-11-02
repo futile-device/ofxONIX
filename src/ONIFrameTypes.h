@@ -205,18 +205,19 @@ public:
 		return *this;
 	}
 
-	inline bool operator==(const Rhs2116MultiFrame& other){ 
-		for(size_t probe = 0; probe < numProbes; ++probe){
-			if(ac_uV[probe] != other.ac_uV[probe] || dc_mV[probe] != other.ac_uV[probe]){
-				return false;
-			}
-		}
-		return (numProbes == other.numProbes && deltaTime == other.deltaTime);
-	}
-	inline bool operator!=(const Rhs2116MultiFrame& other) { return !(this == &other); }
+
 
 };
 
+inline bool operator==(const Rhs2116MultiFrame& lhs, const Rhs2116MultiFrame& rhs){ 
+	for(size_t probe = 0; probe < lhs.getNumProbes(); ++probe){
+		if(lhs.ac_uV[probe] != rhs.ac_uV[probe] || lhs.dc_mV[probe] != rhs.ac_uV[probe]){
+			return false;
+		}
+	}
+	return (lhs.getNumProbes() == rhs.getNumProbes() && lhs.getDeltaTime() == rhs.getDeltaTime());
+}
+inline bool operator!=(const Rhs2116MultiFrame& lhs, const Rhs2116MultiFrame& rhs) { return !(lhs == rhs); }
 
 struct acquisition_clock_compare {
 	inline bool operator() (const ONIFrame& lhs, const ONIFrame& rhs){

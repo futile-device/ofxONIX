@@ -21,7 +21,7 @@
 #include <mutex>
 #include <syncstream>
 
-#include "ONIConfig.h"
+
 #include "ONIDevice.h"
 #include "ONIDeviceFmc.h"
 #include "ONIDeviceHeartBeat.h"
@@ -30,7 +30,6 @@
 #include "ONIRegister.h"
 #include "ONISettingTypes.h"
 #include "ONIUtility.h"
-
 
 
 #pragma once

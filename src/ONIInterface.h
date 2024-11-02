@@ -338,7 +338,68 @@ public:
 		}
 
 		if(ImGui::InputInt("Buffer Sample Time (ms)", &bufferSampleTimeMillis)){
+			//if(bufferSampleTimeMillis == 0) bufferSampleTimeMillis = 1;
 			resetBuffers();
+		}
+
+		ImGui::Separator();
+
+		if(ImGui::Button("Channel Map")){
+			ImGui::OpenPopup("Channel Map");
+		}
+
+		//ImGui::SameLine();
+
+		//if(ImGui::Button("Save Config")){
+		//	save("default");
+		//}
+
+		bool unused = true;
+		bool bChannelMapNeedsUpdate = false;
+		if(ImGui::BeginPopupModal("Channel Map", &unused, ImGuiWindowFlags_AlwaysAutoResize)){
+
+			const size_t& numProbes = rhsm.getNumProbes();
+
+			ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5, 0.5));
+			for(size_t y = 0; y < numProbes; ++y){
+				for(size_t x = 0; x < numProbes; ++x){
+					if (x > 0) ImGui::SameLine();
+					ImGui::PushID(y * numProbes + x);
+					char buf[16];
+					std::sprintf(buf, "%02dx%02d", x, y % 16);
+					if (ImGui::Selectable(buf, nextSettings.channelMap[y][x] != 0, ImGuiSelectableFlags_NoAutoClosePopups, ImVec2(20, 20))){
+						size_t swapIDXx, swapIDXy = 0;
+						for(size_t xx = 0; xx < numProbes; ++xx) {
+							if(nextSettings.channelMap[y][xx]){
+								swapIDXx = xx;  
+								LOGDEBUG("From (x,y) (%i,%i) to (%i,%i)", y, swapIDXx, y, x);
+							}
+							nextSettings.channelMap[y][xx] = false; // toggle off everything in this row
+						}
+						for(size_t yy = 0; yy < numProbes; ++yy){
+							if(nextSettings.channelMap[yy][x]) {
+								swapIDXy = yy;
+								LOGDEBUG("Switch (x,y) (%i,%i) to (%i,%i)", swapIDXy, x, swapIDXy, swapIDXx);
+							}
+							nextSettings.channelMap[yy][x] = false; // toggle off everything in this col
+						}
+						nextSettings.channelMap[y][x] = true;
+						nextSettings.channelMap[swapIDXy][swapIDXx] = true;
+						bChannelMapNeedsUpdate = true;
+
+					}
+					ImGui::PopID();
+				}
+			}
+			ImGui::PopStyleVar();
+			ImGui::Separator();
+			if (ImGui::Button("Done", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); } ImGui::SameLine();
+			if (ImGui::Button("Reset", ImVec2(120, 0))) { 
+				rhsm.resetChannelMap(); 
+				nextSettings.channelMap = rhsm.settings.channelMap;
+				bChannelMapNeedsUpdate = true; 
+			};
+			ImGui::EndPopup();
 		}
 
 		if(nextSettings.dspCutoff != rhsm.settings.dspCutoff) rhsm.setDspCutOff(nextSettings.dspCutoff);
@@ -346,29 +407,34 @@ public:
 		if(nextSettings.lowCutoffRecovery != rhsm.settings.lowCutoffRecovery) rhsm.setAnalogLowCutoffRecovery(nextSettings.lowCutoffRecovery);
 		if(nextSettings.highCutoff != rhsm.settings.highCutoff) rhsm.setAnalogHighCutoff(nextSettings.highCutoff);
 
+		if(bChannelMapNeedsUpdate){
+			rhsm.settings.channelMap = nextSettings.channelMap; 
+			rhsm.channelMapToIDX();
+		}
+
 		if(rhsm.settings != nextSettings) rhsm.settings = nextSettings;
 
 		resetProbeData(rhsm.getNumProbes(), buffer.size());
 
-		//mutex.lock();
+		mutex.lock();
 		bufferPlot(probeData);
 		probePlot(probeData);
-		//mutex.unlock();
+		mutex.unlock();
 
 		ImGui::PopID();
 
 	}
-
+	std::vector<Rhs2116MultiFrame> lastFrameBuffer;
 	void processProbeData(){
 
 		while(bThread){
 
-			if(true){
+			if(buffer.isFrameNew()){ // is this helping at all? Or just locking up threads?!
 
 				std::vector<Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
 				std::sort(frameBuffer.begin(), frameBuffer.end(), acquisition_clock_compare());
 
-				//mutex.lock();
+				mutex.lock();
 
 				size_t numProbes = probeData.acProbeStats.size();
 				size_t frameCount = frameBuffer.size();
@@ -410,10 +476,12 @@ public:
 
 				}
 
-				//mutex.unlock();
+				mutex.unlock();
+			}else{
+				std::this_thread::yield(); // if we don't yield then the thread spins too fast while waiting for a buffer.isFrameNew()
 			}
 
-			//ofSleepMillis(bufferProcessDelay);
+			
 
 		}
 
@@ -517,13 +585,13 @@ public:
 
 		bufferSizeTimeMillis = std::clamp(bufferSizeTimeMillis, 1, 60000);
 		bufferSampleTimeMillis = std::clamp(bufferSampleTimeMillis, 0, bufferSizeTimeMillis);
-		buffer.resize(bufferSizeTimeMillis, bufferSampleTimeMillis, 30000);
+		buffer.resize(bufferSizeTimeMillis, bufferSampleTimeMillis, sampleFrequencyHz);
 
 	}
 
 	void resetProbeData(const size_t& numProbes, const size_t& bufferSizeFrames){
 
-		//const std::lock_guard<std::mutex> lock(mutex);
+		const std::lock_guard<std::mutex> lock(mutex);
 
 		if(probeData.acProbeVoltages.size() == numProbes){
 			if(probeData.acProbeVoltages[0].size() == bufferSizeFrames){
@@ -559,7 +627,6 @@ protected:
 
 	int bufferSizeTimeMillis = 5000;
 	int bufferSampleTimeMillis = 10;
-	//int bufferProcessDelay = 0;
 
 	long double sampleFrequencyHz = 30000; //30.1932367151e3;
 
@@ -715,6 +782,7 @@ public:
 			//rhs2116Multi->saveConfig("default");
 			//context.rhs2116Multi->loadConfig("default");
 			std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
+			//context.rhs2116Multi->resetChannelMap();
 			context.rhs2116Multi->setChannelMap(t);
 			//rhs2116Multi->saveConfig("default");
 			//startAcquisition();

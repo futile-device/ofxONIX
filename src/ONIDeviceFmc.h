@@ -21,7 +21,7 @@
 #include <mutex>
 #include <syncstream>
 
-#include "ONIConfig.h"
+
 #include "ONIDevice.h"
 #include "ONIRegister.h"
 #include "ONISettingTypes.h"
