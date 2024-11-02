@@ -27,7 +27,7 @@
 
 #pragma once
 
-
+/*
 template<typename ONIDeviceTypeSettings>
 class ONIConfig{
 
@@ -122,3 +122,4 @@ protected:
 //typedef _ContextConfig ContextConfig;
 typedef _FmcDeviceConfig FmcDeviceConfig;
 typedef _HeartBeatDeviceConfig HeartBeatDeviceConfig;
+*/

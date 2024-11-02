@@ -40,68 +40,114 @@ public:
 		resize(size);
 	}
 
-	void resize(const size_t& size){
-		buffer.clear();
-		buffer.resize(size);
-		currentIDX = 0;
-	}
-
 	inline const std::string& getName(){
 		return name;
 	}
 
-	inline void push(const DataType& data){
-		buffer[currentIDX] = data;
-		increaseIDX();
+	size_t resize(const size_t& size, const size_t& step){
+		//const std::lock_guard<std::mutex> lock(mutex);
+		buffer.clear();
+		buffer.resize(size);
+		this->bufferSampleRateStep = step;
+		currentBufferIndex = 0;
+		bufferSampleCount = 0;
+		return buffer.size();
 	}
 
-	DataType& at(const size_t& index){
+	size_t resize(const int& bufferSizeMillis, const int& bufferStepMillis, const size_t& sampleFrequencyHz){
+		long double framesPerMillis = 1.0 / sampleFrequencyHz * 1000.0;
+		size_t bufferStepFrameSize = bufferStepMillis / framesPerMillis;
+		size_t bufferFrameSizeRequired = bufferSizeMillis / framesPerMillis / bufferStepFrameSize;
+		return resize(bufferFrameSizeRequired, bufferStepFrameSize);
+	}
+
+	void clear(){
+		resize(0, 0);
+	}
+
+	inline void push(const DataType& data){
+		//const std::lock_guard<std::mutex> lock(mutex);
+		if(bufferSampleCount % bufferSampleRateStep == 0){
+			buffer[currentBufferIndex] = data;
+			currentBufferIndex = (currentBufferIndex + 1) % buffer.size();
+			bIsFrameNew = true;
+		}
+		++bufferSampleCount;
+	}
+
+	inline bool isFrameNew(){ // should I really auto reset? means it can only be called once per cycle
+		//const std::lock_guard<std::mutex> lock(mutex);
+		bool b = bIsFrameNew;
+		bIsFrameNew = false;
+		return b;
+	}
+
+	inline DataType& at(const size_t& index){
+		//const std::lock_guard<std::mutex> lock(mutex);
 		return buffer[index];
 	}
 
-	DataType& currentBuffer(){
-		return buffer[currentIDX];
+	inline DataType& getCurrentBuffer(){
+		//const std::lock_guard<std::mutex> lock(mutex);
+		return buffer[currentBufferIndex];
 	}
 
-	DataType& lastBuffer(){
-		return buffer[lastIDX()];
+	inline DataType& getLastBuffer(){
+		//const std::lock_guard<std::mutex> lock(mutex);
+		return buffer[getLastIndex()];
 	}
 
-	DataType& nextBuffer(){
+	inline DataType& getNextBuffer(){
+		//const std::lock_guard<std::mutex> lock(mutex);
 		return buffer[nextIDX()];
 	}
 
-	inline size_t increaseIDX(){
-		currentIDX = (currentIDX + 1) % buffer.size();
-		return currentIDX;
+	inline size_t getLastIndex(){
+		return getOffsetIndex(-1);
 	}
 
-	inline size_t lastIDX(){
-		return offsetIDX(-1);
+	inline size_t getNextIndex(){
+		return getOffsetIndex(+1);
 	}
 
-	inline size_t nextIDX(){
-		return offsetIDX(+1);
-	}
-
-	inline size_t offsetIDX(const size_t& offset){
-		return (currentIDX + offset) % buffer.size();
+	inline size_t getOffsetIndex(const size_t& offset){
+		//const std::lock_guard<std::mutex> lock(mutex);
+		return (currentBufferIndex + offset) % buffer.size();
 	}
 
 	inline std::vector<DataType>& getBuffer(){
+		//const std::lock_guard<std::mutex> lock(mutex);
 		return buffer;
 	}
 
-	inline const size_t& size(){
+	inline size_t getCurrentIndex(){
+		//const std::lock_guard<std::mutex> lock(mutex);
+		return currentBufferIndex;
+	}
+
+	inline size_t getBufferCount(){
+		//const std::lock_guard<std::mutex> lock(mutex);
+		return bufferSampleCount;
+	}
+
+	inline size_t size(){
+		//const std::lock_guard<std::mutex> lock(mutex);
 		return buffer.size();
 	}
 
 protected:
 
+	std::mutex mutex;
+
 	std::string name = "UNKNOWN";
 
 	std::vector<DataType> buffer;
-	size_t currentIDX = 0;
+
+	size_t currentBufferIndex = 0;
+	size_t bufferSampleCount = 0;
+	size_t bufferSampleRateStep = 0;
+
+	bool bIsFrameNew = false;
 
 };
 

@@ -3,7 +3,7 @@
 //
 //  Created by Matt Gingold on 13.09.2024.
 //
-
+/*
 #include "oni.h"
 #include "onix.h"
 
@@ -455,17 +455,8 @@ public:
 
 		int bufferSizeSeconds = bufferSize / sampleFrequencyHz;
 
-		if(ImGui::InputInt("Buffer Size (s)", &bufferSizeSeconds)){
-			bufferSizeSeconds = std::clamp(bufferSizeSeconds, 0, 10);
-			bufferSize = sampleFrequencyHz * bufferSizeSeconds;
-			//LOGINFO("Resize frame buffer: %i", bufferSize);
-			resetBuffer();
-		}
-		
-		if(ImGui::InputInt("Buffer Step Size (frames)", &bufferStepSize)){
-			bufferStepSize = std::clamp(bufferStepSize, 1, (int)(sampleFrequencyHz * bufferSizeSeconds));
-			resetBuffer();
-		}
+
+
 		
 
 		if(ImGui::InputInt("Buffer Process Delay (ms)", &bufferProcessDelay)){
@@ -680,7 +671,7 @@ public:
 		const std::lock_guard<std::mutex> lock(mutex);
 		bStartedAcquire = false;
 		size_t frameCount = bufferSize / bufferStepSize;
-		buffer.resize(frameCount);
+		buffer.resize(frameCount, 0);
 		bufferFrameCounter = 0;
 		frameTimer.start<fu::millis>(bufferProcessDelay);
 
@@ -817,3 +808,5 @@ typedef _FmcDeviceConfig FmcDeviceConfig;
 typedef _HeartBeatDeviceConfig HeartBeatDeviceConfig;
 typedef _Rhs2116DeviceConfig Rhs2116DeviceConfig;
 typedef _Rhs2116MultiDeviceConfig Rhs2116MultiDeviceConfig;
+
+*/

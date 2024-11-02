@@ -57,30 +57,30 @@ public:
 		//config.syncSettings();
 	}
 
-	inline void gui(){
-		//config.gui();
-		//if(config.applySettings()){
-		//	LOGDEBUG("FMC Device settings changed");
-		//	setPortVoltage(config.getChangedSettings().voltage);
-		//	config.syncSettings();
-		//}
-	}
+	//inline void gui(){
+	//	//config.gui();
+	//	//if(config.applySettings()){
+	//	//	LOGDEBUG("FMC Device settings changed");
+	//	//	setPortVoltage(config.getChangedSettings().voltage);
+	//	//	config.syncSettings();
+	//	//}
+	//}
 
-	bool saveConfig(std::string presetName){
-		//getPortVoltage(true);
-		//return config.save(presetName);
-		return false;
-	}
+	//bool saveConfig(std::string presetName){
+	//	//getPortVoltage(true);
+	//	//return config.save(presetName);
+	//	return false;
+	//}
 
-	bool loadConfig(std::string presetName){
-		//bool bOk = config.load(presetName);
-		//if(bOk){
-		//	setPortVoltage(settings.voltage);
-		//	config.syncSettings();
-		//}
-		//return bOk;
-		return false;
-	}
+	//bool loadConfig(std::string presetName){
+	//	//bool bOk = config.load(presetName);
+	//	//if(bOk){
+	//	//	setPortVoltage(settings.voltage);
+	//	//	config.syncSettings();
+	//	//}
+	//	//return bOk;
+	//	return false;
+	//}
 
 	inline void process(oni_frame_t* frame){
 		//const std::lock_guard<std::mutex> lock(mutex);

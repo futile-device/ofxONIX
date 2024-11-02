@@ -210,39 +210,14 @@ public:
 
 		Rhs2116Device& rhs = *reinterpret_cast<Rhs2116Device*>(&device);
 
-		//rhs.subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+		rhs.subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
 
 		nextSettings = rhs.settings;
 
 		ImGui::PushID(rhs.getName().c_str());
 		ImGui::Text(rhs.getName().c_str());
 
-		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
-		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
-		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
-
-		ImGui::SetNextItemWidth(200);
-		int dspFormatItem = rhs.settings.dspCutoff; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
-		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
-
-
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffItem = rhs.settings.lowCutoff; //getAnalogLowCutoff(false);
-		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
-
-
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffRecoveryItem = rhs.settings.lowCutoffRecovery; //getAnalogLowCutoffRecovery(false);
-		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
-
-		ImGui::SetNextItemWidth(200);
-		int highCutoffItem = rhs.settings.highCutoff; //getAnalogHighCutoff(false);
-		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
-
-		nextSettings.dspCutoff = (Rhs2116DspCutoff)dspFormatItem;
-		nextSettings.lowCutoff = (Rhs2116AnalogLowCutoff)lowCutoffItem;
-		nextSettings.lowCutoffRecovery = (Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem;
-		nextSettings.highCutoff = (Rhs2116AnalogHighCutoff)highCutoffItem;
+		deviceGui(rhs.settings);
 
 		if(nextSettings.dspCutoff != rhs.settings.dspCutoff) rhs.setDspCutOff(nextSettings.dspCutoff);
 		if(nextSettings.lowCutoff != rhs.settings.lowCutoff) rhs.setAnalogLowCutoff(nextSettings.lowCutoff);
@@ -250,6 +225,37 @@ public:
 		if(nextSettings.highCutoff != rhs.settings.highCutoff) rhs.setAnalogHighCutoff(nextSettings.highCutoff);
 
 		ImGui::PopID();
+
+	}
+
+	inline void deviceGui(const Rhs2116DeviceSettings& settings){
+
+		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
+		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
+		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
+
+		ImGui::SetNextItemWidth(200);
+		int dspFormatItem = settings.dspCutoff; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
+		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
+
+
+		ImGui::SetNextItemWidth(200);
+		int lowCutoffItem = settings.lowCutoff; //getAnalogLowCutoff(false);
+		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
+
+
+		ImGui::SetNextItemWidth(200);
+		int lowCutoffRecoveryItem = settings.lowCutoffRecovery; //getAnalogLowCutoffRecovery(false);
+		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
+
+		ImGui::SetNextItemWidth(200);
+		int highCutoffItem = settings.highCutoff; //getAnalogHighCutoff(false);
+		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
+
+		nextSettings.dspCutoff = (Rhs2116DspCutoff)dspFormatItem;
+		nextSettings.lowCutoff = (Rhs2116AnalogLowCutoff)lowCutoffItem;
+		nextSettings.lowCutoffRecovery = (Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem;
+		nextSettings.highCutoff = (Rhs2116AnalogHighCutoff)highCutoffItem;
 
 	}
 
@@ -269,20 +275,50 @@ protected:
 };
 
 
+static void Sparkline(const char* id, const float* values, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size) {
+	ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0));
+	if (ImPlot::BeginPlot(id, size, ImPlotFlags_CanvasOnly)){
+		ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
+		ImPlot::SetupAxesLimits(0, count - 1, min_v, max_v, ImGuiCond_Always);
+		ImPlot::SetNextLineStyle(col);
+		//ImPlot::SetNextFillStyle(col, 0.25);
+		ImPlot::PlotLine(id, values, count, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+		ImPlot::EndPlot();
+	}
+	ImPlot::PopStyleVar();
+}
 
-class Rhs2116MultiInterface : public ONIInterface{
+class Rhs2116MultiInterface : public Rhs2116Interface{
 
 public:
 
+	Rhs2116MultiInterface(){
+		bufferSizeTimeMillis = 5000;
+		bufferSampleTimeMillis = 10;
+		resetBuffers();
+		bThread = true;
+		thread = std::thread(&Rhs2116MultiInterface::processProbeData, this);
+	}
+
 	~Rhs2116MultiInterface(){
-
-	};
-
-	inline void process(oni_frame_t* frame){
 	
+		bThread = false;
+		if(thread.joinable()) thread.join();
+
+		buffer.clear();
+		probeData.acProbeStats.clear();
+		probeData.dcProbeStats.clear();
+		probeData.acProbeVoltages.clear();
+		probeData.dcProbeVoltages.clear();
+		probeData.probeTimeStamps.clear();
+
 	};
 
-	inline void process(ONIFrame& frame){}; // nothing
+	inline void process(oni_frame_t* frame){}; // nothing
+
+	inline void process(ONIFrame& frame){
+		buffer.push(*reinterpret_cast<Rhs2116MultiFrame*>(&frame));
+	};
 
 	inline void gui(ONIDevice& device){
 
@@ -295,59 +331,217 @@ public:
 		ImGui::PushID(rhsm.getName().c_str());
 		ImGui::Text(rhsm.getName().c_str());
 
-		static char * dspCutoffOptions = "Differential\0Dsp3309Hz\0Dsp1374Hz\0Dsp638Hz\0Dsp308Hz\0Dsp152Hz\0Dsp75Hz\0Dsp37Hz\0Dsp19Hz\0Dsp9336mHz\0Dsp4665mHz\0Dsp2332mHz\0Dsp1166mHz\0Dsp583mHz\0Dsp291mHz\0Dsp146mHz\0Off";
-		static char * lowCutoffOptions = "Low1000Hz\0Low500Hz\0Low300Hz\0Low250Hz\0Low200Hz\0Low150Hz\0Low100Hz\0Low75Hz\0Low50Hz\0Low30Hz\0Low25Hz\0Low20Hz\0Low15Hz\0Low10Hz\0Low7500mHz\0Low5000mHz\0Low3090mHz\0Low2500mHz\0Low2000mHz\0Low1500mHz\0Low1000mHz\0Low750mHz\0Low500mHz\0Low300mHz\0Low250mHz\0Low100mHz";
-		static char * highCutoffOptions = "High20000Hz\0High15000Hz\0High10000Hz\0High7500Hz\0High5000Hz\0High3000Hz\0High2500Hz\0High2000Hz\0High1500Hz\0High1000Hz\0High750Hz\0High500Hz\0High300Hz\0High250Hz\0High200Hz\0High150Hz\0High100Hz";
+		Rhs2116Interface::deviceGui(rhsm.settings); // draw the common device gui settings
 
-		ImGui::SetNextItemWidth(200);
-		int dspFormatItem = rhsm.settings.dspCutoff; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
-		ImGui::Combo("DSP Cutoff", &dspFormatItem, dspCutoffOptions, 5);
-
-
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffItem = rhsm.settings.lowCutoff; //getAnalogLowCutoff(false);
-		ImGui::Combo("Analog Low Cutoff", &lowCutoffItem, lowCutoffOptions, 5);
-
-
-		ImGui::SetNextItemWidth(200);
-		int lowCutoffRecoveryItem = rhsm.settings.lowCutoffRecovery; //getAnalogLowCutoffRecovery(false);
-		ImGui::Combo("Analog Low Cutoff Recovery", &lowCutoffRecoveryItem, lowCutoffOptions, 5);
-
-		ImGui::SetNextItemWidth(200);
-		int highCutoffItem = rhsm.settings.highCutoff; //getAnalogHighCutoff(false);
-		ImGui::Combo("Analog High Cutoff", &highCutoffItem, highCutoffOptions, 5);
-
-		nextSettings.dspCutoff = (Rhs2116DspCutoff)dspFormatItem;
-		nextSettings.lowCutoff = (Rhs2116AnalogLowCutoff)lowCutoffItem;
-		nextSettings.lowCutoffRecovery = (Rhs2116AnalogLowCutoff)lowCutoffRecoveryItem;
-		nextSettings.highCutoff = (Rhs2116AnalogHighCutoff)highCutoffItem;
-
-		// TODO: THIS IS REALLY DUMB ASS SHITTY => SHOULD JUST BE ABLE TO COPY SETTINGS BUT INSTEAD I'M HAVING TO FORCE RE-READ THE REGISTERS (TRIPLE HANDLING)
-		if(nextSettings.dspCutoff != rhsm.settings.dspCutoff){
-			rhsm.setDspCutOff(nextSettings.dspCutoff);
-			//for(auto it : rhsm.devices) it.second->getDspCutOff(true); //settings = rhsm.settings;
-		}
-		if(nextSettings.lowCutoff != rhsm.settings.lowCutoff){
-			rhsm.setAnalogLowCutoff(nextSettings.lowCutoff);
-			//for(auto it : rhsm.devices) it.second->getAnalogLowCutoff(true);
-		}
-		if(nextSettings.lowCutoffRecovery != rhsm.settings.lowCutoffRecovery){
-			rhsm.setAnalogLowCutoffRecovery(nextSettings.lowCutoffRecovery);
-			//for(auto it : rhsm.devices) it.second->getAnalogLowCutoffRecovery(true);
-		}
-		if(nextSettings.highCutoff != rhsm.settings.highCutoff){
-			rhsm.setAnalogHighCutoff(nextSettings.highCutoff);
-			//for(auto it : rhsm.devices) it.second->getAnalogHighCutoff(true);
+		if(ImGui::InputInt("Buffer Size (ms)", &bufferSizeTimeMillis)){
+			resetBuffers();
 		}
 
-		if(rhsm.settings != nextSettings){
-			rhsm.settings = nextSettings;
-			for(auto it : rhsm.devices) it.second->settings = rhsm.settings;
+		if(ImGui::InputInt("Buffer Sample Time (ms)", &bufferSampleTimeMillis)){
+			resetBuffers();
 		}
-		 // this is kinda shitty and should probably happen from inside Rhs2116MultiDevice!!
+
+		if(nextSettings.dspCutoff != rhsm.settings.dspCutoff) rhsm.setDspCutOff(nextSettings.dspCutoff);
+		if(nextSettings.lowCutoff != rhsm.settings.lowCutoff) rhsm.setAnalogLowCutoff(nextSettings.lowCutoff);
+		if(nextSettings.lowCutoffRecovery != rhsm.settings.lowCutoffRecovery) rhsm.setAnalogLowCutoffRecovery(nextSettings.lowCutoffRecovery);
+		if(nextSettings.highCutoff != rhsm.settings.highCutoff) rhsm.setAnalogHighCutoff(nextSettings.highCutoff);
+
+		if(rhsm.settings != nextSettings) rhsm.settings = nextSettings;
+
+		resetProbeData(rhsm.getNumProbes(), buffer.size());
+
+		//mutex.lock();
+		bufferPlot(probeData);
+		probePlot(probeData);
+		//mutex.unlock();
 
 		ImGui::PopID();
 
+	}
+
+	void processProbeData(){
+
+		while(bThread){
+
+			if(true){
+
+				std::vector<Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
+				std::sort(frameBuffer.begin(), frameBuffer.end(), acquisition_clock_compare());
+
+				//mutex.lock();
+
+				size_t numProbes = probeData.acProbeStats.size();
+				size_t frameCount = frameBuffer.size();
+
+				for(size_t probe = 0; probe < numProbes; ++probe){
+
+					probeData.acProbeStats[probe].sum = 0;
+					probeData.dcProbeStats[probe].sum = 0;
+
+					for(size_t frame = 0; frame < frameCount; ++frame){
+
+						probeData.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
+						probeData.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_uV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
+						probeData.dcProbeVoltages[probe][frame] = frameBuffer[frame].dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
+
+						probeData.acProbeStats[probe].sum += probeData.acProbeVoltages[probe][frame];
+						probeData.dcProbeStats[probe].sum += probeData.dcProbeVoltages[probe][frame];
+
+					}
+
+					probeData.acProbeStats[probe].mean = probeData.acProbeStats[probe].sum / frameCount;
+					probeData.dcProbeStats[probe].mean = probeData.dcProbeStats[probe].sum / frameCount;
+
+					probeData.acProbeStats[probe].ss = 0;
+					probeData.dcProbeStats[probe].ss = 0;
+
+					for(size_t frame = 0; frame < frameCount; ++frame){
+						float acdiff = probeData.acProbeVoltages[probe][frame] - probeData.acProbeStats[probe].mean;
+						float dcdiff = probeData.dcProbeVoltages[probe][frame] - probeData.dcProbeStats[probe].mean;
+						probeData.acProbeStats[probe].ss += acdiff * acdiff; 
+						probeData.dcProbeStats[probe].ss += dcdiff * dcdiff;
+					}
+
+					probeData.acProbeStats[probe].variance = probeData.acProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+					probeData.acProbeStats[probe].deviation = sqrt(probeData.acProbeStats[probe].variance);
+
+					probeData.dcProbeStats[probe].variance = probeData.dcProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+					probeData.dcProbeStats[probe].deviation = sqrt(probeData.dcProbeStats[probe].variance);
+
+				}
+
+				//mutex.unlock();
+			}
+
+			//ofSleepMillis(bufferProcessDelay);
+
+		}
+
+	}
+
+	void bufferPlot(const ProbeData& p){
+
+		//const std::lock_guard<std::mutex> lock(mutex);
+
+		size_t numProbes = p.acProbeStats.size();
+		size_t frameCount = p.acProbeVoltages[0].size();
+
+		if(frameCount == 0) return;
+
+		ImGui::Begin("Buffered");
+		ImGui::PushID("BufferPlot");
+
+		ImPlot::BeginPlot("Data Frames", ImVec2(-1,-1));
+		ImPlot::SetupAxes("mS","mV");
+
+
+		for (int probe = 0; probe < numProbes; probe++) {
+
+			ImGui::PushID(probe);
+			ImPlot::SetNextLineStyle(ImPlot::GetColormapColor(probe));
+
+			int offset = 0;
+
+			//ImPlot::SetupAxesLimits(time[0], time[frameCount - 1] - 1, -5.0f, 5.0f, ImGuiCond_Always);
+			ImPlot::SetupAxesLimits(0, p.probeTimeStamps[probe][frameCount - 1] - 1, -5.0f, 5.0f, ImGuiCond_Always);
+			ImPlot::PlotLine("##probe", &p.probeTimeStamps[probe][0], &p.acProbeVoltages[probe][0], frameCount, ImPlotLineFlags_None, offset);
+
+			//ImPlot::SetupAxesLimits(0, frameCount - 1, -6.0f, 6.0f, ImGuiCond_Always);
+			//ImPlot::PlotLine("###probe", data, frameCount, 1, 0, ImPlotLineFlags_None, offset);
+
+
+			ImGui::PopID();
+
+		}
+
+		ImPlot::EndPlot();
+		ImGui::PopID();
+		ImGui::End();
+
+	}
+
+
+
+	//--------------------------------------------------------------
+	void probePlot(const ProbeData& p){
+
+		//const std::lock_guard<std::mutex> lock(mutex);
+
+		size_t numProbes = p.acProbeStats.size();
+		size_t frameCount = p.acProbeVoltages[0].size();
+
+		if(frameCount == 0) return;
+
+		ImGui::Begin("Probes");
+		ImGui::PushID("Probe Plot");
+		static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
+			ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
+
+		static bool anim = true;
+		static int offset = 0;
+
+		ImGui::BeginTable("##table", 3, flags, ImVec2(-1,0));
+		ImGui::TableSetupColumn("Electrode", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+		ImGui::TableSetupColumn("Voltage", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+		ImGui::TableSetupColumn("AC Signal");
+
+		ImGui::TableHeadersRow();
+		ImPlot::PushColormap(ImPlotColormap_Cool);
+
+		for (int probe = 0; probe < numProbes; probe++){
+
+			ImGui::TableNextRow();
+
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Probe %d", probe);
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%.3f mV \n%.3f avg \n%.3f dev \n%i N", p.acProbeVoltages[probe][offset], p.acProbeStats[probe].mean, p.acProbeStats[probe].deviation, frameCount);
+			ImGui::TableSetColumnIndex(2);
+
+			ImGui::PushID(probe);
+
+			Sparkline("##spark", &p.acProbeVoltages[probe][0], frameCount, -5.0f, 5.0f, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 120));
+
+			ImGui::PopID();
+
+		}
+
+		ImPlot::PopColormap();
+		ImGui::EndTable();
+		ImGui::PopID();
+		ImGui::End();
+
+	}
+
+	void resetBuffers(){
+
+		bufferSizeTimeMillis = std::clamp(bufferSizeTimeMillis, 1, 60000);
+		bufferSampleTimeMillis = std::clamp(bufferSampleTimeMillis, 0, bufferSizeTimeMillis);
+		buffer.resize(bufferSizeTimeMillis, bufferSampleTimeMillis, 30000);
+
+	}
+
+	void resetProbeData(const size_t& numProbes, const size_t& bufferSizeFrames){
+
+		//const std::lock_guard<std::mutex> lock(mutex);
+
+		if(probeData.acProbeVoltages.size() == numProbes){
+			if(probeData.acProbeVoltages[0].size() == bufferSizeFrames){
+				return;
+			}
+		}
+
+		probeData.acProbeVoltages.resize(numProbes);
+		probeData.dcProbeVoltages.resize(numProbes);
+		probeData.acProbeStats.resize(numProbes);
+		probeData.dcProbeStats.resize(numProbes);
+		probeData.probeTimeStamps.resize(numProbes);
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			probeData.acProbeVoltages[probe].resize(bufferSizeFrames);
+			probeData.dcProbeVoltages[probe].resize(bufferSizeFrames);
+			probeData.probeTimeStamps[probe].resize(bufferSizeFrames);
+		}
 
 	}
 
@@ -361,9 +555,24 @@ public:
 
 protected:
 
-	Rhs2116DeviceSettings nextSettings;
+	//Rhs2116DeviceSettings nextSettings; // inherited from base Rhs2116Interface
 
-	const std::string processorName = "Rhs2116Gui";
+	int bufferSizeTimeMillis = 5000;
+	int bufferSampleTimeMillis = 10;
+	//int bufferProcessDelay = 0;
+
+	long double sampleFrequencyHz = 30000; //30.1932367151e3;
+
+	ONIDataBuffer<Rhs2116MultiFrame> buffer;
+
+	std::thread thread;
+	std::mutex mutex;
+
+	std::atomic_bool bThread = false;
+
+	ProbeData probeData;
+
+	const std::string processorName = "Rhs2116MultiGui";
 };
 
 
@@ -504,9 +713,9 @@ public:
 			//rhs2116Multi->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
 			//rhs2116Multi->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
 			//rhs2116Multi->saveConfig("default");
-			context.rhs2116Multi->loadConfig("default");
-			//std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
-			//rhs2116Multi->setChannelMap(t);
+			//context.rhs2116Multi->loadConfig("default");
+			std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
+			context.rhs2116Multi->setChannelMap(t);
 			//rhs2116Multi->saveConfig("default");
 			//startAcquisition();
 		}
@@ -1031,7 +1240,7 @@ public:
 		ImGui::PopID();
 
 		drawMutex.lock();
-		std::swap(backProbeDataBuffers, frontProbeDataBuffers);
+		std::swap(probeData, frontProbeDataBuffers);
 		drawMutex.unlock();
 		bufferPlot();
 		probePlot();
@@ -1208,7 +1417,7 @@ public:
 			frontProbeDataBuffers.probeTimeStamps[probe].resize(frameCount);
 		}
 
-		backProbeDataBuffers = frontProbeDataBuffers;
+		probeData = frontProbeDataBuffers;
 		drawMutex.unlock();
 
 	}
@@ -1231,38 +1440,38 @@ public:
 
 					for(size_t probe = 0; probe < numProbes; ++probe){
 
-						backProbeDataBuffers.acProbeStats[probe].sum = 0;
-						backProbeDataBuffers.dcProbeStats[probe].sum = 0;
+						probeData.acProbeStats[probe].sum = 0;
+						probeData.dcProbeStats[probe].sum = 0;
 
 						for(size_t frame = 0; frame < frameCount; ++frame){
 
-							backProbeDataBuffers.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
-							backProbeDataBuffers.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_uV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
-							backProbeDataBuffers.dcProbeVoltages[probe][frame] = frameBuffer[frame].dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
+							probeData.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
+							probeData.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_uV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
+							probeData.dcProbeVoltages[probe][frame] = frameBuffer[frame].dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
 
-							backProbeDataBuffers.acProbeStats[probe].sum += backProbeDataBuffers.acProbeVoltages[probe][frame];
-							backProbeDataBuffers.dcProbeStats[probe].sum += backProbeDataBuffers.dcProbeVoltages[probe][frame];
+							probeData.acProbeStats[probe].sum += probeData.acProbeVoltages[probe][frame];
+							probeData.dcProbeStats[probe].sum += probeData.dcProbeVoltages[probe][frame];
 
 						}
 
-						backProbeDataBuffers.acProbeStats[probe].mean = backProbeDataBuffers.acProbeStats[probe].sum / frameCount;
-						backProbeDataBuffers.dcProbeStats[probe].mean = backProbeDataBuffers.dcProbeStats[probe].sum / frameCount;
+						probeData.acProbeStats[probe].mean = probeData.acProbeStats[probe].sum / frameCount;
+						probeData.dcProbeStats[probe].mean = probeData.dcProbeStats[probe].sum / frameCount;
 
-						backProbeDataBuffers.acProbeStats[probe].ss = 0;
-						backProbeDataBuffers.dcProbeStats[probe].ss = 0;
+						probeData.acProbeStats[probe].ss = 0;
+						probeData.dcProbeStats[probe].ss = 0;
 
 						for(size_t frame = 0; frame < frameCount; ++frame){
-							float acdiff = backProbeDataBuffers.acProbeVoltages[probe][frame] - backProbeDataBuffers.acProbeStats[probe].mean;
-							float dcdiff = backProbeDataBuffers.dcProbeVoltages[probe][frame] - backProbeDataBuffers.dcProbeStats[probe].mean;
-							backProbeDataBuffers.acProbeStats[probe].ss += acdiff * acdiff; 
-							backProbeDataBuffers.dcProbeStats[probe].ss += dcdiff * dcdiff;
+							float acdiff = probeData.acProbeVoltages[probe][frame] - probeData.acProbeStats[probe].mean;
+							float dcdiff = probeData.dcProbeVoltages[probe][frame] - probeData.dcProbeStats[probe].mean;
+							probeData.acProbeStats[probe].ss += acdiff * acdiff; 
+							probeData.dcProbeStats[probe].ss += dcdiff * dcdiff;
 						}
 
-						backProbeDataBuffers.acProbeStats[probe].variance = backProbeDataBuffers.acProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
-						backProbeDataBuffers.acProbeStats[probe].deviation = sqrt(backProbeDataBuffers.acProbeStats[probe].variance);
+						probeData.acProbeStats[probe].variance = probeData.acProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+						probeData.acProbeStats[probe].deviation = sqrt(probeData.acProbeStats[probe].variance);
 
-						backProbeDataBuffers.dcProbeStats[probe].variance = backProbeDataBuffers.dcProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
-						backProbeDataBuffers.dcProbeStats[probe].deviation = sqrt(backProbeDataBuffers.dcProbeStats[probe].variance);
+						probeData.dcProbeStats[probe].variance = probeData.dcProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+						probeData.dcProbeStats[probe].deviation = sqrt(probeData.dcProbeStats[probe].variance);
 
 					}
 
@@ -1292,7 +1501,7 @@ public:
 	};
 
 	ProbeDataBuffers frontProbeDataBuffers;
-	ProbeDataBuffers backProbeDataBuffers;
+	ProbeDataBuffers probeData;
 
 protected:
 

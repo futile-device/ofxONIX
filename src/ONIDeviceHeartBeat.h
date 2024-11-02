@@ -52,30 +52,30 @@ public:
 		//config.syncSettings();
 	}
 
-	inline void gui(){
-		//config.gui();
-		//if(config.applySettings()){
-		//	LOGDEBUG("HeartBeat Device settings changed");
-		//	setFrequencyHz(config.getChangedSettings().frequencyHz);
-		//	config.syncSettings();
-		//}
-	}
+	//inline void gui(){
+	//	//config.gui();
+	//	//if(config.applySettings()){
+	//	//	LOGDEBUG("HeartBeat Device settings changed");
+	//	//	setFrequencyHz(config.getChangedSettings().frequencyHz);
+	//	//	config.syncSettings();
+	//	//}
+	//}
 
-	bool saveConfig(std::string presetName){
-		//getFrequencyHz(true);
-		//return config.save(presetName);
-		return false;
-	}
+	//bool saveConfig(std::string presetName){
+	//	//getFrequencyHz(true);
+	//	//return config.save(presetName);
+	//	return false;
+	//}
 
-	bool loadConfig(std::string presetName){
-		//bool bOk = config.load(presetName);
-		//if(bOk){
-		//	setFrequencyHz(settings.frequencyHz);
-		//	config.syncSettings();
-		//}
-		//return bOk;
-		return false;
-	}
+	//bool loadConfig(std::string presetName){
+	//	//bool bOk = config.load(presetName);
+	//	//if(bOk){
+	//	//	setFrequencyHz(settings.frequencyHz);
+	//	//	config.syncSettings();
+	//	//}
+	//	//return bOk;
+	//	return false;
+	//}
 
 	void reset(){
 		ONIDevice::reset();

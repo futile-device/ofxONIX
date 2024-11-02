@@ -224,6 +224,23 @@ struct acquisition_clock_compare {
 	}
 };
 
+struct ProbeStatistics{
+	float sum;
+	float mean;
+	float ss;
+	float variance;
+	float deviation;
+};
+
+struct ProbeData{
+	std::vector< std::vector<float> > acProbeVoltages;
+	std::vector< std::vector<float> > dcProbeVoltages;
+	std::vector< std::vector<float> > probeTimeStamps;
+	std::vector<ProbeStatistics> acProbeStats;
+	std::vector<ProbeStatistics> dcProbeStats;
+};
+
+
 class HeartBeatFrame : public ONIFrame{
 
 public:

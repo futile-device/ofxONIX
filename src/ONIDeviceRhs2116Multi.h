@@ -34,7 +34,7 @@
 
 class Rhs2116MultiInterface;
 
-class Rhs2116MultiDevice : public Rhs2116Device{
+class Rhs2116MultiDevice : public ONIProbeDevice{
 
 public:
 
@@ -88,34 +88,154 @@ public:
 		//config.setup(this);
 		for(auto it : devices){
 			it.second->deviceSetup();
+			settings = it.second->settings; // TODO: this is terrible; the devices could be diferent
 		}
+		
 		//config.syncSettings();
 	}
 	
-	inline void gui(){
-		
-		//config.gui();
-		//if(config.applySettings()){
-		//	LOGDEBUG("Rhs2116 Multi Device settings changed");
-		//	if(settings.dspCutoff != config.getChangedSettings().dspCutoff) setDspCutOff(config.getChangedSettings().dspCutoff);
-		//	if(settings.lowCutoff != config.getChangedSettings().lowCutoff) setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
-		//	if(settings.lowCutoffRecovery != config.getChangedSettings().lowCutoffRecovery) setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
-		//	if(settings.highCutoff != config.getChangedSettings().highCutoff) setAnalogHighCutoff(config.getChangedSettings().highCutoff);
-		//	if(settings.channelMap != config.getChangedSettings().channelMap){
-		//		settings.channelMap = config.getChangedSettings().channelMap;
-		//		channelMapToIDX();
-		//	}
-		//	config.syncSettings();
+	//inline void gui(){
+	//	
+	//	//config.gui();
+	//	//if(config.applySettings()){
+	//	//	LOGDEBUG("Rhs2116 Multi Device settings changed");
+	//	//	if(settings.dspCutoff != config.getChangedSettings().dspCutoff) setDspCutOff(config.getChangedSettings().dspCutoff);
+	//	//	if(settings.lowCutoff != config.getChangedSettings().lowCutoff) setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
+	//	//	if(settings.lowCutoffRecovery != config.getChangedSettings().lowCutoffRecovery) setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
+	//	//	if(settings.highCutoff != config.getChangedSettings().highCutoff) setAnalogHighCutoff(config.getChangedSettings().highCutoff);
+	//	//	if(settings.channelMap != config.getChangedSettings().channelMap){
+	//	//		settings.channelMap = config.getChangedSettings().channelMap;
+	//	//		channelMapToIDX();
+	//	//	}
+	//	//	config.syncSettings();
 
-		//	for(auto it : devices){
-		//		it.second->deviceSetup();
-		//	}
+	//	//	for(auto it : devices){
+	//	//		it.second->deviceSetup();
+	//	//	}
 
-		//}
+	//	//}
+
+	//}
+
+	//bool saveConfig(std::string presetName){
+	//	//return config.save(presetName);
+	//	return false;
+	//}
+
+	//bool loadConfig(std::string presetName){
+	//	//bool bOk = config.load(presetName);
+	//	//if(bOk){
+	//	//	setDspCutOff(settings.dspCutoff);
+	//	//	setAnalogLowCutoff(settings.lowCutoff);
+	//	//	setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
+	//	//	setAnalogHighCutoff(settings.highCutoff);
+	//	//	channelMapToIDX();
+	//	//	for(auto it : devices){
+	//	//		it.second->deviceSetup();
+	//	//	}
+	//	//	config.syncSettings();
+	//	//}
+	//	//return bOk;
+	//	return false;
+	//}
+
+	bool setEnabled(const bool& b){
+		for(auto it : devices){
+			bool bOk = it.second->setEnabled(b);
+			if(!bOk) return false;
+		}
+		return true;
+	}
+
+	bool getEnabled(const bool& bCheckRegisters = true){
+		for(auto it : devices){
+			bEnabled = getEnabled(bCheckRegisters); // should we check if they are both the same?
+		}
+		return bEnabled;
+	}
+
+	bool setAnalogLowCutoff(Rhs2116AnalogLowCutoff lowcut){
+		for(auto it : devices){
+			bool bOk = it.second->setAnalogLowCutoff(lowcut);
+			if(!bOk) return false;
+		}
+		return true;
+	}
+
+	Rhs2116AnalogLowCutoff getAnalogLowCutoff(const bool& bCheckRegisters = true){
+		for(auto it : devices){
+			settings.lowCutoff = getAnalogLowCutoff(bCheckRegisters); // should we check if they are both the same?
+		}
+		return settings.lowCutoff;
+	}
+
+	bool setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff lowcut){
+		for(auto it : devices){
+			bool bOk = it.second->setAnalogLowCutoffRecovery(lowcut);
+			if(!bOk) return false;
+		}
+		return true;
+	}
+
+	Rhs2116AnalogLowCutoff getAnalogLowCutoffRecovery(const bool& bCheckRegisters = true){
+		for(auto it : devices){
+			settings.lowCutoffRecovery = getAnalogLowCutoffRecovery(bCheckRegisters); // should we check if they are both the same?
+		}
+		return settings.lowCutoffRecovery;
+	}
+
+	bool setAnalogHighCutoff(Rhs2116AnalogHighCutoff hicut){
+		for(auto it : devices){
+			bool bOk = it.second->setAnalogHighCutoff(hicut);
+			if(!bOk) return false;
+		}
+		return true;
+	}
+
+	Rhs2116AnalogHighCutoff getAnalogHighCutoff(const bool& bCheckRegisters = true){
+		for(auto it : devices){
+			settings.highCutoff = getAnalogHighCutoff(bCheckRegisters); // should we check if they are both the same?
+		}
+		return settings.highCutoff;
+	}
+
+	bool setFormat(Rhs2116Format format){
+		for(auto it : devices){
+			bool bOk = it.second->setFormat(format);
+			if(!bOk) return false;
+		}
+		return true;
+	}
+
+	Rhs2116Format getFormat(const bool& bCheckRegisters = true){
+		for(auto it : devices){
+			settings.format = getFormat(bCheckRegisters); // should we check if they are both the same?
+		}
+		return settings.format;
+	}
+
+	bool setDspCutOff(Rhs2116DspCutoff cutoff){
+		for(auto it : devices){
+			bool bOk = it.second->setDspCutOff(cutoff);
+			if(!bOk) return false;
+		}
+		return true;
 
 	}
 
+	const Rhs2116DspCutoff& getDspCutOff(const bool& bCheckRegisters = true){
+		getFormat(bCheckRegisters);
+		return settings.dspCutoff;
+	}
+
+
 	void setChannelMap(const std::vector<size_t>& map){
+		if(settings.channelMap.size() != map.size()){
+			settings.channelMap.resize(numProbes);
+			for(size_t y = 0; y < numProbes; ++y){
+				settings.channelMap[y].resize(numProbes);
+			}
+		}
 		if(map.size() == numProbes){
 			channelIDX = map;
 			for(size_t y = 0; y < numProbes; ++y){
@@ -151,27 +271,7 @@ public:
 		fu::debug << os.str() << fu::endl;
 	}
 
-	bool saveConfig(std::string presetName){
-		//return config.save(presetName);
-		return false;
-	}
 
-	bool loadConfig(std::string presetName){
-		//bool bOk = config.load(presetName);
-		//if(bOk){
-		//	setDspCutOff(settings.dspCutoff);
-		//	setAnalogLowCutoff(settings.lowCutoff);
-		//	setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
-		//	setAnalogHighCutoff(settings.highCutoff);
-		//	channelMapToIDX();
-		//	for(auto it : devices){
-		//		it.second->deviceSetup();
-		//	}
-		//	config.syncSettings();
-		//}
-		//return bOk;
-		return false;
-	}
 
 
 
@@ -240,31 +340,31 @@ public:
 
 	}
 
-	unsigned int readRegister(const Rhs2116Register& reg) override {
-		std::vector<unsigned int> regs; 
-		regs.resize(devices.size());
-		size_t n = 0;
-		for(auto it : devices){
-			regs[n] = it.second->readRegister(reg);
-			++n;
-		}
-		for(size_t i = 0; i < regs.size(); ++i){
-			for(size_t j = 0; j < regs.size(); ++j){
-				if(regs[i] != regs[j]){
-					LOGERROR("REGISTER MISMATCH!!!!!!!!!!!!!!!!!!!!!!!");
-				}
-			}
-		}
-		return regs[0]; // TODO: we should do something if they mismatch like force setting the register?
-	}
+	//unsigned int readRegister(const Rhs2116Register& reg) override {
+	//	std::vector<unsigned int> regs; 
+	//	regs.resize(devices.size());
+	//	size_t n = 0;
+	//	for(auto it : devices){
+	//		regs[n] = it.second->readRegister(reg);
+	//		++n;
+	//	}
+	//	for(size_t i = 0; i < regs.size(); ++i){
+	//		for(size_t j = 0; j < regs.size(); ++j){
+	//			if(regs[i] != regs[j]){
+	//				LOGERROR("REGISTER MISMATCH!!!!!!!!!!!!!!!!!!!!!!!");
+	//			}
+	//		}
+	//	}
+	//	return regs[0]; // TODO: we should do something if they mismatch like force setting the register?
+	//}
 
-	bool writeRegister(const Rhs2116Register& reg, const unsigned int& value) override {
-		bool bOk = true;
-		for(auto it : devices){
-			bOk = it.second->writeRegister(reg, value);
-		}
-		return bOk;
-	}
+	//bool writeRegister(const Rhs2116Register& reg, const unsigned int& value) override {
+	//	bool bOk = true;
+	//	for(auto it : devices){
+	//		bOk = it.second->writeRegister(reg, value);
+	//	}
+	//	return bOk;
+	//}
 
 protected:
 

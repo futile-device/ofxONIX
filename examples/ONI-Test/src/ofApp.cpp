@@ -35,24 +35,24 @@ void ofApp::setup(){
 
     FmcDevice* fmc1 = (FmcDevice*)oni.getDevice(1);
     fmc1->setPortVoltage(6.6);
-    fmc1->loadConfig("default");
+    //fmc1->loadConfig("default");
 
     FmcDevice* fmc2 = (FmcDevice*)oni.getDevice(2);
-    fmc2->loadConfig("default");
+    //fmc2->loadConfig("default");
     
     oni.update();
 
     HeartBeatDevice* heartBeatDevice = (HeartBeatDevice*)oni.getDevice(0); // for some reason we need to do this before a context restart
     heartBeatDevice->setFrequencyHz(1);
-    heartBeatDevice->loadConfig("default");
+    //heartBeatDevice->loadConfig("default");
 
     oni.update();
 
     Rhs2116Device* rhs2116Device1 = (Rhs2116Device*)oni.getDevice(256);
     Rhs2116Device* rhs2116Device2 = (Rhs2116Device*)oni.getDevice(257);
 
-    rhs2116Device1->loadConfig("default");
-    rhs2116Device2->loadConfig("default"); 
+    //rhs2116Device1->loadConfig("default");
+    //rhs2116Device2->loadConfig("default"); 
 
     //fu::debug << rhs2116Device1->getFormat(true) << fu::endl;
 

@@ -87,13 +87,13 @@ public:
 		}
 	}
 
-	std::mutex& getMutex(){
-		return mutex;
-	}
+	//std::mutex& getMutex(){
+	//	return mutex;
+	//}
 
 protected:
 
-	std::mutex mutex;
+	//std::mutex mutex;
 
 	std::map<std::string, ONIFrameProcessor*> preFrameProcessors;
 	std::map<std::string, ONIFrameProcessor*> postFrameProcessors;
@@ -140,9 +140,9 @@ public:
 		return deviceType.idx;
 	}
 
-	virtual inline void gui() = 0;
-	virtual bool saveConfig(std::string presetName) = 0;
-	virtual bool loadConfig(std::string presetName) = 0;
+	//virtual inline void gui() = 0;
+	//virtual bool saveConfig(std::string presetName) = 0;
+	//virtual bool loadConfig(std::string presetName) = 0;
 
 	const inline bool& getContexteNeedsRestart(){
 		return bContextNeedsRestart;

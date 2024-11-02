@@ -32,6 +32,7 @@
 
 class Rhs2116Interface;
 class Rhs2116MultiInterface;
+class Rhs2116MultiDevice;
 
 class Rhs2116Device : public ONIProbeDevice{
 
@@ -39,6 +40,7 @@ public:
 
 	friend class Rhs2116Interface;
 	friend class Rhs2116MultiInterface;
+	friend class Rhs2116MultiDevice;
 
 	Rhs2116Device(){
 		numProbes = 16;							// default for base ONIProbeDevice
@@ -162,36 +164,36 @@ public:
 		return settings.dspCutoff;
 	}
 	
-	inline void gui(){
-		//config.gui();
-		//if(config.applySettings() || bForceGuiUpdate){
-		//	LOGDEBUG("Rhs2116 Device settings changed");
-		//	bForceGuiUpdate = false;
-			//if(settings.dspCutoff != config.getChangedSettings().dspCutoff) setDspCutOff(config.getChangedSettings().dspCutoff);
-			//if(settings.lowCutoff != config.getChangedSettings().lowCutoff) setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
-			//if(settings.lowCutoffRecovery != config.getChangedSettings().lowCutoffRecovery) setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
-			//if(settings.highCutoff != config.getChangedSettings().highCutoff) setAnalogHighCutoff(config.getChangedSettings().highCutoff);
-		//	config.syncSettings();
-		//}
-	}
+	//inline void gui(){
+	//	//config.gui();
+	//	//if(config.applySettings() || bForceGuiUpdate){
+	//	//	LOGDEBUG("Rhs2116 Device settings changed");
+	//	//	bForceGuiUpdate = false;
+	//		//if(settings.dspCutoff != config.getChangedSettings().dspCutoff) setDspCutOff(config.getChangedSettings().dspCutoff);
+	//		//if(settings.lowCutoff != config.getChangedSettings().lowCutoff) setAnalogLowCutoff(config.getChangedSettings().lowCutoff);
+	//		//if(settings.lowCutoffRecovery != config.getChangedSettings().lowCutoffRecovery) setAnalogLowCutoffRecovery(config.getChangedSettings().lowCutoffRecovery);
+	//		//if(settings.highCutoff != config.getChangedSettings().highCutoff) setAnalogHighCutoff(config.getChangedSettings().highCutoff);
+	//	//	config.syncSettings();
+	//	//}
+	//}
 
-	bool saveConfig(std::string presetName){
-		//return config.save(presetName);
-		return false;
-	}
+	//bool saveConfig(std::string presetName){
+	//	//return config.save(presetName);
+	//	return false;
+	//}
 
-	bool loadConfig(std::string presetName){
-		//bool bOk = config.load(presetName);
-		//if(bOk){
-		//	setDspCutOff(settings.dspCutoff);
-		//	setAnalogLowCutoff(settings.lowCutoff);
-		//	setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
-		//	setAnalogHighCutoff(settings.highCutoff);
-		//	config.syncSettings();
-		//}
-		//return bOk;
-		return false;
-	}
+	//bool loadConfig(std::string presetName){
+	//	//bool bOk = config.load(presetName);
+	//	//if(bOk){
+	//	//	setDspCutOff(settings.dspCutoff);
+	//	//	setAnalogLowCutoff(settings.lowCutoff);
+	//	//	setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
+	//	//	setAnalogHighCutoff(settings.highCutoff);
+	//	//	config.syncSettings();
+	//	//}
+	//	//return bOk;
+	//	return false;
+	//}
 
 	inline void process(oni_frame_t* frame){
 		//const std::lock_guard<std::mutex> lock(mutex);
