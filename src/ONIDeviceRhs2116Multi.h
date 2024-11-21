@@ -387,7 +387,7 @@ protected:
 private:
 
 	std::vector<Rhs2116Frame> multiFrameBuffer;
-	std::vector<Rhs2116RawDataFrame> multiFrameBufferRaw;
+	std::vector<Rhs2116FramePacked> multiFrameBufferRaw;
 
 
 	std::vector<unsigned int> expectDevceIDXNext;// = {257,256};

@@ -34,13 +34,14 @@ void ofApp::setup(){
     oni.printDeviceTable();
 
     FmcDevice* fmc1 = (FmcDevice*)oni.getDevice(1);
-    fmc1->setPortVoltage(6.6);
+    fmc1->setPortVoltage(6.7);
     //fmc1->loadConfig("default");
 
     FmcDevice* fmc2 = (FmcDevice*)oni.getDevice(2);
     //fmc2->loadConfig("default");
     
     oni.update();
+    oni.printDeviceTable();
 
     HeartBeatDevice* heartBeatDevice = (HeartBeatDevice*)oni.getDevice(0); // for some reason we need to do this before a context restart
     heartBeatDevice->setFrequencyHz(1);
@@ -58,6 +59,8 @@ void ofApp::setup(){
 
     rhs2116Device1->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
     rhs2116Device2->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
+
+    rhs2116Device1->readRegister(RHS2116_REG::MAXDELTAS);
 
     //rhs2116Device1->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
     //rhs2116Device1->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
@@ -136,6 +139,13 @@ void ofApp::keyPressed(int key){
         oni.startAcquisition();
     }
 
+    if(key == 'r'){
+        oni.startRecording();
+    }
+
+    if(key == 'p'){
+        oni.startPlayng();
+    }
 }
 
 //--------------------------------------------------------------

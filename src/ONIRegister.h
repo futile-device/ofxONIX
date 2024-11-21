@@ -123,7 +123,7 @@ static inline const Rhs2116Register BW0			= Rhs2116Register(0x04, "BW0");			// O
 static inline const Rhs2116Register BW1			= Rhs2116Register(0x05, "BW1");			// On-Chip Amplifier Bandwidth Select
 static inline const Rhs2116Register BW2			= Rhs2116Register(0x06, "BW2");			// On-Chip Amplifier Bandwidth Select
 static inline const Rhs2116Register BW3			= Rhs2116Register(0x07, "BW3");			// On-Chip Amplifier Bandwidth Select
-static inline const Rhs2116Register PWR			= Rhs2116Register(0x08, "PWR");			//Individual AC Amplifier Power
+static inline const Rhs2116Register PWR			= Rhs2116Register(0x08, "PWR");			// Individual AC Amplifier Power
 
 static inline const Rhs2116Register SETTLE		= Rhs2116Register(0x0a, "SETTLE");		// Amplifier Fast Settle
 

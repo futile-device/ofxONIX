@@ -759,7 +759,9 @@ public:
 				case 256:
 				case 257:
 				{
+					if(context.rhs2116Multi != nullptr) ImGui::BeginDisabled();
 					rhsInterface[device.first - 256].gui(*device.second);
+					if(context.rhs2116Multi != nullptr) ImGui::EndDisabled();
 					break;
 				}
 				}

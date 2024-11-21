@@ -29,7 +29,7 @@
 #pragma once
 
 #pragma pack(push, 1)
-struct Rhs2116RawDataFrame{
+struct Rhs2116FramePacked{
 	uint64_t hubTime;
 	uint16_t ac[16];
 	uint16_t dc[16];
@@ -37,13 +37,27 @@ struct Rhs2116RawDataFrame{
 	uint64_t acqTime;
 	long double deltaTime;
 	uint32_t devIdx;
-	//long double deltaTime;
-	//float ac_uV[16];
-	//float dc_mV[16];
-	//uint64_t sampleIDX;
 };
 #pragma pack(pop)
 
+//// Frame type
+//typedef struct {
+//	const oni_fifo_time_t time;     // Frame time (ACQCLKHZ)
+//	const oni_fifo_dat_t dev_idx;   // Device index that produced or accepts the frame
+//	const oni_fifo_dat_t data_sz;   // Size in bytes of data buffer
+//	char *data;                     // Raw data block
+//
+//} oni_frame_t;
+
+#pragma pack(push, 1)
+struct Rhs2116FrameRaw{
+	uint64_t time;
+	uint32_t dev_idx;
+	uint32_t data_sz;
+	char data[74];
+
+};
+#pragma pack(pop)
 
 class ONIFrame{
 
@@ -84,6 +98,8 @@ public:
 
 	inline void convert(oni_frame_t* frame, const uint64_t& deltaTime = 0){
 		memcpy(&rawFrame, frame->data, frame->data_sz);  // copy the data payload including hub clock
+
+
 		this->acqTime = rawFrame.acqTime = frame->time;					 // copy the acquisition clock
 		this->deltaTime = deltaTime;
 		this->deviceTableID = frame->dev_idx;
@@ -93,7 +109,7 @@ public:
 		}
 	}
 
-	Rhs2116RawDataFrame rawFrame;
+	Rhs2116FramePacked rawFrame;
 
 	float ac_uV[16];
 	float dc_mV[16];
@@ -131,7 +147,7 @@ class Rhs2116MultiFrame : public ONIFrame{
 public:
 
 	Rhs2116MultiFrame(){ numProbes = 0; };
-	Rhs2116MultiFrame(const std::vector<Rhs2116RawDataFrame>& frames, 
+	Rhs2116MultiFrame(const std::vector<Rhs2116FramePacked>& frames, 
 					  const std::vector<size_t>& channelMap){
 		convert(frames, channelMap); 
 	}
@@ -163,13 +179,13 @@ public:
 		this->deviceTableID = 999;
 	}
 
-	inline void convert(const std::vector<Rhs2116RawDataFrame>& frames, const std::vector<size_t>& channelMap){
+	inline void convert(const std::vector<Rhs2116FramePacked>& frames, const std::vector<size_t>& channelMap){
 
 		numProbes = frames.size() * 16;
 
 		for(int i = 0; i < frames.size(); ++i){
 
-			const Rhs2116RawDataFrame& frame = frames[i];
+			const Rhs2116FramePacked& frame = frames[i];
 
 			size_t frameProbe = 0;
 

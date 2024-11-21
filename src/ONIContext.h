@@ -169,6 +169,9 @@ public:
 				device_changed->reset();
 			}
 		}
+
+		if(bStopPlaybackThread) stopPlaying();
+
 	}
 
 	bool setup(const std::string& driverName = "riffa", const unsigned int& blockReadBytes = 2048, const unsigned int& blockWriteBytes = 2048){
@@ -353,6 +356,57 @@ public:
 
 	}
 
+	void startRecording(){
+		if(bIsPlaying) stopPlaying();
+		if(bIsRecording) stopRecording();
+		if(bIsAcquiring) stopAcquisition();
+		contextDataStream = std::fstream(ofToDataPath("data_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
+		contextTimeStream = std::fstream(ofToDataPath("time_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
+
+		using namespace std::chrono;
+		uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+		contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
+		if(contextTimeStream.bad()) LOGERROR("Bad init time frame write");
+
+		bIsRecording = true;
+		startAcquisition();
+	}
+
+	void stopRecording(){
+		stopAcquisition();
+		contextDataStream.close();
+		contextTimeStream.close();
+		bIsRecording = false;
+	}
+
+	void startPlayng(){
+		if(bIsPlaying) stopPlaying();
+		if(bIsRecording) stopRecording();
+		if(bIsAcquiring) stopAcquisition();
+		contextDataStream = std::fstream(ofToDataPath("data_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
+		contextTimeStream = std::fstream(ofToDataPath("time_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
+		contextDataStream.seekg(0, ::std::ios::beg);
+		contextTimeStream.seekg(0, ::std::ios::beg);
+		contextTimeStream.read(reinterpret_cast<char*>(&lastAcquireTimeStamp),  sizeof(uint64_t));
+		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
+		for(auto device : oniDevices) device.second->reset();
+		bThread = true;
+		bIsPlaying = true;
+		thread = std::thread(&ONIContext::playFrames, this);
+		
+		//startAcquisition();
+	}
+
+	void stopPlaying(){
+		if(!bThread) return;
+		bThread = false;
+		if(thread.joinable()) thread.join();
+		contextDataStream.close();
+		contextTimeStream.close();
+		bIsPlaying = false;
+		bStopPlaybackThread = false;
+	}
+
 private:
 
 	bool startContext(){
@@ -378,15 +432,13 @@ private:
 		return true;
 	}
 	
+	//std::ifstream contextPlayStream;
 	void startFrameRead(){
 		if(bThread) stopFrameRead();
 		LOGDEBUG("Starting frame read thread");
 		bThread = true;
-		for(auto device : oniDevices){
-			device.second->reset();
-		}
-
-		thread = std::thread(&ONIContext::readFrame, this);
+		for(auto device : oniDevices) device.second->reset();
+		thread = std::thread(&ONIContext::readFrames, this);
 	}
 
 	void stopFrameRead(){
@@ -394,6 +446,7 @@ private:
 		if(!bThread) return;
 		bThread = false;
 		if(thread.joinable()) thread.join();
+		//contextPlayStream.close();
 	}
 
 	bool setupContext(){
@@ -473,8 +526,96 @@ private:
 		return true;
 
 	}
+
+	void recordFrame(oni_frame_t* frame){
+
+		if(!bIsRecording) return;
+
+		if(frame->dev_idx == 256 || frame->dev_idx == 257){
+
+			using namespace std::chrono;
+			uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+			
+			Rhs2116FrameRaw * frame_out = new Rhs2116FrameRaw;
+
+			frame_out->time = frame->time;
+			frame_out->dev_idx = frame->dev_idx;
+			frame_out->data_sz = frame->data_sz;
+
+			std::memcpy(frame_out->data, frame->data, frame->data_sz);
+
+			contextDataStream.write(reinterpret_cast<char*>(frame_out), sizeof(Rhs2116FrameRaw));
+			if(contextDataStream.bad()) LOGERROR("Bad data frame write");
+
+			contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
+			if(contextTimeStream.bad()) LOGERROR("Bad time frame write");
+
+			delete frame_out;
+
+		}
+
+	}
+
+	void playFrames(){
+
+		while(bThread){
+
+			uint64_t systemAcquisitionTimeStamp = 0;
+
+			contextTimeStream.read(reinterpret_cast<char*>(&systemAcquisitionTimeStamp),  sizeof(uint64_t));
+			if(contextTimeStream.bad()) LOGERROR("Bad time frame read");
+
+			Rhs2116FrameRaw * frame_in = new Rhs2116FrameRaw;
+
+			contextDataStream.read(reinterpret_cast<char*>(frame_in),  sizeof(Rhs2116FrameRaw));
+			if(contextDataStream.bad()) LOGERROR("Bad data frame read");
+
+			if(contextDataStream.eof()) break;
+
+			oni_frame_t * frame = reinterpret_cast<oni_frame_t*>(frame_in); // this is kinda nasty ==> will it always work
+
+			frame->data = new char[74];
+			memcpy(frame->data, frame_in->data, 74);
+
+			auto it = oniDevices.find((unsigned int)frame->dev_idx);
+
+			if(it == oniDevices.end()){
+				LOGERROR("ONIDevice doesn't exist with idx: %i", frame->dev_idx);
+			}else{
+
+				auto device = it->second;
+				device->process(frame);	
+
+			}
+
+			delete [] frame->data;
+			delete frame_in;
+
+			uint64_t deltaTimeStamp = systemAcquisitionTimeStamp - lastAcquireTimeStamp;
+
+			using namespace std::chrono;
+			uint64_t elapsed = 0;
+			uint64_t start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+
+			while(elapsed < deltaTimeStamp){
+				elapsed = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - start;
+				std::this_thread::yield();
+			}
+
+			//LOGDEBUG("delta: %i || actual: %i", deltaTimeStamp, elapsed);
+
+			lastAcquireTimeStamp = systemAcquisitionTimeStamp;
+
+
+
+		}
+
+		LOGINFO("Playback EOF");
+		bStopPlaybackThread = true;
+
+	}
 	
-	void readFrame(){
+	void readFrames(){
 
 		while(bThread){
 
@@ -486,7 +627,7 @@ private:
 			if(rc < 0){
 				LOGERROR("Frame read error: %s", oni_error_str(rc));
 			}else{
-				
+
 				auto it = oniDevices.find((unsigned int)frame->dev_idx);
 
 				if(it == oniDevices.end()){
@@ -495,6 +636,7 @@ private:
 
 					auto device = it->second;
 
+					recordFrame(frame);
 					device->process(frame);	
 
 				}
@@ -516,6 +658,7 @@ private:
 		}
 
 		oniDevices.clear();
+
 		delete rhs2116Multi;
 		rhs2116Multi = nullptr;
 
@@ -525,22 +668,25 @@ private:
 
 	Rhs2116MultiDevice * rhs2116Multi = nullptr; // TODO: this better!!
 
-	//ContextConfig config;
-
-	bool bIsContextSetup = false;
-	bool bIsAcquiring = false;
-
-	//unsigned int blockReadSize = 2048;
-	//unsigned int blockWriteSize = 2048;
-
 	unsigned int blockReadBytes = 0;
 	unsigned int blockWriteBytes = 0;
 
+	std::atomic_bool bIsContextSetup = false;
+	std::atomic_bool bIsAcquiring = false;
+
+	std::fstream contextDataStream;
+	std::fstream contextTimeStream;
+
+	uint64_t lastAcquireTimeStamp = 0;
+
+	std::atomic_bool bIsRecording = false;
+	std::atomic_bool bIsPlaying = false;
+
+	std::atomic_bool bStopPlaybackThread = false;
 	std::atomic_bool bThread = false;
+
 	std::thread thread;
 	std::mutex mutex;
-
-	//ofSoundStream soundStream;
 
 	volatile oni_ctx ctx = NULL;
 
