@@ -32,12 +32,14 @@
 #pragma once
 
 class Rhs2116MultiInterface;
+class Rhs2116StimulusDevice;
 
 class Rhs2116MultiDevice : public ONIProbeDevice{
 
 public:
 
 	friend class Rhs2116MultiInterface;
+	friend class Rhs2116StimulusDevice;
 
 	Rhs2116MultiDevice(){
 		numProbes = 0;							// default for base ONIProbeDevice
@@ -49,8 +51,9 @@ public:
 		//const std::lock_guard<std::mutex> lock(mutex);
 	};
 
+	void setup(volatile oni_ctx* context, oni_device_t type, uint64_t acq_clock_khz) = delete; // delete the base class function
 
-	virtual void setup(volatile oni_ctx* context, uint64_t acq_clock_khz){
+	void setup(volatile oni_ctx* context, uint64_t acq_clock_khz){
 		LOGDEBUG("Setting up device RHS2116 MULTI");
 		ctx = context;
 		//deviceType = type;
@@ -61,10 +64,8 @@ public:
 		deviceName = os.str();
 		this->acq_clock_khz = acq_clock_khz;
 		reset(); // always call device specific setup/reset
-		deviceSetup(); // always call device specific setup/reset
+		//deviceSetup(); // always call device specific setup/reset
 	}
-
-	std::map<unsigned int, Rhs2116Device*> devices; 
 
 	void addDevice(Rhs2116Device* device){
 		auto it = devices.find(device->getDeviceTableID());
@@ -77,18 +78,19 @@ public:
 		std::string processorName = deviceName + " MULTI PROC";
 		device->subscribeProcessor(processorName, FrameProcessorType::PRE_FRAME_PROCESSOR, this);
 		numProbes += device->getNumProbes();
-		resetChannelMap();
 		expectDevceIDXNext.push_back(device->getDeviceTableID());
 		multiFrameBuffer.resize(multiFrameBuffer.size() + 1);
 		multiFrameBufferRaw.resize(multiFrameBufferRaw.size() + 1);
+		settings = device->settings; // TODO: this is terrible; the devices could be diferent
+		resetChannelMap(); // do this after the terrible settings copy above
 	}
 
 	void deviceSetup(){
 		//config.setup(this);
-		for(auto it : devices){
-			it.second->deviceSetup();
-			settings = it.second->settings; // TODO: this is terrible; the devices could be diferent
-		}
+		//for(auto it : devices){
+		//	it.second->deviceSetup();
+		//	settings = it.second->settings; // TODO: this is terrible; the devices could be diferent
+		//}
 		
 		//config.syncSettings();
 	}
@@ -241,7 +243,7 @@ public:
 
 		channelMapToIDX();
 
-	}
+	} 
 
 	void setChannelMap(const std::vector<size_t>& map){
 		//if(settings.channelMap.size() != map.size()){
@@ -266,8 +268,10 @@ public:
 	}
 
 	void channelMapToIDX(){
-		if(channelIDX.size() == 0) return;
+		//if(channelIDX.size() == 0) return;
 		if(settings.channelMap.size() == 0) return;
+
+		channelIDX.resize(numProbes);
 		for(size_t y = 0; y < numProbes; ++y){
 			size_t idx = 0;
 			for(size_t x = 0; x < numProbes; ++x){
@@ -386,9 +390,10 @@ protected:
 
 private:
 
+	std::map<unsigned int, Rhs2116Device*> devices; 
+
 	std::vector<Rhs2116Frame> multiFrameBuffer;
 	std::vector<Rhs2116FramePacked> multiFrameBufferRaw;
-
 
 	std::vector<unsigned int> expectDevceIDXNext;// = {257,256};
 	uint64_t nextDeviceCounter = 0;

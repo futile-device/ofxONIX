@@ -175,6 +175,7 @@
     <ClCompile Include="..\..\..\..\addons\ofxImPlot\libs\implot\implot_items.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\src\ONIDeviceRhs2116Stimulus.h" />
     <ClInclude Include="..\..\src\ONIFrameTypes.h" />
     <ClInclude Include="..\..\src\ONIInterface.h" />
     <ClInclude Include="src\ofApp.h" />

@@ -36,7 +36,8 @@ enum ONIDeviceTypeID{
 	FMC				= 23,
 	RHS2116			= 31,
 	RHS2116MULTI	= 666,
-	NONE		= 2048
+	RHS2116STIM		= 667,
+	NONE			= 2048
 };
 
 static std::string ONIDeviceTypeIDStr(const ONIDeviceTypeID& typeID){
@@ -45,6 +46,7 @@ static std::string ONIDeviceTypeIDStr(const ONIDeviceTypeID& typeID){
 	case FMC: {return "FMC Device"; break;}
 	case RHS2116: {return "RHS2116 Device"; break;}
 	case RHS2116MULTI: {return "RHS2116MULTI Device"; break;}
+	case RHS2116STIM: {return "RHS2116STIM Device"; break;}
 	case NONE: {return "No Device"; break;}
 	}
 };
@@ -108,7 +110,7 @@ public:
 	//ONIDevice(){};
 	virtual ~ONIDevice(){};
 
-	virtual void setup(volatile oni_ctx* context, oni_device_t type, uint64_t acq_clock_khz){
+	void setup(volatile oni_ctx* context, oni_device_t type, uint64_t acq_clock_khz){
 		LOGDEBUG("Setting up device: %s", onix_device_str(type.id));
 		ctx = context;
 		deviceType = type;

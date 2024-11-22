@@ -4,6 +4,7 @@
 #define ONI_LOG_FU 1
 #include "ONIContext.h"
 #include "ONIInterface.h"
+#include "ONIDeviceRhs2116Stimulus.h"
 
 ONIContext oni;
 
@@ -61,6 +62,13 @@ void ofApp::setup(){
     rhs2116Device2->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
 
     rhs2116Device1->readRegister(RHS2116_REG::MAXDELTAS);
+
+    Rhs2116MultiDevice* multi = oni.getMultiDevice();
+    multi->addDevice(rhs2116Device1);
+    multi->addDevice(rhs2116Device2);
+
+    Rhs2116StimulusDevice sd;
+    sd.test();
 
     //rhs2116Device1->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
     //rhs2116Device1->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);

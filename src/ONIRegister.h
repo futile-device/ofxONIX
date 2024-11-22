@@ -178,5 +178,7 @@ static inline const Rhs2116Register POS013 = Rhs2116Register(0x6d, "POS013");
 static inline const Rhs2116Register POS014 = Rhs2116Register(0x6e, "POS014");
 static inline const Rhs2116Register POS015 = Rhs2116Register(0x6f, "POS015");
 
-}; // namespace Rhs2116{
+}; // namespace RHS2116_REG
+
+
 

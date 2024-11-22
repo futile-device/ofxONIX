@@ -54,6 +54,47 @@ struct HeartBeatDeviceSettings{
 inline bool operator==(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs){ return (lhs.frequencyHz == rhs.frequencyHz); }
 inline bool operator!=(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs) { return !(lhs == rhs); }
 
+
+enum Rhs2116StimulusStep{
+	Step10nA = 0,
+	Step20nA,
+	Step50nA,
+	Step100nA,
+	Step200nA,
+	Step500nA,
+	Step1000nA,
+	Step2000nA,
+	Step5000nA,
+	Step10000nA,
+	StepError
+};
+
+const double Rhs2116StimulusStepMicroAmps [10]{
+	0.001 * 10,
+	0.001 * 20,
+	0.001 * 50,
+	0.001 * 100,
+	0.001 * 200,
+	0.001 * 500,
+	0.001 * 1000,
+	0.001 * 2000,
+	0.001 * 5000,
+	0.001 * 10000
+};
+
+const unsigned int Rhs2116StimulusStepRegisters [10][3]{
+	{ 64, 19, 3 },
+	{ 40, 40, 1 },
+	{ 64, 40, 0 },
+	{ 30, 20, 0 },
+	{ 25, 10, 0 },
+	{ 101, 3, 0 },
+	{ 98, 1, 0 },
+	{ 94, 0, 0 },
+	{ 38, 0, 0 },
+	{ 15, 0, 0 }
+};
+
 enum Rhs2116DspCutoff{
 	Differential = 0,
 	Dsp3309Hz,

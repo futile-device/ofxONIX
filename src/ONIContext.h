@@ -34,6 +34,9 @@
 
 #pragma once
 
+// add DELETE copy constructor to contextr and devices
+//   noncopyable(const noncopyable&) =delete;
+//	 noncopyable& operator=(const noncopyable&) =delete;
 
 class ONIContextOption{
 
@@ -405,6 +408,19 @@ public:
 		contextTimeStream.close();
 		bIsPlaying = false;
 		bStopPlaybackThread = false;
+	}
+
+	Rhs2116MultiDevice* getMultiDevice(const bool& bForceNewDevice = false){
+		if(rhs2116Multi != nullptr && bForceNewDevice){
+			LOGINFO("Deleting old multi device");
+			delete rhs2116Multi;
+		}
+		if(rhs2116Multi == nullptr){
+			LOGINFO("Creating new multi device");
+			rhs2116Multi = new Rhs2116MultiDevice;
+			rhs2116Multi->setup(&ctx, acq_clock_khz);
+		}
+		return rhs2116Multi;
 	}
 
 private:

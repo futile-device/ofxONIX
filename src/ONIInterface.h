@@ -768,27 +768,27 @@ public:
 			}
 		}
 
-		if(context.rhs2116Multi == nullptr){
-			context.rhs2116Multi = new Rhs2116MultiDevice;
-			context.rhs2116Multi->setup(&context.ctx, context.acq_clock_khz);
-			for(auto device : context.oniDevices){
-				if(device.second->getDeviceTypeID() == RHS2116){
-					context.rhs2116Multi->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
-					//rhs2116Multi->devices[device.second->getDeviceTableID()] = reinterpret_cast<Rhs2116Device*>(device.second);
-				}
-			}
-			//rhs2116Multi->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
-			//rhs2116Multi->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
-			//rhs2116Multi->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
-			//rhs2116Multi->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
-			//rhs2116Multi->saveConfig("default");
-			//context.rhs2116Multi->loadConfig("default");
-			std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
-			//context.rhs2116Multi->resetChannelMap();
-			context.rhs2116Multi->setChannelMap(t);
-			//rhs2116Multi->saveConfig("default");
-			//startAcquisition();
-		}
+		//if(context.rhs2116Multi == nullptr){
+		//	context.rhs2116Multi = new Rhs2116MultiDevice;
+		//	context.rhs2116Multi->setup(&context.ctx, context.acq_clock_khz);
+		//	for(auto device : context.oniDevices){
+		//		if(device.second->getDeviceTypeID() == RHS2116){
+		//			context.rhs2116Multi->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
+		//			//rhs2116Multi->devices[device.second->getDeviceTableID()] = reinterpret_cast<Rhs2116Device*>(device.second);
+		//		}
+		//	}
+		//	//rhs2116Multi->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
+		//	//rhs2116Multi->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
+		//	//rhs2116Multi->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
+		//	//rhs2116Multi->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
+		//	//rhs2116Multi->saveConfig("default");
+		//	//context.rhs2116Multi->loadConfig("default");
+		//	std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
+		//	//context.rhs2116Multi->resetChannelMap();
+		//	context.rhs2116Multi->setChannelMap(t);
+		//	//rhs2116Multi->saveConfig("default");
+		//	//startAcquisition();
+		//}
 
 		if(context.rhs2116Multi != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
