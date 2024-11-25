@@ -27,6 +27,7 @@
 #include "ONIDeviceHeartBeat.h"
 #include "ONIDeviceRhs2116.h"
 #include "ONIDeviceRhs2116Multi.h"
+#include "ONIDeviceRhs2116Stimulus.h"
 #include "ONIRegister.h"
 #include "ONISettingTypes.h"
 #include "ONIUtility.h"
@@ -411,18 +412,31 @@ public:
 	}
 
 	Rhs2116MultiDevice* getMultiDevice(const bool& bForceNewDevice = false){
-		if(rhs2116Multi != nullptr && bForceNewDevice){
+		if(rhs2116MultiDevice != nullptr && bForceNewDevice){
 			LOGINFO("Deleting old multi device");
-			delete rhs2116Multi;
+			delete rhs2116MultiDevice;
 		}
-		if(rhs2116Multi == nullptr){
+		if(rhs2116MultiDevice == nullptr){
 			LOGINFO("Creating new multi device");
-			rhs2116Multi = new Rhs2116MultiDevice;
-			rhs2116Multi->setup(&ctx, acq_clock_khz);
+			rhs2116MultiDevice = new Rhs2116MultiDevice;
+			rhs2116MultiDevice->setup(&ctx, acq_clock_khz);
 		}
-		return rhs2116Multi;
+		return rhs2116MultiDevice;
 	}
 
+	Rhs2116StimulusDevice* getStimulusDevice(const bool& bForceNewDevice = false){
+		if(rhs2116StimDevice != nullptr && bForceNewDevice){
+			LOGINFO("Deleting old stimulus device");
+			delete rhs2116StimDevice;
+		}
+		if(rhs2116StimDevice == nullptr){
+			LOGINFO("Creating new stimulus device");
+			rhs2116StimDevice = new Rhs2116StimulusDevice;
+			rhs2116StimDevice->setup(rhs2116MultiDevice);
+		}
+		return rhs2116StimDevice;
+	}
+	
 private:
 
 	bool startContext(){
@@ -675,14 +689,15 @@ private:
 
 		oniDevices.clear();
 
-		delete rhs2116Multi;
-		rhs2116Multi = nullptr;
+		delete rhs2116MultiDevice;
+		rhs2116MultiDevice = nullptr;
 
 	}
 
 private:
 
-	Rhs2116MultiDevice * rhs2116Multi = nullptr; // TODO: this better!!
+	Rhs2116MultiDevice * rhs2116MultiDevice = nullptr; // TODO: this better!!
+	Rhs2116StimulusDevice * rhs2116StimDevice = nullptr;
 
 	unsigned int blockReadBytes = 0;
 	unsigned int blockWriteBytes = 0;

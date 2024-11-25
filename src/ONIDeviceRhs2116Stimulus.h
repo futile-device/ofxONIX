@@ -98,11 +98,12 @@ public:
         deviceName = os.str();
        
         deviceStimuli.clear();
-        for(auto it : multi->devices){
+
+        for(auto& it : multi->devices){
             deviceStimuli[it.second->getDeviceTableID()] = std::vector<Rhs2116Stimulus>(it.second->getNumProbes());
         }
 
-        defaultStimuli.resize(16); // brittle hard coded to 16
+        defaultStimuli.resize(numProbes / multi->devices.size()); // brittle? hard coded to 16?
 
         reset(); // always call device specific setup/reset
         deviceSetup(); // always call device specific setup/reset
@@ -117,13 +118,14 @@ public:
     inline void process(ONIFrame& frame){};
 
     void clearStimuli(){
-        for(auto it : deviceStimuli){
+        for(auto& it : deviceStimuli){
             std::vector<Rhs2116Stimulus>& stimuli = it.second;
             stimuli.clear();
+            if(multi != nullptr) stimuli.resize(numProbes / multi->devices.size()); // brittle? hard coded to 16?
         }
     }
 
-    Rhs2116StimulusStep conformMinimumStimulusStepSize(std::vector<Rhs2116Stimulus>& stimuli){
+    Rhs2116StimulusStep conformStepSize(std::vector<Rhs2116Stimulus>& stimuli){
 
         Rhs2116StimulusStep maxStep = Rhs2116StimulusStep::Step10nA;
 
@@ -131,20 +133,27 @@ public:
 
         for(size_t i = 0; i < stimuli.size(); ++i){
             if(stimuli[i].requestedAnodicAmplitudeMicroAmps > 0 && stimuli[i].requestedCathodicAmplitudeMicroAmps > 0){
-                Rhs2116StimulusStep stepSize = conformMinimumStimulusStepSize(stimuli[i]);
+                Rhs2116StimulusStep stepSize = conformStepSize(stimuli[i]);
                 if(stepSize > maxStep) maxStep = stepSize;
             }
         }
 
         for(auto& stimulus : stimuli){
 
-            double a1 = stimulus.requestedAnodicAmplitudeMicroAmps / Rhs2116StimulusStepMicroAmps[maxStep];
-            stimulus.anodicAmplitudeSteps = std::clamp(std::round(a1), 1.0, 255.0);
-            stimulus.actualAnodicAmplitudeMicroAmps = std::clamp(stimulus.anodicAmplitudeSteps * Rhs2116StimulusStepMicroAmps[maxStep], 0.0, 2550.0);
+            stimulus.actualAnodicAmplitudeMicroAmps = 0;
+            stimulus.actualCathodicAmplitudeMicroAmps = 0;
 
-            double c1 = stimulus.requestedCathodicAmplitudeMicroAmps / Rhs2116StimulusStepMicroAmps[maxStep];
-            stimulus.cathodicAmplitudeSteps = std::clamp(std::round(c1), 1.0, 255.0);
-            stimulus.actualCathodicAmplitudeMicroAmps = std::clamp(stimulus.cathodicAmplitudeSteps * Rhs2116StimulusStepMicroAmps[maxStep], 0.0, 2550.0);
+            if(stimulus.requestedCathodicAmplitudeMicroAmps != 0){
+                double a1 = stimulus.requestedAnodicAmplitudeMicroAmps / Rhs2116StimulusStepMicroAmps[maxStep];
+                stimulus.anodicAmplitudeSteps = std::clamp(std::round(a1), 1.0, 255.0);
+                stimulus.actualAnodicAmplitudeMicroAmps = std::clamp(stimulus.anodicAmplitudeSteps * Rhs2116StimulusStepMicroAmps[maxStep], 0.0, 2550.0);
+            }
+
+            if(stimulus.requestedCathodicAmplitudeMicroAmps != 0){
+                double c1 = stimulus.requestedCathodicAmplitudeMicroAmps / Rhs2116StimulusStepMicroAmps[maxStep];
+                stimulus.cathodicAmplitudeSteps = std::clamp(std::round(c1), 1.0, 255.0);
+                stimulus.actualCathodicAmplitudeMicroAmps = std::clamp(stimulus.cathodicAmplitudeSteps * Rhs2116StimulusStepMicroAmps[maxStep], 0.0, 2550.0);
+            }
 
             LOGDEBUG("Requested Anodic uA (%0.2f) || Actual Anodic uA (%0.2f) || Min Step (M) (%f) || Steps %i", stimulus.requestedAnodicAmplitudeMicroAmps, stimulus.actualAnodicAmplitudeMicroAmps, Rhs2116StimulusStepMicroAmps[maxStep], stimulus.anodicAmplitudeSteps);
             LOGDEBUG("Requested Cathod uA (%0.2f) || Actual Cathod uA (%0.2f) || Min Step (M) (%f) || Steps %i", stimulus.requestedCathodicAmplitudeMicroAmps, stimulus.actualCathodicAmplitudeMicroAmps, Rhs2116StimulusStepMicroAmps[maxStep], stimulus.cathodicAmplitudeSteps);
@@ -155,7 +164,7 @@ public:
 
     }
 
-    Rhs2116StimulusStep conformMinimumStimulusStepSize(Rhs2116Stimulus& stimulus){
+    Rhs2116StimulusStep conformStepSize(Rhs2116Stimulus& stimulus){
 
         Rhs2116StimulusStep anodicMinStep = Rhs2116StimulusStep::StepError; // 10
         
@@ -189,13 +198,17 @@ public:
 
         Rhs2116StimulusStep minStep = std::max(anodicMinStep, cathodicMinStep);
 
-        double a1 = stimulus.requestedAnodicAmplitudeMicroAmps / Rhs2116StimulusStepMicroAmps[minStep];
-        stimulus.anodicAmplitudeSteps = std::clamp(std::round(a1), 1.0, 255.0);
-        stimulus.actualAnodicAmplitudeMicroAmps = std::clamp(stimulus.anodicAmplitudeSteps * Rhs2116StimulusStepMicroAmps[minStep], 0.0, 2550.0);
+        if(stimulus.requestedCathodicAmplitudeMicroAmps != 0){
+            double a1 = stimulus.requestedAnodicAmplitudeMicroAmps / Rhs2116StimulusStepMicroAmps[minStep];
+            stimulus.anodicAmplitudeSteps = std::clamp(std::round(a1), 1.0, 255.0);
+            stimulus.actualAnodicAmplitudeMicroAmps = std::clamp(stimulus.anodicAmplitudeSteps * Rhs2116StimulusStepMicroAmps[minStep], 0.0, 2550.0);
+        }
 
-        double c1 = stimulus.requestedCathodicAmplitudeMicroAmps / Rhs2116StimulusStepMicroAmps[minStep];
-        stimulus.cathodicAmplitudeSteps = std::clamp(std::round(c1), 1.0, 255.0);
-        stimulus.actualCathodicAmplitudeMicroAmps = std::clamp(stimulus.cathodicAmplitudeSteps * Rhs2116StimulusStepMicroAmps[minStep], 0.0, 2550.0);
+        if(stimulus.requestedCathodicAmplitudeMicroAmps != 0){
+            double c1 = stimulus.requestedCathodicAmplitudeMicroAmps / Rhs2116StimulusStepMicroAmps[minStep];
+            stimulus.cathodicAmplitudeSteps = std::clamp(std::round(c1), 1.0, 255.0);
+            stimulus.actualCathodicAmplitudeMicroAmps = std::clamp(stimulus.cathodicAmplitudeSteps * Rhs2116StimulusStepMicroAmps[minStep], 0.0, 2550.0);
+        }
 
         LOGDEBUG("Requested Anodic uA (%0.2f) || Actual Anodic uA (%0.2f) || Min Step (A, M) (%f %f) || Steps %i", stimulus.requestedAnodicAmplitudeMicroAmps, stimulus.actualAnodicAmplitudeMicroAmps, Rhs2116StimulusStepMicroAmps[anodicMinStep], Rhs2116StimulusStepMicroAmps[minStep], stimulus.anodicAmplitudeSteps);
         LOGDEBUG("Requested Cathod uA (%0.2f) || Actual Cathod uA (%0.2f) || Min Step (A, M) (%f %f) || Steps %i", stimulus.requestedCathodicAmplitudeMicroAmps, stimulus.actualCathodicAmplitudeMicroAmps, Rhs2116StimulusStepMicroAmps[cathodicMinStep], Rhs2116StimulusStepMicroAmps[minStep], stimulus.cathodicAmplitudeSteps);
@@ -222,19 +235,22 @@ public:
         size_t probeIDX = idx - deviceNum * numProbesPerDevice;
 
         size_t i = 0;
-        for(auto it : deviceStimuli){
+        for(auto& it : deviceStimuli){
             if(deviceNum == i){
                 std::vector<Rhs2116Stimulus>& stimuli = it.second;
                 stimuli[probeIDX] = stimulus;
                 return true;
             }
+            ++i;
         }
+
+
         return false;
     }
 
     bool setProbeStimulus(const Rhs2116Stimulus& stimulus, const unsigned int& probeIDX, const unsigned int& deviceTableIDX){
 
-        auto it = deviceStimuli.find(deviceTableIDX);
+        auto& it = deviceStimuli.find(deviceTableIDX);
 
         if(it == deviceStimuli.end()){
             LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
@@ -266,7 +282,7 @@ public:
         size_t probeIDX = idx - deviceNum * numProbesPerDevice;
 
         size_t i = 0;
-        for(auto it : deviceStimuli){
+        for(auto& it : deviceStimuli){
             if(deviceNum == i){
                 std::vector<Rhs2116Stimulus>& stimuli = it.second;
                 return stimuli[probeIDX];
@@ -277,7 +293,7 @@ public:
 
     Rhs2116Stimulus& getProbeStimulus(const unsigned int& probeIDX, const unsigned int& deviceTableIDX){
 
-        auto it = deviceStimuli.find(deviceTableIDX);
+        auto& it = deviceStimuli.find(deviceTableIDX);
 
         if(it == deviceStimuli.end()){
             LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
@@ -291,7 +307,7 @@ public:
 
     bool setProbeStimuli(const std::vector<Rhs2116Stimulus>& stimuli, const unsigned int& deviceTableIDX){
 
-        auto it = deviceStimuli.find(deviceTableIDX);
+        auto& it = deviceStimuli.find(deviceTableIDX);
 
         if(it == deviceStimuli.end()){
             LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
@@ -306,7 +322,7 @@ public:
 
     std::vector<Rhs2116Stimulus>& getProbeStimuli(const unsigned int& deviceTableIDX){
 
-        auto it = deviceStimuli.find(deviceTableIDX);
+        auto& it = deviceStimuli.find(deviceTableIDX);
 
         if(it == deviceStimuli.end()){
             LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
@@ -317,65 +333,115 @@ public:
 
     }
 
-#pragma pack(push, 1)
-    struct Rhs2116StimIndex{
-        unsigned time:22;
-        unsigned index:10;
-    };
-#pragma pack(pop)
+    bool setProbStimuliMapped(const std::vector<Rhs2116Stimulus>& stimuli){
 
-    void test(){
+        if(stimuli.size() != numProbes){
+            LOGERROR("Stimuli and number of probes don't match!");
+            return false;
+        }
 
-        Rhs2116Stimulus s1;
-        s1.requestedAnodicAmplitudeMicroAmps = 1.90;
-        s1.requestedCathodicAmplitudeMicroAmps = 1.20;
-        s1.anodicAmplitudeSteps = 2;
-        s1.anodicFirst = true;
-        s1.anodicWidthSamples = 30;
-        s1.cathodicAmplitudeSteps = 2;
-        s1.cathodicWidthSamples = 30;
-        s1.delaySamples = 0;
-        s1.dwellSamples = 30;
-        s1.interStimulusIntervalSamples = 30;
-        s1.numberOfStimuli = 1;
-        //s1.valid = isStimulusValid(s1);
+        size_t numProbesPerDevice = 16; // (numProbes / multi->devices.size())
 
-        Rhs2116Stimulus s2;
-        s2.requestedAnodicAmplitudeMicroAmps = 18.1;
-        s2.requestedCathodicAmplitudeMicroAmps = 99.3;
-        s2.anodicAmplitudeSteps = 24;
-        s2.anodicFirst = true;
-        s2.anodicWidthSamples = 60;
-        s2.cathodicAmplitudeSteps = 24;
-        s2.cathodicWidthSamples = 60;
-        s2.delaySamples = 694;
-        s2.dwellSamples = 121;
-        s2.interStimulusIntervalSamples = 362;
-        s2.numberOfStimuli = 40;
-        //s2.valid = isStimulusValid(s2);
+        size_t deviceCount = 0;
+        for(auto& it : deviceStimuli){
 
-        //conformMinimumStimulusStepSize(s1);
-        //conformMinimumStimulusStepSize(s2);
+            std::vector<Rhs2116Stimulus>& ds = it.second;
+
+            size_t startIDX = deviceCount * numProbesPerDevice;
+            size_t endIDX = startIDX + numProbesPerDevice;
+
+            size_t j = 0;
+            for(size_t i = startIDX; i < endIDX; ++i){
+                ds[j] = stimuli[i];
+                ++j;
+            }
+
+            ++deviceCount;
+
+        }
+
+        return true;
+
+    }
+
+    std::vector<Rhs2116Stimulus> getProbeStimuliMapped(){
 
         std::vector<Rhs2116Stimulus> stimuli;
-        stimuli.push_back(s1);
-        stimuli.push_back(s2);
 
-        Rhs2116StimulusStep stepSize = conformMinimumStimulusStepSize(stimuli);
+        for(auto& it : deviceStimuli){
+            std::vector<Rhs2116Stimulus>& ds = it.second;
+            for(const auto& s : ds){
+                stimuli.push_back(s);
+            }
+        }
 
-        auto result = getDeltaTable(stimuli);
+        if(stimuli.size() != numProbes){
+            LOGERROR("Stimuli and number of probes don't match!");
+            return defaultStimuli;
+        }
 
-        size_t j = 0;
-        for (const auto& entry : result) {
-            //std::cout << "Key: " << entry.first << " Value: " << entry.second << std::endl;
-            Rhs2116StimIndex p;
-            p.index = j;
-            p.time = entry.first;
-            LOGDEBUG("3277X %i", *(unsigned int*)&p);
-            unsigned int idxTime = j++ << 22 | (entry.first & 0x003FFFFF);
-            LOGDEBUG("32771 %i", idxTime);
-            LOGDEBUG("32772 %i", entry.second);
-            
+        return stimuli;
+
+    }
+
+    inline void triggerStimulusSequence(){
+        deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
+        ONIDevice::writeRegister(RHS2116STIM_REG::TRIGGER, 1);
+        deviceType.idx = 667;
+    }
+
+    bool setStimulusSequence(const std::vector<Rhs2116Stimulus>& stimuli, const Rhs2116StimulusStep& stepSize){
+
+        setProbStimuliMapped(stimuli);
+
+        deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
+        //ONIDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
+        ONIDevice::writeRegister(RHS2116STIM_REG::TRIGGERSOURCE, 0);
+        deviceType.idx = 667;
+
+        for(const auto& it : deviceStimuli){
+
+            Rhs2116Device* device = multi->getDevice(it.first);
+
+            device->setStepSize(stepSize);
+            const unsigned int * regs = Rhs2116StimulusBiasRegisters[stepSize];
+            unsigned int rbias = regs[1] << 4 | regs[0];
+            device->writeRegister(RHS2116_REG::STIMBIAS, rbias); // ask Jon about whether this is necessary
+            //device->writeRegister(RHS2116_REG::STEPSZ, stepSize);
+
+            const std::vector<Rhs2116Stimulus>& thisStimuli = it.second;
+
+            for(size_t i = 0; i < thisStimuli.size(); ++i){
+                device->writeRegister(RHS2116_REG::NEG[i], thisStimuli[i].anodicAmplitudeSteps);
+            }
+
+            for(size_t i = 0; i < thisStimuli.size(); ++i){
+                device->writeRegister(RHS2116_REG::POS[i], thisStimuli[i].cathodicAmplitudeSteps);
+            }
+
+            auto result = getDeltaTable(thisStimuli);
+
+            device->writeRegister(RHS2116_REG::NUMDELTAS, result.size());
+
+            size_t j = 0;
+            for (const auto& entry : result) {
+                //std::cout << "Key: " << entry.first << " Value: " << entry.second << std::endl;
+                //Rhs2116StimIndexTime p;
+                //p.index = j;
+                //p.time = entry.first;
+                //LOGDEBUG("3277X %i", *(unsigned int*)&p);
+                unsigned int idxTime = j++ << 22 | (entry.first & 0x003FFFFF);
+                device->writeRegister(RHS2116_REG::DELTAIDXTIME, idxTime);
+                device->writeRegister(RHS2116_REG::DELTAPOLEN, entry.second);
+                //LOGDEBUG("32771 %i", idxTime);
+                //LOGDEBUG("32772 %i", entry.second);
+                //++j;
+            }
+
+            //device->writeRegister(RHS2116_REG::RESPECTSTIMACTIVE, 1); // hmmm? not done in bonsai code
+
+            return !device->readRegister(RHS2116_REG::SEQERROR);
+
         }
 
     }
@@ -401,13 +467,13 @@ public:
         }
     }
 
-    std::map<uint32_t, uint32_t> getDeltaTable(std::vector<Rhs2116Stimulus>& stimuli) {
+    std::map<uint32_t, uint32_t> getDeltaTable(const std::vector<Rhs2116Stimulus>& stimuli) {
 
         std::map<uint32_t, std::bitset<32>> table;
 
         for (int i = 0; i < stimuli.size(); ++i) {
 
-            Rhs2116Stimulus& s = stimuli[i];
+            const Rhs2116Stimulus& s = stimuli[i];
 
             bool e0 = s.anodicFirst ? s.anodicAmplitudeSteps > 0 : s.cathodicAmplitudeSteps > 0;
             bool e1 = s.anodicFirst ? s.cathodicAmplitudeSteps > 0 : s.anodicAmplitudeSteps > 0;
@@ -439,13 +505,21 @@ public:
         return result;
     }
 
- protected:
+    //unsigned int readRegister(const Rhs2116StimulusRegister& reg){
+    //    return ONIDevice::readRegister(reg);
+    //}
 
-     Rhs2116Stimulus defaultStimulus;
-     std::vector<Rhs2116Stimulus> defaultStimuli;
+    //bool writeRegister(const Rhs2116StimulusRegister& reg, const unsigned int& value){
+    //    return ONIDevice::writeRegister(reg, value);
+    //}
 
-     std::map<unsigned int, std::vector<Rhs2116Stimulus>> deviceStimuli;
+protected:
 
-     Rhs2116MultiDevice* multi;
+    Rhs2116Stimulus defaultStimulus;
+    std::vector<Rhs2116Stimulus> defaultStimuli;
+
+    std::map<unsigned int, std::vector<Rhs2116Stimulus>> deviceStimuli;
+
+    Rhs2116MultiDevice* multi;
 
 };

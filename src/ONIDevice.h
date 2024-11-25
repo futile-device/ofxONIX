@@ -35,6 +35,7 @@ enum ONIDeviceTypeID{
 	HEARTBEAT		= 12,
 	FMC				= 23,
 	RHS2116			= 31,
+	//RHS2116STIM		= 31,
 	RHS2116MULTI	= 666,
 	RHS2116STIM		= 667,
 	NONE			= 2048
@@ -195,13 +196,21 @@ protected:
 			return false;
 		}
 
-		// double check it set correctly
-		unsigned int t_value = 0;
-		rc = oni_read_reg(*ctx, deviceType.idx, reg.getAddress(), &t_value);
-		if(rc || value != t_value){
-			LOGERROR("Write does not match read values");
-			return false;
+		if(reg.getAddress() != FMC_REG::SAVEVOLTAGE &&
+		   reg.getAddress() != RHS2116_REG::DELTAIDXTIME &&
+		   reg.getAddress() != RHS2116_REG::DELTAPOLEN &&
+		   reg.getAddress() != RHS2116_REG::TRIGGER &&
+		   reg.getAddress() != RHS2116_REG::RESPECTSTIMACTIVE &&
+		   reg.getAddress() != RHS2116STIM_REG::TRIGGER){			/// READ ONLY REGISTERS!!
+			// double check it set correctly
+			unsigned int t_value = 0;
+			rc = oni_read_reg(*ctx, deviceType.idx, reg.getAddress(), &t_value);
+			if(rc || value != t_value){
+				LOGERROR("Write does not match read values: %s", oni_error_str(rc));
+				return false;
+			}
 		}
+
 		bContextNeedsReset = true;
 		return true;
 	}

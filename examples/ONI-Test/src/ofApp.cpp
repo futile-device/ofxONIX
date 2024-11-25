@@ -58,8 +58,11 @@ void ofApp::setup(){
 
     //fu::debug << rhs2116Device1->getFormat(true) << fu::endl;
 
-    rhs2116Device1->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
-    rhs2116Device2->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
+    //rhs2116Device1->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
+    //rhs2116Device2->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
+
+    //rhs2116Device1->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
+    //rhs2116Device2->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
 
     rhs2116Device1->readRegister(RHS2116_REG::MAXDELTAS);
 
@@ -67,8 +70,65 @@ void ofApp::setup(){
     multi->addDevice(rhs2116Device1);
     multi->addDevice(rhs2116Device2);
 
-    Rhs2116StimulusDevice sd;
-    sd.test();
+    //std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
+    //multi->setChannelMap(t);
+
+    Rhs2116Stimulus s1;
+    s1.requestedAnodicAmplitudeMicroAmps = 0.05;
+    s1.requestedCathodicAmplitudeMicroAmps = 0.05;
+    s1.actualAnodicAmplitudeMicroAmps = 0;
+    s1.actualCathodicAmplitudeMicroAmps = 0;
+    s1.anodicAmplitudeSteps = 0;
+    s1.anodicFirst = true;
+    s1.anodicWidthSamples = 300;
+    s1.cathodicAmplitudeSteps = 0;
+    s1.cathodicWidthSamples = 300;
+    s1.delaySamples = 0;
+    s1.dwellSamples = 1;
+    s1.interStimulusIntervalSamples = 1;
+    s1.numberOfStimuli = 10;
+
+    Rhs2116Stimulus s2;
+    s2.requestedAnodicAmplitudeMicroAmps = 18.1;
+    s2.requestedCathodicAmplitudeMicroAmps = 99.3;
+    s2.actualAnodicAmplitudeMicroAmps = 0;
+    s2.actualCathodicAmplitudeMicroAmps = 0;
+    s2.anodicAmplitudeSteps = 0;
+    s2.anodicFirst = true;
+    s2.anodicWidthSamples = 60;
+    s2.cathodicAmplitudeSteps = 0;
+    s2.cathodicWidthSamples = 60;
+    s2.delaySamples = 694;
+    s2.dwellSamples = 121;
+    s2.interStimulusIntervalSamples = 362;
+    s2.numberOfStimuli = 40;
+
+    Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice(); // make sure to call this after multi device is initialized with devices!
+
+    rhs2116StimDevice->conformStepSize(s1);
+    rhs2116StimDevice->conformStepSize(s2);
+
+    rhs2116StimDevice->setProbeStimulus(s1, 0);
+    //rhs2116StimDevice->setProbeStimulus(s2, 1);
+
+    std::vector<Rhs2116Stimulus> stimuli = rhs2116StimDevice->getProbeStimuliMapped();
+    std::vector<Rhs2116Stimulus> lastStimuli = stimuli;
+
+    Rhs2116StimulusStep stepSize = rhs2116StimDevice->conformStepSize(stimuli);
+
+    for(size_t i = 0; i < stimuli.size(); ++i){
+        if(stimuli[i].requestedAnodicAmplitudeMicroAmps != stimuli[i].actualAnodicAmplitudeMicroAmps){
+            LOGINFO("Probe %i anodic uA will change from %0.3f to %0.3f: ", i, stimuli[i].requestedAnodicAmplitudeMicroAmps, stimuli[i].actualAnodicAmplitudeMicroAmps);
+            LOGINFO("Probe %i cathod uA will change from %0.3f to %0.3f: ", i, stimuli[i].requestedCathodicAmplitudeMicroAmps, stimuli[i].actualCathodicAmplitudeMicroAmps);
+        }
+    }
+
+    //rhs2116StimDevice->setProbStimuliMapped(stimuli);
+
+
+    rhs2116StimDevice->setStimulusSequence(stimuli, stepSize);
+
+
 
     //rhs2116Device1->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
     //rhs2116Device1->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
@@ -105,7 +165,7 @@ void ofApp::update(){
 
         fu::ImGuiConsole.gui();
 
-        //ImPlot::ShowDemoWindow();
+        ImPlot::ShowDemoWindow();
         //ImGui::ShowDemoWindow();
 
         ONIGui.gui(oni);
@@ -153,6 +213,11 @@ void ofApp::keyPressed(int key){
 
     if(key == 'p'){
         oni.startPlayng();
+    }
+
+    if(key == 't'){
+        Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice();
+        rhs2116StimDevice->triggerStimulusSequence();
     }
 }
 

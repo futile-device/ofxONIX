@@ -52,10 +52,24 @@ public:
 
 	void deviceSetup(){
 		//config.setup(this);
-		getDspCutOff(true);
-		getAnalogLowCutoff(true);
-		getAnalogLowCutoffRecovery(true);
-		getAnalogHighCutoff(true);
+		//getStepSize(true); 
+		//getDspCutOff(true);
+		//getAnalogLowCutoff(true);
+		//getAnalogLowCutoffRecovery(true);
+		//getAnalogHighCutoff(true);
+		setStepSize(settings.stepSize);
+		setDspCutOff(settings.dspCutoff);
+		setAnalogLowCutoff(settings.lowCutoff);
+		setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
+		setAnalogHighCutoff(settings.highCutoff);
+
+
+		/*Rhs2116StimulusStep stepSize = Step10nA;
+		Rhs2116DspCutoff dspCutoff = Dsp308Hz;
+
+		Rhs2116AnalogLowCutoff lowCutoff = Low100mHz;
+		Rhs2116AnalogLowCutoff lowCutoffRecovery = Low250Hz;
+		Rhs2116AnalogHighCutoff highCutoff = High10000Hz;*/
 		//config.syncSettings();
 	}
 
@@ -163,6 +177,22 @@ public:
 		return settings.dspCutoff;
 	}
 	
+	bool setStepSize(Rhs2116StimulusStep stepSize){
+		const unsigned int * regs = Rhs2116StimulusStepRegisters[stepSize];
+		unsigned int reg = regs[2] << 13 | regs[1] << 7 | regs[0];
+		bool bOk = writeRegister(RHS2116_REG::STEPSZ, reg);
+		if(bOk) getStepSize(true);
+		return bOk;
+	}
+
+	Rhs2116StimulusStep getStepSize(const bool& bCheckRegisters = true){
+		if(bCheckRegisters){
+			unsigned int reg = readRegister(RHS2116_REG::STEPSZ);
+			settings.stepSize = getStepSizeFromReg(reg);
+		}
+		return settings.stepSize;
+	}
+
 	//inline void gui(){
 	//	//config.gui();
 	//	//if(config.applySettings() || bForceGuiUpdate){
@@ -226,6 +256,18 @@ public:
 	}
 
 protected:
+
+	inline Rhs2116StimulusStep getStepSizeFromReg(unsigned int reg){
+		Rhs2116StimReg r = *reinterpret_cast<Rhs2116StimReg*>(&reg);
+		for(size_t i = 0; i < 10; ++i){
+			const unsigned int * regs = Rhs2116StimulusStepRegisters[i];
+			if(regs[0] == r.Step_Sel1 &&
+			   regs[1] == r.Step_Sel2 &&
+			   regs[2] == r.Step_Sel3){
+				return (Rhs2116StimulusStep)(i);
+			}
+		}
+	}
 
 	inline Rhs2116AnalogLowCutoff getLowCutoffFromReg(unsigned int bw){
 		Rhs2116LowCutReg r = *reinterpret_cast<Rhs2116LowCutReg*>(&bw);

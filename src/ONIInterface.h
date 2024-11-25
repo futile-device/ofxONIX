@@ -278,7 +278,7 @@ protected:
 static void Sparkline(const char* id, const float* values, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size) {
 	ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0));
 	if (ImPlot::BeginPlot(id, size, ImPlotFlags_CanvasOnly)){
-		ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
+		ImPlot::SetupAxes(nullptr, nullptr);//, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
 		ImPlot::SetupAxesLimits(0, count - 1, min_v, max_v, ImGuiCond_Always);
 		ImPlot::SetNextLineStyle(col);
 		//ImPlot::SetNextFillStyle(col, 0.25);
@@ -568,7 +568,7 @@ public:
 
 			ImGui::PushID(probe);
 
-			Sparkline("##spark", &p.acProbeVoltages[probe][0], frameCount, -5.0f, 5.0f, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 120));
+			Sparkline("##spark", &p.dcProbeVoltages[probe][0], frameCount, -10.0f, 10.0f, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 120));
 
 			ImGui::PopID();
 
@@ -759,40 +759,40 @@ public:
 				case 256:
 				case 257:
 				{
-					if(context.rhs2116Multi != nullptr) ImGui::BeginDisabled();
+					if(context.rhs2116MultiDevice != nullptr) ImGui::BeginDisabled();
 					rhsInterface[device.first - 256].gui(*device.second);
-					if(context.rhs2116Multi != nullptr) ImGui::EndDisabled();
+					if(context.rhs2116MultiDevice != nullptr) ImGui::EndDisabled();
 					break;
 				}
 				}
 			}
 		}
 
-		//if(context.rhs2116Multi == nullptr){
-		//	context.rhs2116Multi = new Rhs2116MultiDevice;
-		//	context.rhs2116Multi->setup(&context.ctx, context.acq_clock_khz);
+		//if(context.rhs2116MultiDevice == nullptr){
+		//	context.rhs2116MultiDevice = new Rhs2116MultiDevice;
+		//	context.rhs2116MultiDevice->setup(&context.ctx, context.acq_clock_khz);
 		//	for(auto device : context.oniDevices){
 		//		if(device.second->getDeviceTypeID() == RHS2116){
-		//			context.rhs2116Multi->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
-		//			//rhs2116Multi->devices[device.second->getDeviceTableID()] = reinterpret_cast<Rhs2116Device*>(device.second);
+		//			context.rhs2116MultiDevice->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
+		//			//rhs2116MultiDevice->devices[device.second->getDeviceTableID()] = reinterpret_cast<Rhs2116Device*>(device.second);
 		//		}
 		//	}
-		//	//rhs2116Multi->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
-		//	//rhs2116Multi->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
-		//	//rhs2116Multi->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
-		//	//rhs2116Multi->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
-		//	//rhs2116Multi->saveConfig("default");
-		//	//context.rhs2116Multi->loadConfig("default");
+		//	//rhs2116MultiDevice->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
+		//	//rhs2116MultiDevice->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
+		//	//rhs2116MultiDevice->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
+		//	//rhs2116MultiDevice->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
+		//	//rhs2116MultiDevice->saveConfig("default");
+		//	//context.rhs2116MultiDevice->loadConfig("default");
 		//	std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
-		//	//context.rhs2116Multi->resetChannelMap();
-		//	context.rhs2116Multi->setChannelMap(t);
-		//	//rhs2116Multi->saveConfig("default");
+		//	//context.rhs2116MultiDevice->resetChannelMap();
+		//	context.rhs2116MultiDevice->setChannelMap(t);
+		//	//rhs2116MultiDevice->saveConfig("default");
 		//	//startAcquisition();
 		//}
 
-		if(context.rhs2116Multi != nullptr){
+		if(context.rhs2116MultiDevice != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
-			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*context.rhs2116Multi); //context.rhs2116Multi->gui();
+			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*context.rhs2116MultiDevice); //context.rhs2116MultiDevice->gui();
 		}
 
 		ImGui::PopID();

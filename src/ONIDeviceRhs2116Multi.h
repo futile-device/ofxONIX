@@ -229,6 +229,21 @@ public:
 		return settings.dspCutoff;
 	}
 
+	bool setStepSize(Rhs2116StimulusStep stepSize){
+		for(auto it : devices){
+			bool bOk = it.second->setStepSize(stepSize);
+			if(!bOk) return false;
+		}
+		return true;
+	}
+
+	Rhs2116StimulusStep getStepSize(const bool& bCheckRegisters = true){
+		for(auto it : devices){
+			settings.stepSize = getStepSize(bCheckRegisters); // should we check if they are both the same?
+		}
+		return settings.stepSize;
+	}
+
 	void resetChannelMap(){
 
 		settings.channelMap.clear();
@@ -384,6 +399,16 @@ public:
 	//	}
 	//	return bOk;
 	//}
+
+	Rhs2116Device* getDevice(const unsigned int& deviceTableIDX){
+		auto it = devices.find(deviceTableIDX);
+		if(it == devices.end()){
+			LOGERROR("No device found for IDX: %i", deviceTableIDX);
+			return nullptr;
+		}else{
+			return it->second;
+		}
+	}
 
 protected:
 

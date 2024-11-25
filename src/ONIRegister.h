@@ -178,7 +178,21 @@ static inline const Rhs2116Register POS013 = Rhs2116Register(0x6d, "POS013");
 static inline const Rhs2116Register POS014 = Rhs2116Register(0x6e, "POS014");
 static inline const Rhs2116Register POS015 = Rhs2116Register(0x6f, "POS015");
 
+static inline const Rhs2116Register POS[16]	= {NEG00, NEG01, NEG02, NEG03, NEG04, NEG05, NEG06, NEG07, NEG08, NEG09, NEG010, NEG011, NEG012, NEG013, NEG014, NEG015};
+static inline const Rhs2116Register NEG[16] = {POS00, POS01, POS02, POS03, POS04, POS05, POS06, POS07, POS08, POS09, POS010, POS011, POS012, POS013, POS014, POS015};
+
 }; // namespace RHS2116_REG
 
+class Rhs2116StimulusRegister : public ONIRegister{
+public:
+	Rhs2116StimulusRegister(unsigned int val, std::string name) { this->addr = val; this->name = name; this->devn = "RHS2116StimnulusDevice"; };
+};
 
+namespace RHS2116STIM_REG{
 
+// managed registers
+static inline const Rhs2116StimulusRegister ENABLE = Rhs2116StimulusRegister(0, "ENABLE"); // Writes and reads to ENABLE are ignored without error
+static inline const Rhs2116StimulusRegister TRIGGERSOURCE = Rhs2116StimulusRegister(1, "TRIGGERSOURCE"); // The LSB is used to determine the trigger source
+static inline const Rhs2116StimulusRegister TRIGGER = Rhs2116StimulusRegister(2, "TRIGGER"); // Writing 0x1 to this register will trigger a stimulation sequence if the TRIGGERSOURCE is set to 0.
+
+}; //namespace RHS2116STIM_REG{

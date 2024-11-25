@@ -95,6 +95,36 @@ const unsigned int Rhs2116StimulusStepRegisters [10][3]{
 	{ 15, 0, 0 }
 };
 
+const unsigned int Rhs2116StimulusBiasRegisters [10][2]{
+	{ 6, 6 },
+	{ 7, 7 },
+	{ 7, 7 },
+	{ 7, 7 },
+	{ 8, 8 },
+	{ 9, 9 },
+	{ 10, 10 },
+	{ 11, 11 },
+	{ 14, 14 },
+	{ 15, 15 }
+};
+
+#pragma pack(push, 1)
+struct Rhs2116StimIndexTime{
+	unsigned time:22;
+	unsigned index:10;
+};
+#pragma pack(pop)
+
+
+#pragma pack(push, 1)
+struct Rhs2116StimReg{
+	unsigned Step_Sel1:7;
+	unsigned Step_Sel2:6;
+	unsigned Step_Sel3:2;
+	unsigned unused:1;
+};
+#pragma pack(pop)
+
 enum Rhs2116DspCutoff{
 	Differential = 0,
 	Dsp3309Hz,
@@ -275,7 +305,8 @@ struct Rhs2116DeviceSettings{
 	
 	Rhs2116Format format;
 
-	Rhs2116DspCutoff dspCutoff = Off;
+	Rhs2116StimulusStep stepSize = Step10nA;
+	Rhs2116DspCutoff dspCutoff = Dsp308Hz;
 
 	Rhs2116AnalogLowCutoff lowCutoff = Low100mHz;
 	Rhs2116AnalogLowCutoff lowCutoffRecovery = Low250Hz;
