@@ -317,6 +317,7 @@ struct Rhs2116DeviceSettings{
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116DeviceSettings& Rhs2116DeviceSettings::operator=(Rhs2116DeviceSettings other) noexcept{
 		std::swap(format, other.format);
+		std::swap(stepSize, other.stepSize);
 		std::swap(dspCutoff, other.dspCutoff);
 		std::swap(lowCutoff, other.lowCutoff);
 		std::swap(lowCutoffRecovery, other.lowCutoffRecovery);
@@ -328,9 +329,71 @@ struct Rhs2116DeviceSettings{
 };
 
 
-inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs){ return (lhs.dspCutoff == rhs.dspCutoff &&
+inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs){ return (lhs.stepSize == rhs.stepSize &&
+																									lhs.dspCutoff == rhs.dspCutoff &&
 																									lhs.lowCutoff == rhs.lowCutoff &&
 																									lhs.lowCutoffRecovery == rhs.lowCutoffRecovery &&
 																									lhs.highCutoff == rhs.highCutoff &&
 																									lhs.channelMap == rhs.channelMap); }
 inline bool operator!=(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs) { return !(lhs == rhs); }
+
+
+
+struct Rhs2116Stimulus{
+
+	bool anodicFirst = true;
+
+	float requestedAnodicAmplitudeMicroAmps = 0.0;
+	float requestedCathodicAmplitudeMicroAmps = 0.0;
+
+	float actualAnodicAmplitudeMicroAmps = 0.0;
+	float actualCathodicAmplitudeMicroAmps = 0.0;
+
+	unsigned int anodicAmplitudeSteps = 0;
+	unsigned int cathodicAmplitudeSteps = 0;
+
+	unsigned int anodicWidthSamples = 1;
+	unsigned int cathodicWidthSamples = 1;
+	unsigned int dwellSamples = 1;
+	unsigned int delaySamples = 0;
+	unsigned int interStimulusIntervalSamples = 1;
+
+	unsigned int numberOfStimuli = 1;
+
+};
+
+
+inline bool operator==(const Rhs2116Stimulus& lhs, const Rhs2116Stimulus& rhs){ return (lhs.anodicFirst == rhs.anodicFirst &&
+																						lhs.requestedAnodicAmplitudeMicroAmps == rhs.requestedAnodicAmplitudeMicroAmps &&
+																						lhs.requestedCathodicAmplitudeMicroAmps == rhs.requestedCathodicAmplitudeMicroAmps &&
+																						lhs.actualAnodicAmplitudeMicroAmps == rhs.actualAnodicAmplitudeMicroAmps &&
+																						lhs.actualCathodicAmplitudeMicroAmps == rhs.actualCathodicAmplitudeMicroAmps &&
+																						lhs.anodicAmplitudeSteps == rhs.anodicAmplitudeSteps &&
+																						lhs.cathodicAmplitudeSteps == rhs.cathodicAmplitudeSteps &&
+																						lhs.anodicWidthSamples == rhs.anodicWidthSamples &&
+																						lhs.cathodicWidthSamples == rhs.cathodicWidthSamples &&
+																						lhs.dwellSamples == rhs.dwellSamples &&
+																						lhs.delaySamples == rhs.delaySamples &&
+																						lhs.interStimulusIntervalSamples == rhs.interStimulusIntervalSamples &&
+																						lhs.numberOfStimuli == rhs.numberOfStimuli); }
+inline bool operator!=(const Rhs2116Stimulus& lhs, const Rhs2116Stimulus& rhs) { return !(lhs == rhs); }
+
+
+struct Rhs2116StimulusSettings{
+
+	Rhs2116StimulusStep stepSize = Step10nA;
+	std::map<unsigned int, std::vector<Rhs2116Stimulus>> deviceStimuli;
+
+	// copy assignment (copy-and-swap idiom)
+	Rhs2116StimulusSettings& Rhs2116StimulusSettings::operator=(Rhs2116StimulusSettings other) noexcept{
+		std::swap(stepSize, other.stepSize);
+		std::swap(deviceStimuli, other.deviceStimuli);
+		return *this;
+	}
+
+};
+
+
+inline bool operator==(const Rhs2116StimulusSettings& lhs, const Rhs2116StimulusSettings& rhs){ return (lhs.stepSize == rhs.stepSize &&
+																										lhs.deviceStimuli == rhs.deviceStimuli); }
+inline bool operator!=(const Rhs2116StimulusSettings& lhs, const Rhs2116StimulusSettings& rhs) { return !(lhs == rhs); }

@@ -108,7 +108,7 @@ void ofApp::setup(){
     rhs2116StimDevice->conformStepSize(s1);
     rhs2116StimDevice->conformStepSize(s2);
 
-    rhs2116StimDevice->setProbeStimulus(s1, 0);
+    rhs2116StimDevice->setProbeStimulus(s1, 30);
     //rhs2116StimDevice->setProbeStimulus(s2, 1);
 
     std::vector<Rhs2116Stimulus> stimuli = rhs2116StimDevice->getProbeStimuliMapped();
