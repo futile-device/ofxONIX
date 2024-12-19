@@ -21,36 +21,23 @@
 #include <mutex>
 #include <syncstream>
 
-#include "ONIDataBuffer.h"
-#include "ONIRegister.h"
-#include "ONISettingTypes.h"
-#include "ONIFrameTypes.h"
-#include "ONIUtility.h"
+#include "../Type/DataBuffer.h"
+#include "../Type/Register.h"
+#include "../Type/Setting.h"
+#include "../Type/Frame.h"
+#include "../Utility/Helpers.h"
 
 #pragma once
 
-//class ONIContext; // pre-declare for friend class?
+namespace ONI{
 
-enum ONIDeviceTypeID{
-	HEARTBEAT		= 12,
-	FMC				= 23,
-	RHS2116			= 31,
-	//RHS2116STIM		= 31,
-	RHS2116MULTI	= 666,
-	RHS2116STIM		= 667,
-	NONE			= 2048
-};
 
-static std::string ONIDeviceTypeIDStr(const ONIDeviceTypeID& typeID){
-	switch(typeID){
-	case HEARTBEAT: {return "HeartBeat Device"; break;}
-	case FMC: {return "FMC Device"; break;}
-	case RHS2116: {return "RHS2116 Device"; break;}
-	case RHS2116MULTI: {return "RHS2116MULTI Device"; break;}
-	case RHS2116STIM: {return "RHS2116STIM Device"; break;}
-	case NONE: {return "No Device"; break;}
-	}
-};
+
+} // namespace ONI
+
+
+
+
 
 enum FrameProcessorType{
 	PRE_FRAME_PROCESSOR = 0,

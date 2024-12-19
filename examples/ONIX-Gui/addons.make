@@ -6,4 +6,4 @@ ofxOsc
 ofxMidi
 ofxFutilities
 ofxImPlot
-ofxONI
+ofxONIX
