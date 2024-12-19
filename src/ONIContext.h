@@ -21,16 +21,27 @@
 #include <mutex>
 #include <syncstream>
 
+#include "../Type/DataBuffer.h"
+#include "../Type/DeviceTypes.h"
+#include "../Type/FrameTypes.h"
+#include "../Type/RegisterTypes.h"
+#include "../Type/SettingTypes.h"
+#include "../Type/Log.h"
 
-#include "ONIDevice.h"
-#include "ONIDeviceFmc.h"
-#include "ONIDeviceHeartBeat.h"
-#include "ONIDeviceRhs2116.h"
-#include "ONIDeviceRhs2116Multi.h"
-#include "ONIDeviceRhs2116Stimulus.h"
-#include "ONIRegister.h"
-#include "ONISettingTypes.h"
-#include "ONIUtility.h"
+#include "../Device/BaseDevice.h"
+#include "../Device/FmcDevice.h"
+#include "../Device/HeartBeatDevice.h"
+#include "../Device/Rhs2116Device.h"
+#include "../Device/Rhs2116MultiDevice.h"
+#include "../Device/Rhs2116StimulusDevice.h"
+
+#include "../Interface/BaseInterface.h"
+#include "../Interface/FmcInterface.h"
+#include "../Interface/HeartBeatInterface.h"
+#include "../Interface/Rhs2116Interface.h"
+#include "../Interface/Rhs2116MultiInterface.h"
+#include "../Interface/Rhs2116StimulusInterface.h"
+
 
 
 #pragma once
@@ -38,49 +49,6 @@
 // add DELETE copy constructor to contextr and devices
 //   noncopyable(const noncopyable&) =delete;
 //	 noncopyable& operator=(const noncopyable&) =delete;
-
-class ONIContextOption{
-
-public:
-
-	ONIContextOption() : optn(0), name("UNKNOWN") {};
-	ONIContextOption(unsigned int optn, std::string name) { this->optn = optn; this->name = name; };
-
-	const std::string& getName() const { return name; };
-	const unsigned int& getOption() const { return optn; };
-	operator unsigned int&() { return optn; }
-	operator unsigned int() const { return optn; }
-
-	friend inline bool operator< (const ONIContextOption& lhs, const ONIContextOption& rhs);
-	friend inline bool operator==(const ONIContextOption& lhs, const ONIContextOption& rhs);
-	friend inline std::ostream& operator<<(std::ostream& os, const ONIContextOption& obj);
-
-	// copy assignment (copy-and-swap idiom)
-	ONIContextOption& ONIContextOption::operator=(ONIContextOption other) noexcept {
-		std::swap(optn, other.optn);
-		std::swap(name, other.name);
-		return *this;
-	}
-
-protected:
-
-	unsigned int optn = -1;
-	std::string name = "UNKNOWN";
-
-};
-
-inline std::ostream& operator<<(std::ostream& os, const ONIContextOption& obj) {
-	os << obj.optn << " " << obj.name;
-	return os;
-}
-
-inline bool operator< (const ONIContextOption& lhs, const ONIContextOption& rhs) { return lhs.optn < rhs.optn; }
-inline bool operator> (const ONIContextOption& lhs, const ONIContextOption& rhs) { return rhs < lhs; }
-inline bool operator<=(const ONIContextOption& lhs, const ONIContextOption& rhs) { return !(lhs > rhs); }
-inline bool operator>=(const ONIContextOption& lhs, const ONIContextOption& rhs) { return !(lhs < rhs); }
-
-inline bool operator==(const ONIContextOption& lhs, const ONIContextOption& rhs) { return (lhs.optn == rhs.optn && lhs.name == rhs.name); }
-inline bool operator!=(const ONIContextOption& lhs, const ONIContextOption& rhs) { return !(lhs == rhs); }
 
 inline std::ostream& operator<<(std::ostream& os, const oni_device_t& type) {
 
@@ -101,32 +69,23 @@ inline std::ostream& operator<<(std::ostream& os, const oni_device_t& type) {
 
 }
 
-class ContextInterface; // pre declare for gui/config
+namespace ONI{
 
-class ONIContext {
+namespace Interface{
+class ContextInterface; // pre declare for gui/config
+} // namespace Interface
+
+
+class Context {
 
 public:
 
-	friend class ContextInterface;
-
-	static inline const ONIContextOption DEVICETABLE		= ONIContextOption(ONI_OPT_DEVICETABLE, "DEVICETABLE");
-	static inline const ONIContextOption NUMDEVICES			= ONIContextOption(ONI_OPT_NUMDEVICES, "NUMDEVICES");
-	static inline const ONIContextOption RUNNING			= ONIContextOption(ONI_OPT_RUNNING, "RUNNING");
-	static inline const ONIContextOption RESET				= ONIContextOption(ONI_OPT_RESET, "RESET");
-	static inline const ONIContextOption SYSCLKHZ			= ONIContextOption(ONI_OPT_SYSCLKHZ, "SYSCLKHZ");
-	static inline const ONIContextOption ACQCLKHZ			= ONIContextOption(ONI_OPT_ACQCLKHZ, "ACQCLKHZ");
-	static inline const ONIContextOption RESETACQCOUNTER	= ONIContextOption(ONI_OPT_RESETACQCOUNTER, "RESETACQCOUNTER");
-	static inline const ONIContextOption HWADDRESS			= ONIContextOption(ONI_OPT_HWADDRESS, "HWADDRESS");
-	static inline const ONIContextOption MAXREADFRAMESIZE	= ONIContextOption(ONI_OPT_MAXREADFRAMESIZE, "MAXREADFRAMESIZE");
-	static inline const ONIContextOption MAXWRITEFRAMESIZE	= ONIContextOption(ONI_OPT_MAXWRITEFRAMESIZE, "MAXWRITEFRAMESIZE");
-	static inline const ONIContextOption BLOCKREADSIZE		= ONIContextOption(ONI_OPT_BLOCKREADSIZE, "BLOCKREADSIZE");
-	static inline const ONIContextOption BLOCKWRITESIZE		= ONIContextOption(ONI_OPT_BLOCKWRITESIZE, "BLOCKWRITESIZE");
-	static inline const ONIContextOption CUSTOMBEGIN		= ONIContextOption(ONI_OPT_CUSTOMBEGIN, "CUSTOMBEGIN");
+	friend class ONI::Interface::ContextInterface;
 
 
-	ONIContext(){};
+	Context(){};
 
-	~ONIContext(){
+	~Context(){
 		closeContext();
 	};
 
@@ -136,19 +95,19 @@ public:
 
 		bool bContextNeedsRestart = false;
 		bool bContextNeedsReset = false;
-		
+
 		// check all the devices to see if they require an context restart eg., PORTVOLTAGE
 
-		ONIDevice* device_changed = NULL;
+		ONI::Device::BaseDevice* device_changed = NULL;
 
 		for(auto device : oniDevices){
 			if(device.second->getContexteNeedsRestart()){
-				device_changed = (ONIDevice*)device.second;
+				device_changed = (ONI::Device::BaseDevice*)device.second;
 				bContextNeedsRestart = true;
 				break;
 			}
 			if(device.second->getContexteNeedsReset()){
-				device_changed = (ONIDevice*)device.second;
+				device_changed = (ONI::Device::BaseDevice*)device.second;
 				bContextNeedsReset = true;
 				//break;
 			}
@@ -164,7 +123,7 @@ public:
 			LOGDEBUG("Device requires context reset: %s", device_changed->getName().c_str());
 			bool bResetAcquire = bIsAcquiring;
 			if(bResetAcquire) stopAcquisition();
-			setContextOption(ONIContext::RESET, 1);
+			setContextOption(ONI::ContextOption::RESET, 1);
 			//setContextOption(ONIContext::BLOCKREADSIZE, blockReadBytes); // WHY? For some reason this needs resetting 
 			//setContextOption(ONIContext::BLOCKWRITESIZE, blockWriteBytes);
 			if(bResetAcquire){ 
@@ -202,7 +161,7 @@ public:
 		int rc = ONI_ESUCCESS;
 
 		// Examine device table
-		oni_size_t num_devs = getContextOption(NUMDEVICES);
+		oni_size_t num_devs = getContextOption(ONI::ContextOption::NUMDEVICES);
 
 		oni_device_t* devices_t;
 
@@ -221,25 +180,25 @@ public:
 
 			deviceTypes.push_back(devices_t[i]);
 
-			if(devices_t[i].id == ONIDeviceTypeID::FMC){ // 23 FMC Host Device
+			if(devices_t[i].id == ONI::Device::TypeID::FMC){ // 23 FMC Host Device
 				LOGDEBUG("Mapping FMC Host Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
-				FmcDevice* fmc = new FmcDevice;
+				ONI::Device::FmcDevice* fmc = new ONI::Device::FmcDevice;
 				fmc->setup(&ctx, devices_t[i], acq_clock_khz);
 				fmc->reset();
 				oniDevices[devices_t[i].idx] = fmc;
 			}
 
-			if(devices_t[i].id == ONIDeviceTypeID::HEARTBEAT){ // 12 HeartBeat Device
+			if(devices_t[i].id == ONI::Device::TypeID::HEARTBEAT){ // 12 HeartBeat Device
 				LOGDEBUG("Mapping HeartBeat Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
-				HeartBeatDevice* hbd = new HeartBeatDevice;
+				ONI::Device::HeartBeatDevice* hbd = new ONI::Device::HeartBeatDevice;
 				hbd->setup(&ctx, devices_t[i], acq_clock_khz);
 				hbd->reset();
 				oniDevices[devices_t[i].idx] = hbd;
 			}
 
-			if(devices_t[i].id == ONIDeviceTypeID::RHS2116){ // 31 RHS2116 Device
+			if(devices_t[i].id == ONI::Device::TypeID::RHS2116){ // 31 RHS2116 Device
 				LOGDEBUG("Mapping Rhs2116 Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
-				Rhs2116Device* rhd2116 = new Rhs2116Device;
+				ONI::Device::Rhs2116Device* rhd2116 = new ONI::Device::Rhs2116Device;
 				rhd2116->setup(&ctx, devices_t[i], acq_clock_khz);
 				rhd2116->reset();
 				oniDevices[devices_t[i].idx] = rhd2116;
@@ -255,7 +214,7 @@ public:
 
 	}
 
-	ONIDevice* getDevice(const unsigned int& idx){
+	ONI::Device::BaseDevice* getDevice(const unsigned int& idx){
 		auto it = oniDevices.find(idx);
 		if(it == oniDevices.end()){
 			LOGERROR("ONIDevice doesn't exist with idx: %i", idx);
@@ -303,7 +262,7 @@ public:
 		return sys_clock_khz;
 	}
 
-	oni_size_t setContextOption(const ONIContextOption& option, const oni_size_t& val){
+	oni_size_t setContextOption(const ONI::ContextOption::BaseOption& option, const oni_size_t& val){
 		int rc = ONI_ESUCCESS;
 		oni_size_t val_result;
 		size_t val_sz = sizeof(val);
@@ -316,7 +275,7 @@ public:
 		return val;
 	}
 
-	oni_size_t getContextOption(const ONIContextOption& option){
+	oni_size_t getContextOption(const ONI::ContextOption::BaseOption& option){
 		int rc = ONI_ESUCCESS;
 		oni_size_t val = (oni_size_t)0;
 		size_t val_sz = sizeof(val);
@@ -396,8 +355,8 @@ public:
 		for(auto device : oniDevices) device.second->reset();
 		bThread = true;
 		bIsPlaying = true;
-		thread = std::thread(&ONIContext::playFrames, this);
-		
+		thread = std::thread(&Context::playFrames, this);
+
 		//startAcquisition();
 	}
 
@@ -411,40 +370,40 @@ public:
 		bStopPlaybackThread = false;
 	}
 
-	Rhs2116MultiDevice* getMultiDevice(const bool& bForceNewDevice = false){
+	ONI::Device::Rhs2116MultiDevice* getMultiDevice(const bool& bForceNewDevice = false){
 		if(rhs2116MultiDevice != nullptr && bForceNewDevice){
 			LOGINFO("Deleting old multi device");
 			delete rhs2116MultiDevice;
 		}
 		if(rhs2116MultiDevice == nullptr){
 			LOGINFO("Creating new multi device");
-			rhs2116MultiDevice = new Rhs2116MultiDevice;
+			rhs2116MultiDevice = new ONI::Device::Rhs2116MultiDevice;
 			rhs2116MultiDevice->setup(&ctx, acq_clock_khz);
 		}
 		return rhs2116MultiDevice;
 	}
 
-	Rhs2116StimulusDevice* getStimulusDevice(const bool& bForceNewDevice = false){
+	ONI::Device::Rhs2116StimulusDevice* getStimulusDevice(const bool& bForceNewDevice = false){
 		if(rhs2116StimDevice != nullptr && bForceNewDevice){
 			LOGINFO("Deleting old stimulus device");
 			delete rhs2116StimDevice;
 		}
 		if(rhs2116StimDevice == nullptr){
 			LOGINFO("Creating new stimulus device");
-			rhs2116StimDevice = new Rhs2116StimulusDevice;
+			rhs2116StimDevice = new ONI::Device::Rhs2116StimulusDevice;
 			rhs2116StimDevice->setup(rhs2116MultiDevice);
 		}
 		return rhs2116StimDevice;
 	}
-	
+
 private:
 
 	bool startContext(){
 		LOGINFO("Starting ONI context");
-		setContextOption(ONIContext::BLOCKREADSIZE, blockReadBytes);
-		setContextOption(ONIContext::BLOCKWRITESIZE, blockWriteBytes);
-		setContextOption(RESETACQCOUNTER, 2);
-		if(getContextOption(RUNNING) != 1){
+		setContextOption(ONI::ContextOption::BLOCKREADSIZE, blockReadBytes);
+		setContextOption(ONI::ContextOption::BLOCKWRITESIZE, blockWriteBytes);
+		setContextOption(ONI::ContextOption::RESETACQCOUNTER, 2);
+		if(getContextOption(ONI::ContextOption::RUNNING) != 1){
 			LOGERROR("Could not start hardware"); // necessary?
 			return false;
 		}
@@ -455,20 +414,20 @@ private:
 	bool stopContext(){
 		LOGINFO("Stopping ONI context");
 		//stopFrameRead();
-		if(setContextOption(RUNNING, 0) == -1){
+		if(setContextOption(ONI::ContextOption::RUNNING, 0) == -1){
 			LOGERROR("Could not stop hardware"); // necessary?
 			return false;
 		}
 		return true;
 	}
-	
+
 	//std::ifstream contextPlayStream;
 	void startFrameRead(){
 		if(bThread) stopFrameRead();
 		LOGDEBUG("Starting frame read thread");
 		bThread = true;
 		for(auto device : oniDevices) device.second->reset();
-		thread = std::thread(&ONIContext::readFrames, this);
+		thread = std::thread(&Context::readFrames, this);
 	}
 
 	void stopFrameRead(){
@@ -533,10 +492,10 @@ private:
 			LOGINFO("Hardware re init: OK");
 		}
 
-		maxReadSize = getContextOption(MAXREADFRAMESIZE);
-		maxWriteSize = getContextOption(MAXWRITEFRAMESIZE);
-		acq_clock_khz = getContextOption(ACQCLKHZ);
-		sys_clock_khz = getContextOption(SYSCLKHZ);
+		maxReadSize = getContextOption(ONI::ContextOption::MAXREADFRAMESIZE);
+		maxWriteSize = getContextOption(ONI::ContextOption::MAXWRITEFRAMESIZE);
+		acq_clock_khz = getContextOption(ONI::ContextOption::ACQCLKHZ);
+		sys_clock_khz = getContextOption(ONI::ContextOption::SYSCLKHZ);
 
 		if(maxReadSize == -1) return false;
 		if(maxWriteSize == -1) return false;
@@ -565,8 +524,8 @@ private:
 
 			using namespace std::chrono;
 			uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-			
-			Rhs2116FrameRaw * frame_out = new Rhs2116FrameRaw;
+
+			ONI::Frame::Rhs2116DataRaw * frame_out = new ONI::Frame::Rhs2116DataRaw;
 
 			frame_out->time = frame->time;
 			frame_out->dev_idx = frame->dev_idx;
@@ -574,7 +533,7 @@ private:
 
 			std::memcpy(frame_out->data, frame->data, frame->data_sz);
 
-			contextDataStream.write(reinterpret_cast<char*>(frame_out), sizeof(Rhs2116FrameRaw));
+			contextDataStream.write(reinterpret_cast<char*>(frame_out), sizeof(ONI::Frame::Rhs2116DataRaw));
 			if(contextDataStream.bad()) LOGERROR("Bad data frame write");
 
 			contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
@@ -595,9 +554,9 @@ private:
 			contextTimeStream.read(reinterpret_cast<char*>(&systemAcquisitionTimeStamp),  sizeof(uint64_t));
 			if(contextTimeStream.bad()) LOGERROR("Bad time frame read");
 
-			Rhs2116FrameRaw * frame_in = new Rhs2116FrameRaw;
+			ONI::Frame::Rhs2116DataRaw * frame_in = new ONI::Frame::Rhs2116DataRaw;
 
-			contextDataStream.read(reinterpret_cast<char*>(frame_in),  sizeof(Rhs2116FrameRaw));
+			contextDataStream.read(reinterpret_cast<char*>(frame_in),  sizeof(ONI::Frame::Rhs2116DataRaw));
 			if(contextDataStream.bad()) LOGERROR("Bad data frame read");
 
 			if(contextDataStream.eof()) break;
@@ -644,7 +603,7 @@ private:
 		bStopPlaybackThread = true;
 
 	}
-	
+
 	void readFrames(){
 
 		while(bThread){
@@ -696,8 +655,8 @@ private:
 
 private:
 
-	Rhs2116MultiDevice * rhs2116MultiDevice = nullptr; // TODO: this better!!
-	Rhs2116StimulusDevice * rhs2116StimDevice = nullptr;
+	ONI::Device::Rhs2116MultiDevice * rhs2116MultiDevice = nullptr; // TODO: this better!!
+	ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = nullptr;
 
 	unsigned int blockReadBytes = 0;
 	unsigned int blockWriteBytes = 0;
@@ -721,7 +680,7 @@ private:
 
 	volatile oni_ctx ctx = NULL;
 
-	std::map<unsigned int, ONIDevice*> oniDevices;
+	std::map<unsigned int, ONI::Device::BaseDevice*> oniDevices;
 	std::vector<oni_device_t> deviceTypes = {};
 
 	int host_idx = -1;
@@ -734,4 +693,13 @@ private:
 
 
 };
+
+
+
+} // namespace ONI
+
+
+
+
+
 

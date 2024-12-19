@@ -1,5 +1,5 @@
 //
-//  ONIDevice.h
+//  BaseDevice.h
 //
 //  Created by Matt Gingold on 13.09.2024.
 //
@@ -24,49 +24,23 @@
 #include <mutex>
 #include <syncstream>
 
-#include "ONIUtility.h"
+#include "../Type/Log.h"
 
 #pragma once
 
-#pragma pack(push, 1)
-struct Rhs2116FramePacked{
-	uint64_t hubTime;
-	uint16_t ac[16];
-	uint16_t dc[16];
-	uint16_t unused;
-	uint64_t acqTime;
-	long double deltaTime;
-	uint32_t devIdx;
-};
-#pragma pack(pop)
 
-//// Frame type
-//typedef struct {
-//	const oni_fifo_time_t time;     // Frame time (ACQCLKHZ)
-//	const oni_fifo_dat_t dev_idx;   // Device index that produced or accepts the frame
-//	const oni_fifo_dat_t data_sz;   // Size in bytes of data buffer
-//	char *data;                     // Raw data block
-//
-//} oni_frame_t;
+#define MAX_NUM_MULTIDEVICES 4
+#define MAX_NUM_MULTIPROBES MAX_NUM_MULTIDEVICES * 16
 
-#pragma pack(push, 1)
-struct Rhs2116FrameRaw{
-	uint64_t time;
-	uint32_t dev_idx;
-	uint32_t data_sz;
-	char data[74];
 
-};
-#pragma pack(pop)
+namespace ONI{
+namespace Frame{
 
-class ONIFrame{
+class BaseFrame{
 
 public:
 
-	//ONIFrame(oni_frame_t* frame, const uint64_t& deltaTime = 0){
-	//	convert(frame, deltaTime);
-	//}
-	virtual ~ONIFrame(){};
+	virtual ~BaseFrame(){};
 
 	virtual inline void convert(oni_frame_t* frame, const uint64_t& deltaTime = 0) = 0;
 
@@ -77,7 +51,7 @@ public:
 
 protected:
 
-	
+
 	unsigned int deviceTableID = 0;
 	uint64_t deltaTime = 0;
 	uint64_t acqTime = 0;
@@ -85,7 +59,45 @@ protected:
 
 };
 
-class Rhs2116Frame : public ONIFrame{
+struct acquisition_clock_compare {
+	inline bool operator() (const ONI::Frame::BaseFrame& lhs, const ONI::Frame::BaseFrame& rhs){
+		return (lhs.getAcquisitionTime() < rhs.getAcquisitionTime());
+	}
+};
+
+//// onix.h Frame type
+//typedef struct {
+//	const oni_fifo_time_t time;     // Frame time (ACQCLKHZ)
+//	const oni_fifo_dat_t dev_idx;   // Device index that produced or accepts the frame
+//	const oni_fifo_dat_t data_sz;   // Size in bytes of data buffer
+//	char *data;                     // Raw data block
+//
+//} oni_frame_t;
+
+#pragma pack(push, 1)
+struct Rhs2116DataExtended{
+	uint64_t hubTime;
+	uint16_t ac[16];
+	uint16_t dc[16];
+	uint16_t unused;
+	uint64_t acqTime;
+	long double deltaTime;
+	uint32_t devIdx;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct Rhs2116DataRaw{
+	uint64_t time;
+	uint32_t dev_idx;
+	uint32_t data_sz;
+	char data[74];
+
+};
+#pragma pack(pop)
+
+
+class Rhs2116Frame : public ONI::Frame::BaseFrame{
 
 public:
 
@@ -109,7 +121,7 @@ public:
 		}
 	}
 
-	Rhs2116FramePacked rawFrame;
+	ONI::Frame::Rhs2116DataExtended rawFrame;
 
 	float ac_uV[16];
 	float dc_mV[16];
@@ -138,34 +150,32 @@ public:
 
 };
 
-#define MAX_NUM_MULTIDEVICES 4
-#define MAX_NUM_MULTIPROBES MAX_NUM_MULTIDEVICES * 16
 
 
-class Rhs2116MultiFrame : public ONIFrame{
+class Rhs2116MultiFrame : public ONI::Frame::BaseFrame{
 
 public:
 
 	Rhs2116MultiFrame(){ numProbes = 0; };
-	Rhs2116MultiFrame(const std::vector<Rhs2116FramePacked>& frames, 
+	Rhs2116MultiFrame(const std::vector<ONI::Frame::Rhs2116DataExtended>& frames, 
 					  const std::vector<size_t>& channelMap){
 		convert(frames, channelMap); 
 	}
 
-	Rhs2116MultiFrame(const std::vector<Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
+	Rhs2116MultiFrame(const std::vector<ONI::Frame::Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
 		//numProbes = 32;//16 * multiFrameBuffer.size();
 		convert(frames, channelMap); 
 	}
 	~Rhs2116MultiFrame(){};
 
 	inline void convert(oni_frame_t* frame, const uint64_t& deltaTime = 0){}; // nothing
-	inline void convert(const std::vector<Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
+	inline void convert(const std::vector<ONI::Frame::Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
 		numProbes = frames.size() * 16;
 		//this->multiFrameBuffer = multiFrameBuffer;
 		//ac_uV.resize(numProbes);
 		//dc_mV.resize(numProbes);
 		size_t deviceCount = 0;
-		for(const Rhs2116Frame& frame : frames){
+		for(const ONI::Frame::Rhs2116Frame& frame : frames){
 			for(size_t probe = 0; probe < frame.getNumProbes(); ++probe){
 				size_t thisChannelIDX = probe + deviceCount * frame.getNumProbes();
 				size_t thisProbeIDX = channelMap[thisChannelIDX];
@@ -179,13 +189,13 @@ public:
 		this->deviceTableID = 999;
 	}
 
-	inline void convert(const std::vector<Rhs2116FramePacked>& frames, const std::vector<size_t>& channelMap){
+	inline void convert(const std::vector<ONI::Frame::Rhs2116DataExtended>& frames, const std::vector<size_t>& channelMap){
 
 		numProbes = frames.size() * 16;
 
 		for(int i = 0; i < frames.size(); ++i){
 
-			const Rhs2116FramePacked& frame = frames[i];
+			const ONI::Frame::Rhs2116DataExtended& frame = frames[i];
 
 			size_t frameProbe = 0;
 
@@ -221,44 +231,22 @@ public:
 		return *this;
 	}
 
-
-
-};
-
-inline bool operator==(const Rhs2116MultiFrame& lhs, const Rhs2116MultiFrame& rhs){ 
-	for(size_t probe = 0; probe < lhs.getNumProbes(); ++probe){
-		if(lhs.ac_uV[probe] != rhs.ac_uV[probe] || lhs.dc_mV[probe] != rhs.ac_uV[probe]){
-			return false;
+	inline bool operator==(const ONI::Frame::Rhs2116MultiFrame& other){ 
+		for(size_t probe = 0; probe < getNumProbes(); ++probe){
+			if(ac_uV[probe] != other.ac_uV[probe] || dc_mV[probe] != other.ac_uV[probe]){
+				return false;
+			}
 		}
+		return (getNumProbes() == other.getNumProbes() && getDeltaTime() == other.getDeltaTime());
 	}
-	return (lhs.getNumProbes() == rhs.getNumProbes() && lhs.getDeltaTime() == rhs.getDeltaTime());
-}
-inline bool operator!=(const Rhs2116MultiFrame& lhs, const Rhs2116MultiFrame& rhs) { return !(lhs == rhs); }
+	inline bool operator!=(const ONI::Frame::Rhs2116MultiFrame& other) { return !(this == &other); }
 
-struct acquisition_clock_compare {
-	inline bool operator() (const ONIFrame& lhs, const ONIFrame& rhs){
-		return (lhs.getAcquisitionTime() < rhs.getAcquisitionTime());
-	}
-};
 
-struct ProbeStatistics{
-	float sum;
-	float mean;
-	float ss;
-	float variance;
-	float deviation;
-};
-
-struct ProbeData{
-	std::vector< std::vector<float> > acProbeVoltages;
-	std::vector< std::vector<float> > dcProbeVoltages;
-	std::vector< std::vector<float> > probeTimeStamps;
-	std::vector<ProbeStatistics> acProbeStats;
-	std::vector<ProbeStatistics> dcProbeStats;
 };
 
 
-class HeartBeatFrame : public ONIFrame{
+
+class HeartBeatFrame : public ONI::Frame::BaseFrame{
 
 public:
 
@@ -284,28 +272,17 @@ public:
 
 };
 
-//class FmcFrame : public ONIFrame{
-//
-//	FmcFrame(){ numProbes = 0; };
-//	~FmcFrame(){};
-//
-//	inline void convert(oni_frame_t* frame, const uint64_t& deltaTime = 0){
-//		// nothing ??
-//	}
-//
-//	Rhs2116RawDataFrame rawFrame;
-//
-//	float ac_uV[16];
-//	float dc_mV[16];
-//
-//	inline bool operator==(const Rhs2116Frame& other){ 
-//		for(size_t probe = 0; probe < numProbes; ++probe){
-//			if(ac_uV[probe] != other.ac_uV[probe] || dc_mV[probe] != other.ac_uV[probe]){
-//				return false;
-//			}
-//		}
-//		return (numProbes == other.numProbes);
-//	}
-//	inline bool operator!=(const Rhs2116Frame& other) { return !(this == &other); }
-//
-//};
+
+
+} // namespace Frame
+} // namespace ONI
+
+
+
+
+
+
+
+
+
+

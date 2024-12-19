@@ -1,5 +1,5 @@
 //
-//  ONIDevice.h
+//  BaseDevice.h
 //
 //  Created by Matt Gingold on 13.09.2024.
 //
@@ -24,19 +24,74 @@
 #include <mutex>
 #include <syncstream>
 
-#include "ONIUtility.h"
+#include "../Type/Log.h"
+
 
 #pragma once
 
-//struct ContextSettings{
-//	std::vector<std::string> configs;
-//};
-//
-//inline bool operator==(const ContextSettings& lhs, const ContextSettings& rhs){ return (lhs.configs == rhs.configs); }
-//inline bool operator!=(const ContextSettings& lhs, const ContextSettings& rhs) { return !(lhs == rhs); }
+namespace ONI{
 
 
 
+struct Rhs2116StimulusData{
+
+	bool anodicFirst = true;
+
+	float requestedAnodicAmplitudeMicroAmps = 0.0;
+	float requestedCathodicAmplitudeMicroAmps = 0.0;
+
+	float actualAnodicAmplitudeMicroAmps = 0.0;
+	float actualCathodicAmplitudeMicroAmps = 0.0;
+
+	unsigned int anodicAmplitudeSteps = 0;
+	unsigned int cathodicAmplitudeSteps = 0;
+
+	unsigned int anodicWidthSamples = 1;
+	unsigned int cathodicWidthSamples = 1;
+	unsigned int dwellSamples = 1;
+	unsigned int delaySamples = 0;
+	unsigned int interStimulusIntervalSamples = 1;
+
+	unsigned int numberOfStimuli = 1;
+
+};
+
+
+inline bool operator==(const Rhs2116StimulusData& lhs, const Rhs2116StimulusData& rhs){ return (lhs.anodicFirst == rhs.anodicFirst &&
+																								lhs.requestedAnodicAmplitudeMicroAmps == rhs.requestedAnodicAmplitudeMicroAmps &&
+																								lhs.requestedCathodicAmplitudeMicroAmps == rhs.requestedCathodicAmplitudeMicroAmps &&
+																								lhs.actualAnodicAmplitudeMicroAmps == rhs.actualAnodicAmplitudeMicroAmps &&
+																								lhs.actualCathodicAmplitudeMicroAmps == rhs.actualCathodicAmplitudeMicroAmps &&
+																								lhs.anodicAmplitudeSteps == rhs.anodicAmplitudeSteps &&
+																								lhs.cathodicAmplitudeSteps == rhs.cathodicAmplitudeSteps &&
+																								lhs.anodicWidthSamples == rhs.anodicWidthSamples &&
+																								lhs.cathodicWidthSamples == rhs.cathodicWidthSamples &&
+																								lhs.dwellSamples == rhs.dwellSamples &&
+																								lhs.delaySamples == rhs.delaySamples &&
+																								lhs.interStimulusIntervalSamples == rhs.interStimulusIntervalSamples &&
+																								lhs.numberOfStimuli == rhs.numberOfStimuli); }
+inline bool operator!=(const Rhs2116StimulusData& lhs, const Rhs2116StimulusData& rhs) { return !(lhs == rhs); }
+
+
+
+struct ProbeStatistics{
+	float sum;
+	float mean;
+	float ss;
+	float variance;
+	float deviation;
+};
+
+struct ProbeData{
+	std::vector< std::vector<float> > acProbeVoltages;
+	std::vector< std::vector<float> > dcProbeVoltages;
+	std::vector< std::vector<float> > probeTimeStamps;
+	std::vector<ProbeStatistics> acProbeStats;
+	std::vector<ProbeStatistics> dcProbeStats;
+};
+
+
+namespace Settings{
 
 struct FmcDeviceSettings{
 	float voltage = 4.9;
@@ -53,6 +108,7 @@ struct HeartBeatDeviceSettings{
 
 inline bool operator==(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs){ return (lhs.frequencyHz == rhs.frequencyHz); }
 inline bool operator!=(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs) { return !(lhs == rhs); }
+
 
 
 enum Rhs2116StimulusStep{
@@ -195,7 +251,7 @@ enum Rhs2116AnalogHighCutoff{
 };
 
 
-const unsigned int AnalogLowCutoffRegisters [26][3]{
+const unsigned int Rhs2116AnalogLowCutoffRegisters [26][3]{
 	{ 10, 0, 0 },
 	{ 13, 0, 0 },
 	{ 15, 0, 0 },
@@ -224,7 +280,7 @@ const unsigned int AnalogLowCutoffRegisters [26][3]{
 	{ 16, 60, 1 }
 };
 
-const unsigned int AnalogHighCutoffRegisters [17][4]{
+const unsigned int Rhs2116AnalogHighCutoffRegisters [17][4]{
 	{ 8, 0, 4, 0 },
 	{ 11, 0, 8, 0 },
 	{ 17, 0, 16, 0 },
@@ -243,7 +299,7 @@ const unsigned int AnalogHighCutoffRegisters [17][4]{
 	{ 44, 17, 8, 21 },
 	{ 38, 26, 5, 31 }
 };
-const unsigned int AnalogHighCutoffToFastSettleSamples [17]{
+const unsigned int Rhs2116AnalogHighCutoffToFastSettleSamples [17]{
 	4, 5, 8, 10, 15, 25, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30, 30
 };
 
@@ -292,6 +348,25 @@ inline bool operator==(const Rhs2116Format& lhs, const Rhs2116Format& rhs){ retu
 																					lhs.digoutOD == rhs.digoutOD); }
 inline bool operator!=(const Rhs2116Format& lhs, const Rhs2116Format& rhs) { return !(lhs == rhs); }
 
+
+inline std::ostream& operator<<(std::ostream& os, const Rhs2116Format& format) {
+
+	os << "[unsigned: " << *(unsigned int*)&format << "] ";
+	os << "[dspCutOff: " << format.dspCutoff << "] ";
+	os << "[dsPenable: " << format.dspEnable << "] ";
+	os << "[absmode: " << format.absmode << "] ";
+	os << "[twoscomp: " << format.twoscomp << "] ";
+	os << "[weakMISO: " << format.weakMISO << "] ";
+	os << "[digout1HiZ: " << format.digout1HiZ << "] ";
+	os << "[digout1: " << format.digout1 << "] ";
+	os << "[digout2HiZ: " << format.digout2HiZ << "] ";
+	os << "[digout2: " << format.digout2 << "] ";
+	os << "[digoutOD: " << format.digoutOD << "]";
+
+	return os;
+};
+
+
 #pragma pack(push, 1)
 struct Rhs2116Bias{
 	unsigned muxBias:6;
@@ -302,7 +377,7 @@ struct Rhs2116Bias{
 
 
 struct Rhs2116DeviceSettings{
-	
+
 	Rhs2116Format format;
 
 	Rhs2116StimulusStep stepSize = Step10nA;
@@ -339,50 +414,12 @@ inline bool operator!=(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSett
 
 
 
-struct Rhs2116Stimulus{
-
-	bool anodicFirst = true;
-
-	float requestedAnodicAmplitudeMicroAmps = 0.0;
-	float requestedCathodicAmplitudeMicroAmps = 0.0;
-
-	float actualAnodicAmplitudeMicroAmps = 0.0;
-	float actualCathodicAmplitudeMicroAmps = 0.0;
-
-	unsigned int anodicAmplitudeSteps = 0;
-	unsigned int cathodicAmplitudeSteps = 0;
-
-	unsigned int anodicWidthSamples = 1;
-	unsigned int cathodicWidthSamples = 1;
-	unsigned int dwellSamples = 1;
-	unsigned int delaySamples = 0;
-	unsigned int interStimulusIntervalSamples = 1;
-
-	unsigned int numberOfStimuli = 1;
-
-};
-
-
-inline bool operator==(const Rhs2116Stimulus& lhs, const Rhs2116Stimulus& rhs){ return (lhs.anodicFirst == rhs.anodicFirst &&
-																						lhs.requestedAnodicAmplitudeMicroAmps == rhs.requestedAnodicAmplitudeMicroAmps &&
-																						lhs.requestedCathodicAmplitudeMicroAmps == rhs.requestedCathodicAmplitudeMicroAmps &&
-																						lhs.actualAnodicAmplitudeMicroAmps == rhs.actualAnodicAmplitudeMicroAmps &&
-																						lhs.actualCathodicAmplitudeMicroAmps == rhs.actualCathodicAmplitudeMicroAmps &&
-																						lhs.anodicAmplitudeSteps == rhs.anodicAmplitudeSteps &&
-																						lhs.cathodicAmplitudeSteps == rhs.cathodicAmplitudeSteps &&
-																						lhs.anodicWidthSamples == rhs.anodicWidthSamples &&
-																						lhs.cathodicWidthSamples == rhs.cathodicWidthSamples &&
-																						lhs.dwellSamples == rhs.dwellSamples &&
-																						lhs.delaySamples == rhs.delaySamples &&
-																						lhs.interStimulusIntervalSamples == rhs.interStimulusIntervalSamples &&
-																						lhs.numberOfStimuli == rhs.numberOfStimuli); }
-inline bool operator!=(const Rhs2116Stimulus& lhs, const Rhs2116Stimulus& rhs) { return !(lhs == rhs); }
 
 
 struct Rhs2116StimulusSettings{
 
-	Rhs2116StimulusStep stepSize = Step10nA;
-	std::map<unsigned int, std::vector<Rhs2116Stimulus>> deviceStimuli;
+	ONI::Settings::Rhs2116StimulusStep stepSize = Step10nA;
+	std::map<unsigned int, std::vector<ONI::Rhs2116StimulusData>> deviceStimuli;
 
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116StimulusSettings& Rhs2116StimulusSettings::operator=(Rhs2116StimulusSettings other) noexcept{
@@ -397,3 +434,14 @@ struct Rhs2116StimulusSettings{
 inline bool operator==(const Rhs2116StimulusSettings& lhs, const Rhs2116StimulusSettings& rhs){ return (lhs.stepSize == rhs.stepSize &&
 																										lhs.deviceStimuli == rhs.deviceStimuli); }
 inline bool operator!=(const Rhs2116StimulusSettings& lhs, const Rhs2116StimulusSettings& rhs) { return !(lhs == rhs); }
+
+
+
+
+
+} // namespace Settings
+} // namespace ONI
+
+
+
+

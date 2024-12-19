@@ -3,10 +3,9 @@
 
 #define ONI_LOG_FU 1
 #include "ONIContext.h"
-#include "ONIInterface.h"
-#include "ONIDeviceRhs2116Stimulus.h"
+#include "ContextInterface.h"
 
-ONIContext oni;
+ONI::Context oni;
 
 
 //--------------------------------------------------------------
@@ -34,24 +33,24 @@ void ofApp::setup(){
     oni.setup();
     oni.printDeviceTable();
 
-    FmcDevice* fmc1 = (FmcDevice*)oni.getDevice(1);
+    ONI::Device::FmcDevice* fmc1 = (ONI::Device::FmcDevice*)oni.getDevice(1);
     fmc1->setPortVoltage(6.7);
     //fmc1->loadConfig("default");
 
-    FmcDevice* fmc2 = (FmcDevice*)oni.getDevice(2);
+    ONI::Device::FmcDevice* fmc2 = (ONI::Device::FmcDevice*)oni.getDevice(2);
     //fmc2->loadConfig("default");
     
     oni.update();
     oni.printDeviceTable();
 
-    HeartBeatDevice* heartBeatDevice = (HeartBeatDevice*)oni.getDevice(0); // for some reason we need to do this before a context restart
+    ONI::Device::HeartBeatDevice* heartBeatDevice = (ONI::Device::HeartBeatDevice*)oni.getDevice(0); // for some reason we need to do this before a context restart
     heartBeatDevice->setFrequencyHz(1);
     //heartBeatDevice->loadConfig("default");
 
     oni.update();
 
-    Rhs2116Device* rhs2116Device1 = (Rhs2116Device*)oni.getDevice(256);
-    Rhs2116Device* rhs2116Device2 = (Rhs2116Device*)oni.getDevice(257);
+    ONI::Device::Rhs2116Device* rhs2116Device1 = (ONI::Device::Rhs2116Device*)oni.getDevice(256);
+    ONI::Device::Rhs2116Device* rhs2116Device2 = (ONI::Device::Rhs2116Device*)oni.getDevice(257);
 
     //rhs2116Device1->loadConfig("default");
     //rhs2116Device2->loadConfig("default"); 
@@ -64,16 +63,16 @@ void ofApp::setup(){
     //rhs2116Device1->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
     //rhs2116Device2->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
 
-    rhs2116Device1->readRegister(RHS2116_REG::MAXDELTAS);
+    rhs2116Device1->readRegister(ONI::Register::Rhs2116::MAXDELTAS);
 
-    Rhs2116MultiDevice* multi = oni.getMultiDevice();
+    ONI::Device::Rhs2116MultiDevice* multi = oni.getMultiDevice();
     multi->addDevice(rhs2116Device1);
     multi->addDevice(rhs2116Device2);
 
     //std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
     //multi->setChannelMap(t);
 
-    Rhs2116Stimulus s1;
+    ONI::Rhs2116StimulusData s1;
     s1.requestedAnodicAmplitudeMicroAmps = 0.05;
     s1.requestedCathodicAmplitudeMicroAmps = 0.05;
     s1.actualAnodicAmplitudeMicroAmps = 0;
@@ -88,7 +87,7 @@ void ofApp::setup(){
     s1.interStimulusIntervalSamples = 1;
     s1.numberOfStimuli = 10;
 
-    Rhs2116Stimulus s2;
+    ONI::Rhs2116StimulusData s2;
     s2.requestedAnodicAmplitudeMicroAmps = 18.1;
     s2.requestedCathodicAmplitudeMicroAmps = 99.3;
     s2.actualAnodicAmplitudeMicroAmps = 0;
@@ -103,7 +102,7 @@ void ofApp::setup(){
     s2.interStimulusIntervalSamples = 362;
     s2.numberOfStimuli = 40;
 
-    Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice(); // make sure to call this after multi device is initialized with devices!
+    ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice(); // make sure to call this after multi device is initialized with devices!
 
     rhs2116StimDevice->conformStepSize(s1);
     rhs2116StimDevice->conformStepSize(s2);
@@ -111,10 +110,10 @@ void ofApp::setup(){
     rhs2116StimDevice->setProbeStimulus(s1, 30);
     //rhs2116StimDevice->setProbeStimulus(s2, 1);
 
-    std::vector<Rhs2116Stimulus> stimuli = rhs2116StimDevice->getProbeStimuliMapped();
-    std::vector<Rhs2116Stimulus> lastStimuli = stimuli;
+    std::vector<ONI::Rhs2116StimulusData> stimuli = rhs2116StimDevice->getProbeStimuliMapped();
+    std::vector<ONI::Rhs2116StimulusData> lastStimuli = stimuli;
 
-    Rhs2116StimulusStep stepSize = rhs2116StimDevice->conformStepSize(stimuli);
+    ONI::Settings::Rhs2116StimulusStep stepSize = rhs2116StimDevice->conformStepSize(stimuli);
 
     for(size_t i = 0; i < stimuli.size(); ++i){
         if(stimuli[i].requestedAnodicAmplitudeMicroAmps != stimuli[i].actualAnodicAmplitudeMicroAmps){
@@ -197,11 +196,11 @@ void ofApp::keyPressed(int key){
     if(key == 'c'){
         
         oni.stopAcquisition();
-        oni.getContextOption(ONIContext::BLOCKREADSIZE);
-        oni.setContextOption(ONIContext::RESET, 1);
-        //oni.getContextOption(ONIContext::BLOCKREADSIZE);
-        oni.setContextOption(ONIContext::BLOCKREADSIZE, 2048);
-        oni.setContextOption(ONIContext::BLOCKWRITESIZE, 2048);
+        oni.getContextOption(ONI::ContextOption::BLOCKREADSIZE);
+        oni.setContextOption(ONI::ContextOption::RESET, 1);
+        //oni.getContextOption(ONI::Context::BLOCKREADSIZE);
+        oni.setContextOption(ONI::ContextOption::BLOCKREADSIZE, 2048);
+        oni.setContextOption(ONI::ContextOption::BLOCKWRITESIZE, 2048);
         //oni.setup();
         ofSleepMillis(500);
         oni.startAcquisition();
@@ -216,7 +215,7 @@ void ofApp::keyPressed(int key){
     }
 
     if(key == 't'){
-        Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice();
+        ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice();
         rhs2116StimDevice->triggerStimulusSequence();
     }
 }

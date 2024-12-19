@@ -1,5 +1,5 @@
 //
-//  ONIDevice.h
+//  BaseDevice.h
 //
 //  Created by Matt Gingold on 13.09.2024.
 //
@@ -21,17 +21,21 @@
 #include <mutex>
 #include <syncstream>
 
-#include "ONISettingTypes.h"
-#include "ONIUtility.h"
+#include "../Type/SettingTypes.h"
+#include "../Type/Log.h"
 
 #pragma once
 
+namespace ONI{
+
+
+
 template<typename DataType>
-class ONIDataBuffer{
+class DataBuffer{
 
 public:
 
-	virtual ~ONIDataBuffer(){
+	virtual ~DataBuffer(){
 		buffer.clear();
 	}
 
@@ -151,6 +155,11 @@ protected:
 	bool bIsFrameNew = false;
 
 };
+
+
+} // namespace ONI
+
+
 
 
 //typedef ONIDataBuffer<Rhs2116DataFrame> Rhs2116FrameBuffer;

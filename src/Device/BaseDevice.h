@@ -1,5 +1,5 @@
 //
-//  ONIDevice.h
+//  BaseDevice.h
 //
 //  Created by Matt Gingold on 13.09.2024.
 //
@@ -21,41 +21,33 @@
 #include <mutex>
 #include <syncstream>
 
+#include "../Type/Log.h"
 #include "../Type/DataBuffer.h"
-#include "../Type/Register.h"
-#include "../Type/Setting.h"
-#include "../Type/Frame.h"
-#include "../Utility/Helpers.h"
+#include "../Type/RegisterTypes.h"
+#include "../Type/SettingTypes.h"
+#include "../Type/FrameTypes.h"
+#include "../Type/DeviceTypes.h"
 
 #pragma once
 
 namespace ONI{
-
-
-
-} // namespace ONI
-
+namespace Device{
 
 
 
 
-enum FrameProcessorType{
-	PRE_FRAME_PROCESSOR = 0,
-	POST_FRAME_PROCESSOR
-};
-
-class ONIFrameProcessor{
+class FrameProcessor{
 
 public:
 
-	virtual ~ONIFrameProcessor(){};
+	virtual ~FrameProcessor(){};
 
 	virtual inline void process(oni_frame_t* frame) = 0;
-	virtual inline void process(ONIFrame& frame) = 0;
-	
-	inline void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){
+	virtual inline void process(ONI::Frame::BaseFrame& frame) = 0;
+
+	inline void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, FrameProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
-		std::map<std::string, ONIFrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
+		std::map<std::string, FrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
 		auto it = processors.find(processorName);
 		if(it == processors.end()){
 			LOGINFO("Adding processor %s", processorName.c_str());
@@ -65,9 +57,9 @@ public:
 		}
 	}
 
-	inline void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, ONIFrameProcessor * processor){
+	inline void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, FrameProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
-		std::map<std::string, ONIFrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
+		std::map<std::string, FrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
 		auto it = processors.find(processorName);
 		if(it == processors.end()){
 			LOGALERT("No processor %s", processorName.c_str());
@@ -83,27 +75,26 @@ public:
 
 protected:
 
-	//std::mutex mutex;
+	std::mutex mutex;
 
-	std::map<std::string, ONIFrameProcessor*> preFrameProcessors;
-	std::map<std::string, ONIFrameProcessor*> postFrameProcessors;
+	std::map<std::string, FrameProcessor*> preFrameProcessors;
+	std::map<std::string, FrameProcessor*> postFrameProcessors;
 
 };
 
-
-class ONIDevice : public ONIFrameProcessor {
+class BaseDevice : public FrameProcessor {
 
 public:
 
-	//ONIDevice(){};
-	virtual ~ONIDevice(){};
+	//BaseDevice(){};
+	virtual ~BaseDevice(){};
 
 	void setup(volatile oni_ctx* context, oni_device_t type, uint64_t acq_clock_khz){
 		LOGDEBUG("Setting up device: %s", onix_device_str(type.id));
 		ctx = context;
 		deviceType = type;
-		deviceTypeID = (ONIDeviceTypeID)type.id;
-		std::ostringstream os; os << ONIDeviceTypeIDStr(deviceTypeID) << " (" << type.idx << ")";
+		deviceTypeID = (ONI::Device::TypeID)type.id;
+		std::ostringstream os; os << ONI::Device::toString(deviceTypeID) << " (" << type.idx << ")";
 		deviceName = os.str();
 		this->acq_clock_khz = acq_clock_khz;
 		reset(); // always call device specific setup/reset
@@ -122,7 +113,7 @@ public:
 		return deviceName;
 	}
 
-	inline const ONIDeviceTypeID& getDeviceTypeID(){
+	inline const ONI::Device::TypeID& getDeviceTypeID(){
 		return deviceTypeID;
 	}
 
@@ -149,10 +140,10 @@ public:
 
 protected:
 
-	unsigned int readRegister(const ONIRegister& reg){
+	unsigned int readRegister(const ONI::Register::BaseRegister& reg){
 
 		assert(ctx != NULL && deviceTypeID != -1, "ONIContext and ONIDevice must be setup");
-		
+
 		int rc = ONI_ESUCCESS;
 
 		unsigned int value = 0;
@@ -169,7 +160,7 @@ protected:
 
 	}
 
-	bool writeRegister(const ONIRegister& reg, const unsigned int& value){
+	bool writeRegister(const ONI::Register::BaseRegister& reg, const unsigned int& value){
 
 		assert(ctx != NULL && deviceTypeID != -1, "ONIContext and ONIDevice must be setup");
 		LOGDEBUG("%s write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", deviceName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
@@ -177,18 +168,18 @@ protected:
 		int rc = ONI_ESUCCESS;
 
 		rc = oni_write_reg(*ctx, deviceType.idx, reg.getAddress(), value);
-		
+
 		if(rc){
 			LOGERROR("Could not write to register: %s", oni_error_str(rc));
 			return false;
 		}
 
-		if(reg.getAddress() != FMC_REG::SAVEVOLTAGE &&
-		   reg.getAddress() != RHS2116_REG::DELTAIDXTIME &&
-		   reg.getAddress() != RHS2116_REG::DELTAPOLEN &&
-		   reg.getAddress() != RHS2116_REG::TRIGGER &&
-		   reg.getAddress() != RHS2116_REG::RESPECTSTIMACTIVE &&
-		   reg.getAddress() != RHS2116STIM_REG::TRIGGER){			/// READ ONLY REGISTERS!!
+		if(reg.getAddress() != ONI::Register::Fmc::SAVEVOLTAGE &&
+		   reg.getAddress() != ONI::Register::Rhs2116::DELTAIDXTIME &&
+		   reg.getAddress() != ONI::Register::Rhs2116::DELTAPOLEN &&
+		   reg.getAddress() != ONI::Register::Rhs2116::TRIGGER &&
+		   reg.getAddress() != ONI::Register::Rhs2116::RESPECTSTIMACTIVE &&
+		   reg.getAddress() != ONI::Register::Rhs2116::TRIGGER){			/// READ ONLY REGISTERS!!
 			// double check it set correctly
 			unsigned int t_value = 0;
 			rc = oni_read_reg(*ctx, deviceType.idx, reg.getAddress(), &t_value);
@@ -211,19 +202,19 @@ protected:
 	volatile oni_ctx* ctx = NULL;
 	oni_device_t deviceType;
 
-	ONIDeviceTypeID deviceTypeID = ONIDeviceTypeID::NONE;
+	ONI::Device::TypeID deviceTypeID = ONI::Device::TypeID::NONE;
 
 	std::string deviceName = "UNDEFINED";
 
 	long double firstFrameTime = -1;
 	uint64_t acq_clock_khz = -1; // 250000000
 
-	
+
 
 };
 
 //template<typename FrameDataType>
-class ONIProbeDevice : public ONIDevice{
+class ProbeDevice : public BaseDevice{
 
 public:
 
@@ -241,3 +232,16 @@ protected:
 	long double sampleFrequencyHz = 30.1932367151e3;
 
 };
+
+} // namespace Device
+} // namespace ONI
+
+
+
+
+
+
+
+
+
+
