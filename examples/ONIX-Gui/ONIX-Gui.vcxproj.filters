@@ -2948,7 +2948,7 @@
     <ClInclude Include="..\..\..\..\addons\ofxONIX\libs\liboni\include\riffa_driver.h">
       <Filter>addons\ofxONIX\libs\liboni\include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Interface\PlotHelpers.h">
+    <ClInclude Include="..\..\src\Interface\PlotInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
   </ItemGroup>

@@ -36,12 +36,12 @@ enum TypeID{
 
 static std::string toString(const ONI::Device::TypeID& typeID){
 	switch(typeID){
-	case HEARTBEAT: {return "HeartBeat Device"; break;}
-	case FMC: {return "FMC Device"; break;}
-	case RHS2116: {return "RHS2116 Device"; break;}
-	case RHS2116MULTI: {return "RHS2116MULTI Device"; break;}
-	case RHS2116STIM: {return "RHS2116STIM Device"; break;}
-	case NONE: {return "No Device"; break;}
+		case HEARTBEAT: {return "HeartBeat Device"; break;}
+		case FMC: {return "FMC Device"; break;}
+		case RHS2116: {return "RHS2116 Device"; break;}
+		case RHS2116MULTI: {return "RHS2116MULTI Device"; break;}
+		case RHS2116STIM: {return "RHS2116STIM Device"; break;}
+		case NONE: {return "No Device"; break;}
 	}
 };
 
@@ -52,8 +52,8 @@ enum FrameProcessorType{
 
 static std::string toString(const ONI::Device::FrameProcessorType& typeID){
 	switch(typeID){
-	case PRE_FRAME_PROCESSOR: {return "PRE_FRAME_PROCESSOR"; break;}
-	case POST_FRAME_PROCESSOR: {return "POST_FRAME_PROCESSOR"; break;}
+		case PRE_FRAME_PROCESSOR: {return "PRE_FRAME_PROCESSOR"; break;}
+		case POST_FRAME_PROCESSOR: {return "POST_FRAME_PROCESSOR"; break;}
 	}
 };
 

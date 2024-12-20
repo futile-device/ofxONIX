@@ -23,7 +23,7 @@
 
 #include "../Interface/BaseInterface.h"
 #include "../Interface/Rhs2116Interface.h"
-#include "../Interface/PlotHelpers.h"
+#include "../Interface/PlotInterface.h"
 #include "../Type/DataBuffer.h"
 
 #include "ofxImGui.h"
@@ -184,8 +184,10 @@ public:
 		resetProbeData(rhsm.getNumProbes(), buffer.size());
 
 		mutex.lock();
-		bufferPlot(probeData);
-		probePlot(probeData);
+		ONI::Interface::Plot::combinedProbePlot("AC Combined", probeData, ONI::Interface::Plot::PLOT_AC_DATA);
+		ONI::Interface::Plot::individualProbePlot("AC Probes", probeData, ONI::Interface::Plot::PLOT_AC_DATA);
+		ONI::Interface::Plot::combinedProbePlot("DC Combined", probeData, ONI::Interface::Plot::PLOT_DC_DATA);
+		ONI::Interface::Plot::individualProbePlot("DC Probes", probeData, ONI::Interface::Plot::PLOT_DC_DATA);
 		mutex.unlock();
 
 		ImGui::PopID();
@@ -251,99 +253,6 @@ public:
 			
 
 		}
-
-	}
-
-	void bufferPlot(const ProbeData& p){
-
-		//const std::lock_guard<std::mutex> lock(mutex);
-
-		size_t numProbes = p.acProbeStats.size();
-		size_t frameCount = p.acProbeVoltages[0].size();
-
-		if(frameCount == 0) return;
-
-		ImGui::Begin("Buffered");
-		ImGui::PushID("BufferPlot");
-
-		ImPlot::BeginPlot("Data Frames", ImVec2(-1,-1));
-		ImPlot::SetupAxes("mS","mV");
-
-
-		for (int probe = 0; probe < numProbes; probe++) {
-
-			ImGui::PushID(probe);
-			ImPlot::SetNextLineStyle(ImPlot::GetColormapColor(probe));
-
-			int offset = 0;
-
-			//ImPlot::SetupAxesLimits(time[0], time[frameCount - 1] - 1, -5.0f, 5.0f, ImGuiCond_Always);
-			ImPlot::SetupAxesLimits(0, p.probeTimeStamps[probe][frameCount - 1] - 1, -5.0f, 5.0f, ImGuiCond_Always);
-			ImPlot::PlotLine("##probe", &p.probeTimeStamps[probe][0], &p.acProbeVoltages[probe][0], frameCount, ImPlotLineFlags_None, offset);
-
-			//ImPlot::SetupAxesLimits(0, frameCount - 1, -6.0f, 6.0f, ImGuiCond_Always);
-			//ImPlot::PlotLine("###probe", data, frameCount, 1, 0, ImPlotLineFlags_None, offset);
-
-
-			ImGui::PopID();
-
-		}
-
-		ImPlot::EndPlot();
-		ImGui::PopID();
-		ImGui::End();
-
-	}
-
-
-
-	//--------------------------------------------------------------
-	void probePlot(const ProbeData& p){
-
-		//const std::lock_guard<std::mutex> lock(mutex);
-
-		size_t numProbes = p.acProbeStats.size();
-		size_t frameCount = p.acProbeVoltages[0].size();
-
-		if(frameCount == 0) return;
-
-		ImGui::Begin("Probes");
-		ImGui::PushID("Probe Plot");
-		static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
-			ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
-
-		static int offset = 0;
-
-		ImGui::BeginTable("##table", 3, flags, ImVec2(-1,0));
-		ImGui::TableSetupColumn("Electrode", ImGuiTableColumnFlags_WidthFixed, 75.0f);
-		ImGui::TableSetupColumn("Voltage", ImGuiTableColumnFlags_WidthFixed, 75.0f);
-		ImGui::TableSetupColumn("AC Signal");
-
-		ImGui::TableHeadersRow();
-		ImPlot::PushColormap(ImPlotColormap_Cool);
-
-		for (int probe = 0; probe < numProbes; probe++){
-
-			ImGui::TableNextRow();
-
-			ImGui::TableSetColumnIndex(0);
-			ImGui::Text("Probe %d", probe);
-			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("%.3f mV \n%.3f avg \n%.3f dev \n%i N", p.acProbeVoltages[probe][offset], p.acProbeStats[probe].mean, p.acProbeStats[probe].deviation, frameCount);
-			ImGui::TableSetColumnIndex(2);
-
-			ImGui::PushID(probe);
-
-			ONI::Interface::Plot::Sparkline("##spark", &p.dcProbeVoltages[probe][0], frameCount, -10.0f, 10.0f, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 120));
-
-			ImGui::PopID();
-
-		}
-
-		ImPlot::PopColormap();
-		ImGui::EndTable();
-		ImGui::PopID();
-		ImGui::End();
 
 	}
 

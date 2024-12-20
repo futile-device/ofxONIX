@@ -116,14 +116,14 @@ public:
 		this->deltaTime = deltaTime;
 		this->deviceTableID = frame->dev_idx;
 		for(size_t probe = 0; probe < numProbes; ++probe){
-			ac_uV[probe] = 0.195f * (rawFrame.ac[probe] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
+			ac_mV[probe] = 0.195f * (rawFrame.ac[probe] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
 			dc_mV[probe] = -19.23 * (rawFrame.dc[probe] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
 		}
 	}
 
 	ONI::Frame::Rhs2116DataExtended rawFrame;
 
-	float ac_uV[16];
+	float ac_mV[16];
 	float dc_mV[16];
 
 	// copy assignment (copy-and-swap idiom)
@@ -132,7 +132,7 @@ public:
 		std::swap(acqTime, other.acqTime);
 		std::swap(deviceTableID, other.deviceTableID);
 		std::swap(numProbes, other.numProbes);
-		std::swap(ac_uV, other.ac_uV);
+		std::swap(ac_mV, other.ac_mV);
 		std::swap(dc_mV, other.dc_mV);
 		std::swap(rawFrame, other.rawFrame);
 		return *this;
@@ -140,7 +140,7 @@ public:
 
 	inline bool operator==(const Rhs2116Frame& other){ 
 		for(size_t probe = 0; probe < numProbes; ++probe){
-			if(ac_uV[probe] != other.ac_uV[probe] || dc_mV[probe] != other.ac_uV[probe]){
+			if(ac_mV[probe] != other.ac_mV[probe] || dc_mV[probe] != other.ac_mV[probe]){
 				return false;
 			}
 		}
@@ -172,14 +172,14 @@ public:
 	inline void convert(const std::vector<ONI::Frame::Rhs2116Frame>& frames, const std::vector<size_t>& channelMap){
 		numProbes = frames.size() * 16;
 		//this->multiFrameBuffer = multiFrameBuffer;
-		//ac_uV.resize(numProbes);
+		//ac_mV.resize(numProbes);
 		//dc_mV.resize(numProbes);
 		size_t deviceCount = 0;
 		for(const ONI::Frame::Rhs2116Frame& frame : frames){
 			for(size_t probe = 0; probe < frame.getNumProbes(); ++probe){
 				size_t thisChannelIDX = probe + deviceCount * frame.getNumProbes();
 				size_t thisProbeIDX = channelMap[thisChannelIDX];
-				ac_uV[thisProbeIDX] = frame.ac_uV[probe];
+				ac_uV[thisProbeIDX] = frame.ac_mV[probe];
 				dc_mV[thisProbeIDX] = frame.dc_mV[probe];
 			}
 			++deviceCount;

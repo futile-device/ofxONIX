@@ -22,7 +22,7 @@
 #include <syncstream>
 
 #include "../Interface/BaseInterface.h"
-#include "../Interface/PlotHelpers.h"
+#include "../Interface/PlotInterface.h"
 
 #include "ofxImGui.h"
 #include "ofxImPlot.h"
