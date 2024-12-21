@@ -35,6 +35,7 @@ namespace ONI{
 
 struct Rhs2116StimulusData{
 
+	bool biphasic = true;
 	bool anodicFirst = true;
 
 	float requestedAnodicAmplitudeMicroAmps = 0.0;
@@ -52,7 +53,7 @@ struct Rhs2116StimulusData{
 	unsigned int delaySamples = 0;
 	unsigned int interStimulusIntervalSamples = 1;
 
-	unsigned int numberOfStimuli = 1;
+	unsigned int numberOfStimuli = 0;
 
 };
 

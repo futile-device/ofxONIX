@@ -140,6 +140,7 @@ public:
 				
 				// Setup angled column headers
 				ImGui::TableSetupColumn("RHS/MEA", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_NoReorder);
+
 				for(int column = 1; column < numProbes + 1; ++column){
 					char buf[16];
 					std::sprintf(buf, "Electrode %i", column - 1);
@@ -148,21 +149,30 @@ public:
 
 				ImGui::TableAngledHeadersRow(); // Draw angled headers for all columns with the ImGuiTableColumnFlags_AngledHeader flag.
 				ImGui::TableHeadersRow();       // Draw remaining headers and allow access to context-menu and other functions.
+
 				for (int row = 0; row < numProbes; ++row){
 					
 					ImGui::PushID(row);
 					ImGui::TableNextRow();
 					ImGui::TableSetColumnIndex(0);
 					ImGui::AlignTextToFramePadding();
+
 					ImGui::Text("Probe %d", row);
+
 					for(int column = 1; column < numProbes + 1; column++){
+
 						if (ImGui::TableSetColumnIndex(column)){
+
 							ImGui::PushID(column);
+
 							size_t x = column - 1;
 							size_t y = row;
 							bool b = nextSettings.channelMap[y][x];
+
 							ImGui::Checkbox("", &b);
 							ImGui::SetItemTooltip("Probe %i to Electrode %i", y, x);
+
+							// always swap the selected mapping for an electrode
 							if(b != nextSettings.channelMap[y][x]){
 								size_t swapIDXx, swapIDXy = 0;
 								for(size_t xx = 0; xx < numProbes; ++xx) {
@@ -194,6 +204,7 @@ public:
 			
 			ImGui::NewLine();
 			ImGui::Separator();
+
 			if (ImGui::Button("Done", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); } ImGui::SameLine();
 			if (ImGui::Button("Reset", ImVec2(120, 0))) { 
 				rhsm.resetChannelMap(); 
@@ -218,10 +229,10 @@ public:
 		resetProbeData(rhsm.getNumProbes(), buffer.size());
 
 		mutex.lock();
-		ONI::Interface::Plot::combinedProbePlot("AC Combined", probeData, ONI::Interface::Plot::PLOT_AC_DATA);
-		ONI::Interface::Plot::individualProbePlot("AC Probes", probeData, ONI::Interface::Plot::PLOT_AC_DATA);
-		ONI::Interface::Plot::combinedProbePlot("DC Combined", probeData, ONI::Interface::Plot::PLOT_DC_DATA);
-		ONI::Interface::Plot::individualProbePlot("DC Probes", probeData, ONI::Interface::Plot::PLOT_DC_DATA);
+		ONI::Interface::Plot::plotCombinedProbes("AC Combined", probeData, ONI::Interface::Plot::PLOT_AC_DATA);
+		ONI::Interface::Plot::plotIndividualProbes("AC Probes", probeData, ONI::Interface::Plot::PLOT_AC_DATA);
+		ONI::Interface::Plot::plotCombinedProbes("DC Combined", probeData, ONI::Interface::Plot::PLOT_DC_DATA);
+		ONI::Interface::Plot::plotIndividualProbes("DC Probes", probeData, ONI::Interface::Plot::PLOT_DC_DATA);
 		mutex.unlock();
 
 		ImGui::PopID();

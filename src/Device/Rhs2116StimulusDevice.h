@@ -110,8 +110,9 @@ public:
     }
 
     unsigned int getTotalLengthSamples(const ONI::Rhs2116StimulusData& stimulus){
-        unsigned int totalSamples = stimulus.delaySamples + stimulus.anodicWidthSamples + stimulus.dwellSamples + stimulus.cathodicWidthSamples + stimulus.interStimulusIntervalSamples;
+        unsigned int totalSamples = stimulus.anodicWidthSamples + stimulus.dwellSamples + stimulus.cathodicWidthSamples + stimulus.interStimulusIntervalSamples;
         totalSamples *= stimulus.numberOfStimuli;
+        totalSamples += stimulus.delaySamples;
         return totalSamples;
     }
 
@@ -124,7 +125,16 @@ public:
         return totalSamples;
     }
 
-    std::vector<float> getStimulusAmplitudePlot(const ONI::Rhs2116StimulusData& stimulus){
+    std::vector<std::vector<float>> getAllStimulusAmplitudes(const std::vector<ONI::Rhs2116StimulusData>& stimuli){
+        std::vector<std::vector<float>> allAmplitudes;
+        allAmplitudes.resize(stimuli.size());
+        for(size_t i = 0; i < stimuli.size(); ++i){
+            allAmplitudes[i] = getStimulusAmplitudes(stimuli[i]);
+        }
+        return allAmplitudes;
+    }
+
+    std::vector<float> getStimulusAmplitudes(const ONI::Rhs2116StimulusData& stimulus){
 
         unsigned int totalLength = getTotalLengthSamples(stimulus);
 
@@ -518,6 +528,7 @@ public:
         for (int i = 0; i < stimuli.size(); ++i) {
 
             const ONI::Rhs2116StimulusData& s = stimuli[i];
+            if(!isStimulusValid(s)) continue;
 
             bool e0 = s.anodicFirst ? s.anodicAmplitudeSteps > 0 : s.cathodicAmplitudeSteps > 0;
             bool e1 = s.anodicFirst ? s.cathodicAmplitudeSteps > 0 : s.anodicAmplitudeSteps > 0;

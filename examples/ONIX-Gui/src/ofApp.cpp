@@ -85,7 +85,7 @@ void ofApp::setup(){
     s1.delaySamples = 0;
     s1.dwellSamples = 1;
     s1.interStimulusIntervalSamples = 1;
-    s1.numberOfStimuli = 10;
+    s1.numberOfStimuli = 1;
 
     ONI::Rhs2116StimulusData s2;
     s2.requestedAnodicAmplitudeMicroAmps = 18.1;
@@ -100,15 +100,15 @@ void ofApp::setup(){
     s2.delaySamples = 694;
     s2.dwellSamples = 121;
     s2.interStimulusIntervalSamples = 362;
-    s2.numberOfStimuli = 40;
+    s2.numberOfStimuli = 64;
 
     ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice(); // make sure to call this after multi device is initialized with devices!
 
     rhs2116StimDevice->conformStepSize(s1);
-    rhs2116StimDevice->conformStepSize(s2);
+    rhs2116StimDevice->conformStepSize(s1);
 
     rhs2116StimDevice->setProbeStimulus(s1, 0);
-    rhs2116StimDevice->setProbeStimulus(s2, 1);
+    rhs2116StimDevice->setProbeStimulus(s1, 1);
 
     std::vector<ONI::Rhs2116StimulusData> stimuli = rhs2116StimDevice->getProbeStimuliMapped();
     std::vector<ONI::Rhs2116StimulusData> lastStimuli = stimuli;

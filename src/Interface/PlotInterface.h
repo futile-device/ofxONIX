@@ -31,18 +31,133 @@ namespace ONI{
 namespace Interface{
 namespace Plot{
 
-static void Sparkline(const char* id, const float* values, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size, bool bLabelYAxis = true) {
+/////////////////////////////////////////////
+///
+/// Nice Sparkline Plot for multi-plotting
+///
+/////////////////////////////////////////////
+
+static inline void Sparkline(const char* id, const float* values, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size, bool bLabelYAxis = false) {
+	
 	ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0));
+	
 	if (ImPlot::BeginPlot(id, size, ImPlotFlags_CanvasOnly)){
 		bLabelYAxis ? ImPlot::SetupAxes(nullptr, nullptr) : ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
 		ImPlot::SetupAxesLimits(0, count - 1, min_v, max_v, ImGuiCond_Always);
+
 		ImPlot::SetNextLineStyle(col);
-		//ImPlot::SetNextFillStyle(col, 0.25);
 		ImPlot::PlotLine(id, values, count, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+
 		ImPlot::EndPlot();
 	}
 	ImPlot::PopStyleVar();
 }
+
+static inline void SparklineTimes(const char* id, const float* values, const float* timeStamps, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size, bool bLabelYAxis = false) {
+	
+	ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0));
+	
+	if (ImPlot::BeginPlot(id, size, ImPlotFlags_CanvasOnly)){
+
+		//ImPlot::SetupAxisFormat(ImAxis_X1, "%g ms");
+		ImPlot::SetupAxisFormat(ImAxis_Y1, "%.3f");
+
+		bLabelYAxis ? ImPlot::SetupAxes(nullptr, nullptr) : ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
+		//ImPlot::SetupAxesLimits(0, count - 1, min_v, max_v, ImGuiCond_Always);
+		
+		ImPlot::SetupAxesLimits(0, timeStamps[count - 1] - 1, min_v, max_v, ImGuiCond_Always);
+
+		ImPlot::SetNextLineStyle(col);
+		ImPlot::PlotLine("##probe", timeStamps, values, count, ImPlotLineFlags_None, offset);
+
+		ImPlot::EndPlot();
+	}
+	ImPlot::PopStyleVar();
+}
+
+
+
+
+/////////////////////////////////////////////
+///
+/// Plot helpers for Stimulus data
+///
+/////////////////////////////////////////////
+
+
+
+// Plot individual Stimulus data for all probes
+static inline void plotIndividualStimulus(const size_t& maxStimulusLength, 
+										  const std::vector<std::vector<float>>& allStimulusAmplitudes, 
+										  const std::vector<ONI::Rhs2116StimulusData>& stimuli){
+
+	static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg;
+
+	static int offset = 0;
+
+	ImGui::Begin("Stimuli");
+	ImGui::PushID("##IndividualStimulusPlot");
+
+	if(ImGui::BeginTable("##table", 3, flags, ImVec2(-1,0))){
+
+		ImGui::TableSetupColumn("Electrode", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+		ImGui::TableSetupColumn("Stimulus", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+		ImGui::TableSetupColumn("AC Signal (uA)");
+
+		ImGui::TableHeadersRow();
+		ImPlot::PushColormap(ImPlotColormap_Cool);
+
+		for(size_t i = 0; i < allStimulusAmplitudes.size(); ++i){
+
+			std::vector<float> plotAmplitudes = allStimulusAmplitudes[i];
+
+			ImGui::TableNextRow();
+
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text("Probe %d", i);
+			ImGui::TableSetColumnIndex(1);
+			//ImGui::Text("  delay-t %.3f ms", stimuli[i].delaySamples / 30.1932367151e3 * 1000.0f);
+			//ImGui::Text("  anode-t %.3f ms", stimuli[i].anodicWidthSamples / 30.1932367151e3 * 1000.0f);
+			//ImGui::Text("  dwell-t %.3f ms", stimuli[i].dwellSamples / 30.1932367151e3 * 1000.0f);
+			//ImGui::Text("cathode-t %.3f ms", stimuli[i].anodicWidthSamples / 30.1932367151e3 * 1000.0f);
+			//ImGui::Text("  inter-t %.3f ms", stimuli[i].interStimulusIntervalSamples / 30.1932367151e3 * 1000.0f);
+			//ImGui::Text("   anodic %.3f uA", stimuli[i].actualAnodicAmplitudeMicroAmps);
+			//ImGui::Text(" cathodic %.3f uA", stimuli[i].actualCathodicAmplitudeMicroAmps);
+			ImGui::TableSetColumnIndex(2);
+
+			ImGui::PushID(i);
+
+
+			// make all stimulus plots the same length
+			size_t sampleDiff = maxStimulusLength - plotAmplitudes.size();
+			for(size_t j = 0; j < sampleDiff; ++j) plotAmplitudes.push_back(0);
+
+			std::vector<float> timeStamps(plotAmplitudes.size());
+			for(size_t j = 0; j < timeStamps.size(); ++j) timeStamps[j] = j / 30.1932367151e3 * 1000.0f;
+
+			ONI::Interface::Plot::SparklineTimes("##spark", &plotAmplitudes[0], &timeStamps[0], plotAmplitudes.size(), -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
+
+
+			ImGui::PopID();
+
+		}
+
+		ImPlot::PopColormap();
+		ImGui::EndTable();
+	}
+
+	ImGui::PopID();
+	ImGui::End();
+
+}
+
+
+
+/////////////////////////////////////////////
+///
+/// Plot helpers for AC and DC probe data
+///
+/////////////////////////////////////////////
 
 enum PlotType{
 	PLOT_AC_DATA = 0,
@@ -56,7 +171,8 @@ static std::string toString(const ONI::Interface::Plot::PlotType& plotType){
 	}
 };
 
-static inline void combinedProbePlot(const std::string plotName, const ProbeData& p, const ONI::Interface::Plot::PlotType& plotType){
+// Plot Combined AC or DC probe data
+static inline void plotCombinedProbes(const std::string plotName, const ProbeData& p, const ONI::Interface::Plot::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -67,6 +183,7 @@ static inline void combinedProbePlot(const std::string plotName, const ProbeData
 	float voltageRange = 0;
 	
 	switch(plotType){
+
 		case PLOT_AC_DATA: {
 			numProbes = p.acProbeStats.size();
 			frameCount = p.acProbeVoltages[0].size();
@@ -75,6 +192,7 @@ static inline void combinedProbePlot(const std::string plotName, const ProbeData
 			unitStr = "mV";
 			break;
 		}
+
 		case PLOT_DC_DATA: {
 			numProbes = p.dcProbeStats.size();
 			frameCount = p.dcProbeVoltages[0].size();
@@ -83,6 +201,7 @@ static inline void combinedProbePlot(const std::string plotName, const ProbeData
 			unitStr = "V";
 			break;
 		}
+
 	}
 
 	if(frameCount == 0) return;
@@ -91,7 +210,7 @@ static inline void combinedProbePlot(const std::string plotName, const ProbeData
 	ImGui::PushID("##CombinedProbePlot");
 
 	if(ImPlot::BeginPlot("Data Frames", ImVec2(-1, -1))){
-		ImPlot::SetupAxes("mS",unitStr.c_str());
+		ImPlot::SetupAxes("mS", unitStr.c_str());
 
 		for (int probe = 0; probe < numProbes; probe++) {
 
@@ -121,9 +240,8 @@ static inline void combinedProbePlot(const std::string plotName, const ProbeData
 }
 
 
-
-//--------------------------------------------------------------
-static inline void individualProbePlot(const std::string plotName, const ProbeData& p, const ONI::Interface::Plot::PlotType& plotType){
+// Plot Individual AC or DC probe data
+static inline void plotIndividualProbes(const std::string plotName, const ProbeData& p, const ONI::Interface::Plot::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -142,7 +260,7 @@ static inline void individualProbePlot(const std::string plotName, const ProbeDa
 			voltages = &p.acProbeVoltages;
 			statistics = &p.acProbeStats;
 			voltageRange = 5.0f;
-			voltageStr = "AC Voltages";
+			voltageStr = "AC Voltages (mV)";
 			unitStr = "mV";
 			break;
 		}
@@ -152,7 +270,7 @@ static inline void individualProbePlot(const std::string plotName, const ProbeDa
 			voltages = &p.dcProbeVoltages;
 			statistics = &p.dcProbeStats;
 			voltageRange = 8.0f;
-			voltageStr = "DC Voltages";
+			voltageStr = "DC Voltages (V)";
 			unitStr = "V";
 			break;
 		}
@@ -162,14 +280,13 @@ static inline void individualProbePlot(const std::string plotName, const ProbeDa
 
 	ImGui::Begin(plotName.c_str());
 	ImGui::PushID("##AllProbePlot");
-	static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
-		ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
+	static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg;
 
 	static int offset = 0;
 
 	if(ImGui::BeginTable("##probetable", 3, flags, ImVec2(-1, 0))){
 		ImGui::TableSetupColumn("Probe", ImGuiTableColumnFlags_WidthFixed, 75.0f);
-		ImGui::TableSetupColumn("Voltage", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+		ImGui::TableSetupColumn("Metrics", ImGuiTableColumnFlags_WidthFixed, 75.0f);
 		ImGui::TableSetupColumn(voltageStr.c_str());
 
 		ImGui::TableHeadersRow();
