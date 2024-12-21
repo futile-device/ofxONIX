@@ -165,7 +165,7 @@ void ofApp::update(){
         fu::ImGuiConsole.gui();
 
         //ImPlot::ShowDemoWindow();
-        //ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
 
         ONIGui.gui(oni);
         

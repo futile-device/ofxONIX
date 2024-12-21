@@ -122,43 +122,77 @@ public:
 
 		bool unused = true;
 		bool bChannelMapNeedsUpdate = false;
-
+		
 		if(ImGui::BeginPopupModal("Channel Map", &unused, ImGuiWindowFlags_AlwaysAutoResize)){
 
 			const size_t& numProbes = rhsm.getNumProbes();
 
-			ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.5, 0.5));
-			for(size_t y = 0; y < numProbes; ++y){
-				for(size_t x = 0; x < numProbes; ++x){
-					if (x > 0) ImGui::SameLine();
-					ImGui::PushID(y * numProbes + x);
-					char buf[16];
-					std::sprintf(buf, "%02dx%02d", x, y % 16);
-					if (ImGui::Selectable(buf, nextSettings.channelMap[y][x] != 0, ImGuiSelectableFlags_NoAutoClosePopups, ImVec2(20, 20))){
-						size_t swapIDXx, swapIDXy = 0;
-						for(size_t xx = 0; xx < numProbes; ++xx) {
-							if(nextSettings.channelMap[y][xx]){
-								swapIDXx = xx;  
-								LOGDEBUG("From (x,y) (%i,%i) to (%i,%i)", y, swapIDXx, y, x);
-							}
-							nextSettings.channelMap[y][xx] = false; // toggle off everything in this row
-						}
-						for(size_t yy = 0; yy < numProbes; ++yy){
-							if(nextSettings.channelMap[yy][x]) {
-								swapIDXy = yy;
-								LOGDEBUG("Switch (x,y) (%i,%i) to (%i,%i)", swapIDXy, x, swapIDXy, swapIDXx);
-							}
-							nextSettings.channelMap[yy][x] = false; // toggle off everything in this col
-						}
-						nextSettings.channelMap[y][x] = true;
-						nextSettings.channelMap[swapIDXy][swapIDXx] = true;
-						bChannelMapNeedsUpdate = true;
+			const float TEXT_BASE_WIDTH = ImGui::CalcTextSize("A").x;
+			const float TEXT_BASE_HEIGHT = ImGui::GetTextLineHeightWithSpacing();
 
+			static ImGuiTableFlags table_flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_HighlightHoveredColumn;
+			static ImGuiTableColumnFlags column_flags = ImGuiTableColumnFlags_AngledHeader | ImGuiTableColumnFlags_WidthFixed;
+			
+			//ImGui::SliderAngle("style.TableAngledHeadersAngle", &ImGui::GetStyle().TableAngledHeadersAngle, -50.0f, +50.0f);
+			ImGui::GetStyle().TableAngledHeadersAngle = -35.0f * (2 * IM_PI) / 360.0f;
+			
+			if (ImGui::BeginTable("Probe_Map_Table", numProbes + 1, table_flags, ImVec2(0.0f, TEXT_BASE_HEIGHT * 12))){
+				
+				// Setup angled column headers
+				ImGui::TableSetupColumn("RHS/MEA", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_NoReorder);
+				for(int column = 1; column < numProbes + 1; ++column){
+					char buf[16];
+					std::sprintf(buf, "Electrode %i", column - 1);
+					ImGui::TableSetupColumn(buf, column_flags);
+				}
+
+				ImGui::TableAngledHeadersRow(); // Draw angled headers for all columns with the ImGuiTableColumnFlags_AngledHeader flag.
+				ImGui::TableHeadersRow();       // Draw remaining headers and allow access to context-menu and other functions.
+				for (int row = 0; row < numProbes; ++row){
+					
+					ImGui::PushID(row);
+					ImGui::TableNextRow();
+					ImGui::TableSetColumnIndex(0);
+					ImGui::AlignTextToFramePadding();
+					ImGui::Text("Probe %d", row);
+					for(int column = 1; column < numProbes + 1; column++){
+						if (ImGui::TableSetColumnIndex(column)){
+							ImGui::PushID(column);
+							size_t x = column - 1;
+							size_t y = row;
+							bool b = nextSettings.channelMap[y][x];
+							ImGui::Checkbox("", &b);
+							ImGui::SetItemTooltip("Probe %i to Electrode %i", y, x);
+							if(b != nextSettings.channelMap[y][x]){
+								size_t swapIDXx, swapIDXy = 0;
+								for(size_t xx = 0; xx < numProbes; ++xx) {
+									if(nextSettings.channelMap[y][xx]){
+										swapIDXx = xx;  
+										LOGDEBUG("From (x,y) (%i,%i) to (%i,%i)", y, swapIDXx, y, x);
+									}
+									nextSettings.channelMap[y][xx] = false; // toggle off everything in this row
+								}
+								for(size_t yy = 0; yy < numProbes; ++yy){
+									if(nextSettings.channelMap[yy][x]) {
+										swapIDXy = yy;
+										LOGDEBUG("Switch (x,y) (%i,%i) to (%i,%i)", swapIDXy, x, swapIDXy, swapIDXx);
+									}
+									nextSettings.channelMap[yy][x] = false; // toggle off everything in this col
+								}
+								nextSettings.channelMap[y][x] = true;
+								nextSettings.channelMap[swapIDXy][swapIDXx] = true;
+								bChannelMapNeedsUpdate = true;
+							}
+							ImGui::PopID();
+						}
 					}
+						
 					ImGui::PopID();
 				}
+				ImGui::EndTable();
 			}
-			ImGui::PopStyleVar();
+			
+			ImGui::NewLine();
 			ImGui::Separator();
 			if (ImGui::Button("Done", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); } ImGui::SameLine();
 			if (ImGui::Button("Reset", ImVec2(120, 0))) { 
