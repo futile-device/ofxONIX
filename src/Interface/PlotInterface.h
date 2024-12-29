@@ -43,7 +43,7 @@ static inline void Sparkline(const char* id, const float* values, int count, flo
 	
 	if (ImPlot::BeginPlot(id, size, ImPlotFlags_CanvasOnly)){
 		bLabelYAxis ? ImPlot::SetupAxes(nullptr, nullptr) : ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
-		ImPlot::SetupAxesLimits(0, count - 1, min_v, max_v, ImGuiCond_Always);
+		ImPlot::SetupAxesLimits(0, count, min_v, max_v, ImGuiCond_Always);
 
 		ImPlot::SetNextLineStyle(col);
 		ImPlot::PlotLine(id, values, count, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
@@ -65,7 +65,7 @@ static inline void SparklineTimes(const char* id, const float* values, const flo
 		bLabelYAxis ? ImPlot::SetupAxes(nullptr, nullptr) : ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
 		//ImPlot::SetupAxesLimits(0, count - 1, min_v, max_v, ImGuiCond_Always);
 		
-		ImPlot::SetupAxesLimits(0, timeStamps[count - 1] - 1, min_v, max_v, ImGuiCond_Always);
+		ImPlot::SetupAxesLimits(0, timeStamps[count - 1], min_v, max_v, ImGuiCond_Always);
 
 		ImPlot::SetNextLineStyle(col);
 		ImPlot::PlotLine("##probe", timeStamps, values, count, ImPlotLineFlags_None, offset);
@@ -132,10 +132,12 @@ static inline void plotIndividualStimulus(const size_t& maxStimulusLength,
 			size_t sampleDiff = maxStimulusLength - plotAmplitudes.size();
 			for(size_t j = 0; j < sampleDiff; ++j) plotAmplitudes.push_back(0);
 
-			std::vector<float> timeStamps(plotAmplitudes.size());
-			for(size_t j = 0; j < timeStamps.size(); ++j) timeStamps[j] = j / 30.1932367151e3 * 1000.0f;
+			//std::vector<float> allTimeStamps(plotAmplitudes.size());
+			//for(size_t j = 0; j < allTimeStamps.size(); ++j) allTimeStamps[j] = j / 30.1932367151e3 * 1000.0f;
 
-			ONI::Interface::Plot::SparklineTimes("##spark", &plotAmplitudes[0], &timeStamps[0], plotAmplitudes.size(), -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
+			//ONI::Interface::Plot::SparklineTimes("##spark", &plotAmplitudes[0], &allTimeStamps[0], plotAmplitudes.size(), -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
+			ONI::Interface::Plot::Sparkline("##spark", &plotAmplitudes[0], plotAmplitudes.size(), -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
+
 
 
 			ImGui::PopID();
@@ -209,7 +211,8 @@ static inline void plotCombinedProbes(const std::string plotName, const ProbeDat
 	ImGui::Begin(plotName.c_str());
 	ImGui::PushID("##CombinedProbePlot");
 
-	if(ImPlot::BeginPlot("Data Frames", ImVec2(-1, -1))){
+	if(ImPlot::BeginPlot("Probe Voltages", ImVec2(-1, -1))){
+
 		ImPlot::SetupAxes("mS", unitStr.c_str());
 
 		for (int probe = 0; probe < numProbes; probe++) {

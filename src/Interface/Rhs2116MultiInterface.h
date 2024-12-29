@@ -87,11 +87,13 @@ public:
 		Rhs2116Interface::deviceGui(rhsm.settings); // draw the common device gui settings
 
 		static bool bBuffersNeedUpdate = false;
+		ImGui::SetNextItemWidth(200);
 		if(ImGui::InputInt("Buffer Size (ms)", &bufferSizeTimeMillis)){
 			bBuffersNeedUpdate = true;
 			//resetBuffers();
 		}
 
+		ImGui::SetNextItemWidth(200);
 		if(ImGui::InputInt("Buffer Sample Time (ms)", &bufferSampleTimeMillis)){
 			bBuffersNeedUpdate = true;
 			//if(bufferSampleTimeMillis == 0) bufferSampleTimeMillis = 1;

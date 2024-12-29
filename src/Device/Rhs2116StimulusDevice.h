@@ -266,6 +266,33 @@ public:
 
     }
 
+    bool deleteProbeStimulus(const unsigned int& channelMappedProbeIDX){
+
+        if(channelMappedProbeIDX > multi->channelIDX.size()){
+            LOGERROR("Channel mapped probe index out of range for stimulus: %i", channelMappedProbeIDX);
+            return false;
+        }
+
+        size_t idx = multi->channelIDX[channelMappedProbeIDX];
+        size_t numProbesPerDevice = 16; // (numProbes / multi->devices.size())
+        size_t deviceNum = floor(idx / numProbesPerDevice);
+        size_t probeIDX = idx - deviceNum * numProbesPerDevice;
+
+        size_t i = 0;
+        for(auto& it : settings.deviceStimuli){
+            if(deviceNum == i){
+                std::vector<ONI::Rhs2116StimulusData>& stimuli = it.second;
+                stimuli[probeIDX] = defaultStimulus;
+                return true;
+            }
+            ++i;
+        }
+
+
+        return false;
+
+    }
+
     bool setProbeStimulus(const ONI::Rhs2116StimulusData& stimulus, const unsigned int& channelMappedProbeIDX){
 
         if(channelMappedProbeIDX > multi->channelIDX.size()){
@@ -445,32 +472,52 @@ public:
 
         deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
         //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
-        ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0);
+        if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
+            LOGERROR("Error writing to TRIGGERSOURCE!!");
+            return false;
+        }
+
         deviceType.idx = 667;
 
         for(const auto& it : settings.deviceStimuli){
 
             Rhs2116Device* device = multi->getDevice(it.first);
 
-            device->setStepSize(stepSize);
+            if(!device->setStepSize(stepSize)){
+                LOGERROR("Error setting STEPSZ!!");
+                return false;
+            }
+
             const unsigned int * regs = ONI::Settings::Rhs2116StimulusBiasRegisters[stepSize];
             unsigned int rbias = regs[1] << 4 | regs[0];
-            device->writeRegister(ONI::Register::Rhs2116::STIMBIAS, rbias); // ask Jon about whether this is necessary
-            //device->writeRegister(RHS2116_REG::STEPSZ, stepSize);
+
+            if(!device->writeRegister(ONI::Register::Rhs2116::STIMBIAS, rbias)){ // ask Jon about whether this is necessary
+                LOGERROR("Error writing to STIMBIAS!!");
+                return false;
+            }
 
             const std::vector<ONI::Rhs2116StimulusData>& thisStimuli = it.second;
 
             for(size_t i = 0; i < thisStimuli.size(); ++i){
-                device->writeRegister(ONI::Register::Rhs2116::NEG[i], thisStimuli[i].anodicAmplitudeSteps);
+                if(!device->writeRegister(ONI::Register::Rhs2116::NEG[i], thisStimuli[i].anodicAmplitudeSteps)){
+                    LOGERROR("Error writing to NEG!!");
+                    return false;
+                }
             }
 
             for(size_t i = 0; i < thisStimuli.size(); ++i){
-                device->writeRegister(ONI::Register::Rhs2116::POS[i], thisStimuli[i].cathodicAmplitudeSteps);
+                if(!device->writeRegister(ONI::Register::Rhs2116::POS[i], thisStimuli[i].cathodicAmplitudeSteps)){
+                    LOGERROR("Error writing to POS!!");
+                    return false;
+                }
             }
 
             auto result = getDeltaTable(thisStimuli);
 
-            device->writeRegister(ONI::Register::Rhs2116::NUMDELTAS, result.size());
+            if(!device->writeRegister(ONI::Register::Rhs2116::NUMDELTAS, result.size())){
+                LOGERROR("Too many stimuli deltas!!");
+                return false;
+            }
 
             size_t j = 0;
             for (const auto& entry : result) {
@@ -480,8 +527,15 @@ public:
                 //p.time = entry.first;
                 //LOGDEBUG("3277X %i", *(unsigned int*)&p);
                 unsigned int idxTime = j++ << 22 | (entry.first & 0x003FFFFF);
-                device->writeRegister(ONI::Register::Rhs2116::DELTAIDXTIME, idxTime);
-                device->writeRegister(ONI::Register::Rhs2116::DELTAPOLEN, entry.second);
+                if(!device->writeRegister(ONI::Register::Rhs2116::DELTAIDXTIME, idxTime)){
+                    LOGERROR("Error writing to DELTAIDXTIME!!");
+                    return false;
+                }
+                
+                if(!device->writeRegister(ONI::Register::Rhs2116::DELTAPOLEN, entry.second)){
+                    LOGERROR("Error writing to DELTAPOLEN!!");
+                    return false;
+                }
                 //LOGDEBUG("32771 %i", idxTime);
                 //LOGDEBUG("32772 %i", entry.second);
                 //++j;

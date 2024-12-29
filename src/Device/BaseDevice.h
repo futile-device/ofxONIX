@@ -179,12 +179,14 @@ protected:
 		   reg.getAddress() != ONI::Register::Rhs2116::DELTAPOLEN &&
 		   reg.getAddress() != ONI::Register::Rhs2116::TRIGGER &&
 		   reg.getAddress() != ONI::Register::Rhs2116::RESPECTSTIMACTIVE &&
-		   reg.getAddress() != ONI::Register::Rhs2116::TRIGGER){			/// READ ONLY REGISTERS!!
+		   reg.getAddress() != ONI::Register::Rhs2116Stimulus::TRIGGER){			/// READ ONLY REGISTERS!!
 			// double check it set correctly
 			unsigned int t_value = 0;
 			rc = oni_read_reg(*ctx, deviceType.idx, reg.getAddress(), &t_value);
 			if(rc || value != t_value){
 				LOGERROR("Write does not match read values: %s", oni_error_str(rc));
+				LOGERROR("	Attempt: %s == dec(%05i) bin(%016llX) hex(%#06x)", reg.getName().c_str(), value, uint16_to_bin16(value), value);
+				LOGERROR("	Actual : %s == dec(%05i) bin(%016llX) hex(%#06x)", reg.getName().c_str(), t_value, uint16_to_bin16(t_value), t_value);
 				return false;
 			}
 		}

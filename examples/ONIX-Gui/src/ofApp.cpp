@@ -100,15 +100,15 @@ void ofApp::setup(){
     s2.delaySamples = 694;
     s2.dwellSamples = 121;
     s2.interStimulusIntervalSamples = 362;
-    s2.numberOfStimuli = 64;
+    s2.numberOfStimuli = 2;
 
     ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice(); // make sure to call this after multi device is initialized with devices!
 
     rhs2116StimDevice->conformStepSize(s1);
-    rhs2116StimDevice->conformStepSize(s1);
+    rhs2116StimDevice->conformStepSize(s2);
 
     rhs2116StimDevice->setProbeStimulus(s1, 0);
-    rhs2116StimDevice->setProbeStimulus(s1, 1);
+    rhs2116StimDevice->setProbeStimulus(s2, 1);
 
     std::vector<ONI::Rhs2116StimulusData> stimuli = rhs2116StimDevice->getProbeStimuliMapped();
     std::vector<ONI::Rhs2116StimulusData> lastStimuli = stimuli;
@@ -165,7 +165,7 @@ void ofApp::update(){
         fu::ImGuiConsole.gui();
 
         //ImPlot::ShowDemoWindow();
-        ImGui::ShowDemoWindow();
+        //ImGui::ShowDemoWindow();
 
         ONIGui.gui(oni);
         
