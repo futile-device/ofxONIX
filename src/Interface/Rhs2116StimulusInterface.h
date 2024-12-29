@@ -93,6 +93,10 @@ public:
 
 		ONI::Device::Rhs2116StimulusDevice& std = *reinterpret_cast<ONI::Device::Rhs2116StimulusDevice*>(&device);
 
+		static bool bUseBurstFrequency = false;
+		static float burstFrequency = 1;
+		static float burstDurationMs = 1;
+
 		static bool bDeleted = false;
 		static bool bSelectAll = false;
 		bool bLastSelectAll = bSelectAll;
@@ -133,6 +137,7 @@ public:
 			bLastSelectAll = bSelectAll = false;
 			for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = false;
 			channelSelect[probeItemIDX] = true;
+			bUseBurstFrequency = false;
 		}
 
 		static std::vector<size_t> toDeleteIDX;
@@ -187,6 +192,7 @@ public:
 				toDeleteIDX.clear();
 				refreshStimuliData(std);
 				bDeleted = true;
+				bUseBurstFrequency = false;
 				ImGui::CloseCurrentPopup(); 
 			} 
 			ImGui::EndPopup();
@@ -217,29 +223,29 @@ public:
 		float interStimulusIntervalSamplesMs = currentStimulus.interStimulusIntervalSamples / std.sampleFrequencyHz * 1000.0f;
 		int numberOfStimuli = currentStimulus.numberOfStimuli;
 
-		static bool bBurstFrequency = true;
-		static float burstFrequency = 1;
-		static float burstDurationMs = 1;
-		ImGui::Checkbox("Burst Frequency", &bBurstFrequency); ImGui::SameLine();
-		if(bBurstFrequency){
+
+
+		ImGui::Checkbox("Burst Frequency", &bUseBurstFrequency); ImGui::SameLine();
+		if(bUseBurstFrequency){
 			ImGui::BeginDisabled();
 			currentStimulus.biphasic = true;
 		}
 		ImGui::Checkbox("Biphasic", &currentStimulus.biphasic); ImGui::SameLine();
-		if(bBurstFrequency) ImGui::EndDisabled();
+		if(bUseBurstFrequency) ImGui::EndDisabled();
 		ImGui::Checkbox("Anodic First", &currentStimulus.anodicFirst); //ImGui::SameLine();
 		
 
 		ImGui::PushItemWidth(200);
-
-
 		ImGui::InputFloat("Delay Time (ms)", &delaySamplesMs, 0.03f, 1.0f);
 
 		if(!currentStimulus.biphasic){
+
 			ImGui::InputFloat("Anodic Time (ms)", &anodicWidthSamplesMs, 0.03f, 1.0f);
 			ImGui::InputFloat("Cathodic Time (ms)", &cathodicWidthSamplesMs, 0.03f, 1.0f);
+
 		}else{
-			if(bBurstFrequency){
+
+			if(bUseBurstFrequency){
 				ImGui::InputFloat("Burst Frequency (Hz)", &burstFrequency, 0.1f, 1.0f); 
 				burstFrequency = std::clamp(burstFrequency, 0.1f, 1000.0f);
 				ImGui::InputFloat("Burst Time (ms)", &burstDurationMs, 0.03f, 1.0f); 
@@ -256,12 +262,14 @@ public:
 
 		ImGui::InputFloat("Dwell Time (ms)", &dwellSamplesMs, 0.03f, 1.0f);
 		ImGui::InputFloat("Inter Stimulus Time (ms)", &interStimulusIntervalSamplesMs, 0.03f, 1.0f);
-		if(bBurstFrequency){
+
+		if(bUseBurstFrequency){
 			ImGui::BeginDisabled();
 			numberOfStimuli = std::clamp((int)std::floor(burstDurationMs / anodicWidthSamplesMs / 2.0f), 1, 256);
 		}
+
 		ImGui::InputInt("Number of Stimuli", &numberOfStimuli, 1, 512);
-		if(bBurstFrequency) ImGui::EndDisabled();
+		if(bUseBurstFrequency) ImGui::EndDisabled();
 
 		currentStimulus.delaySamples = std::round(delaySamplesMs * std.sampleFrequencyHz / 1000.0f);
 		currentStimulus.anodicWidthSamples = std::round(anodicWidthSamplesMs * std.sampleFrequencyHz / 1000.0f);
