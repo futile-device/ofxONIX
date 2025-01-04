@@ -43,11 +43,11 @@ public:
 	inline void process(oni_frame_t* frame){}; // nothing
 	inline void process(ONI::Frame::BaseFrame& frame){}; // nothing
 
-	inline void gui(ONI::Device::BaseDevice& device){
+	inline void gui(ONI::Processor::BaseProcessor& processor){
 
-		ONI::Device::Rhs2116Device& rhs = *reinterpret_cast<ONI::Device::Rhs2116Device*>(&device);
+		ONI::Device::Rhs2116Device& rhs = *reinterpret_cast<ONI::Device::Rhs2116Device*>(&processor);
 
-		rhs.subscribeProcessor(processorName, ONI::Device::FrameProcessorType::POST_FRAME_PROCESSOR, this);
+		rhs.subscribeProcessor(processorName, ONI::Processor::ProcessorType::POST_PROCESSOR, this);
 
 		nextSettings = rhs.settings;
 

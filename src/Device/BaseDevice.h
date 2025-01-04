@@ -27,62 +27,14 @@
 #include "../Type/SettingTypes.h"
 #include "../Type/FrameTypes.h"
 #include "../Type/DeviceTypes.h"
+#include "../Processor/BaseProcessor.h"
 
 #pragma once
 
 namespace ONI{
 namespace Device{
 
-
-
-
-class FrameProcessor{
-
-public:
-
-	virtual ~FrameProcessor(){};
-
-	virtual inline void process(oni_frame_t* frame) = 0;
-	virtual inline void process(ONI::Frame::BaseFrame& frame) = 0;
-
-	inline void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, FrameProcessor * processor){
-		const std::lock_guard<std::mutex> lock(mutex);
-		std::map<std::string, FrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
-		auto it = processors.find(processorName);
-		if(it == processors.end()){
-			LOGINFO("Adding processor %s", processorName.c_str());
-			processors[processorName] = processor;
-		}else{
-			//LOGALERT("Processor %s already exists", processorName.c_str());
-		}
-	}
-
-	inline void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, FrameProcessor * processor){
-		const std::lock_guard<std::mutex> lock(mutex);
-		std::map<std::string, FrameProcessor*>& processors = (type == PRE_FRAME_PROCESSOR ? preFrameProcessors : postFrameProcessors);
-		auto it = processors.find(processorName);
-		if(it == processors.end()){
-			LOGALERT("No processor %s", processorName.c_str());
-		}else{
-			LOGINFO("Deleting processor %s", processorName.c_str());
-			processors.erase(it);
-		}
-	}
-
-	//std::mutex& getMutex(){
-	//	return mutex;
-	//}
-
-protected:
-
-	std::mutex mutex;
-
-	std::map<std::string, FrameProcessor*> preFrameProcessors;
-	std::map<std::string, FrameProcessor*> postFrameProcessors;
-
-};
-
-class BaseDevice : public FrameProcessor {
+class BaseDevice : public ONI::Processor::BaseProcessor {
 
 public:
 
@@ -95,7 +47,7 @@ public:
 		deviceType = type;
 		deviceTypeID = (ONI::Device::TypeID)type.id;
 		std::ostringstream os; os << ONI::Device::toString(deviceTypeID) << " (" << type.idx << ")";
-		deviceName = os.str();
+		BaseProcessor::processorName = os.str();
 		this->acq_clock_khz = acq_clock_khz;
 		reset(); // always call device specific setup/reset
 		deviceSetup(); // always call device specific setup/reset
@@ -108,10 +60,6 @@ public:
 	}
 
 	virtual void deviceSetup() = 0; // this should always set the config name and do whatever else is device specific for setup/reset
-
-	inline const std::string& getName(){
-		return deviceName;
-	}
 
 	inline const ONI::Device::TypeID& getDeviceTypeID(){
 		return deviceTypeID;
@@ -154,7 +102,7 @@ protected:
 			return 0;
 		}
 
-		LOGDEBUG("%s  read register: %s == dec(%05i) bin(%016llX) hex(%#06x)", deviceName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
+		LOGDEBUG("%s  read register: %s == dec(%05i) bin(%016llX) hex(%#06x)", BaseProcessor::processorName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
 
 		return value;
 
@@ -163,7 +111,7 @@ protected:
 	bool writeRegister(const ONI::Register::BaseRegister& reg, const unsigned int& value){
 
 		assert(ctx != NULL && deviceTypeID != -1, "ONIContext and ONIDevice must be setup");
-		LOGDEBUG("%s write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", deviceName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
+		LOGDEBUG("%s write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", BaseProcessor::processorName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
 
 		int rc = ONI_ESUCCESS;
 
@@ -205,8 +153,6 @@ protected:
 	oni_device_t deviceType;
 
 	ONI::Device::TypeID deviceTypeID = ONI::Device::TypeID::NONE;
-
-	std::string deviceName = "UNDEFINED";
 
 	long double firstFrameTime = -1;
 	uint64_t acq_clock_khz = -1; // 250000000

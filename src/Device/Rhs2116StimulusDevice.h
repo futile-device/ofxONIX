@@ -62,7 +62,7 @@ public:
         LOGDEBUG("Setting up device RHS2116 STIM");
 
         if(multi->devices.size() == 0){
-            LOGERROR("Add edd devices to Rhs2116MultiDevice before setting up stimulus");
+            LOGERROR("Add devices to Rhs2116MultiDevice before setting up stimulus");
             assert(false);
             return;
         }
@@ -79,7 +79,7 @@ public:
         deviceTypeID = RHS2116STIM;
 
         std::ostringstream os; os << ONI::Device::toString(deviceTypeID) << " (" << deviceType.idx << ")";
-        deviceName = os.str();
+        BaseProcessor::processorName = os.str();
        
         settings.deviceStimuli.clear();
 

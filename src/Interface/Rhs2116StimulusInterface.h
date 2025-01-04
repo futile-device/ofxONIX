@@ -22,7 +22,7 @@
 #include <syncstream>
 
 #include "../Interface/BaseInterface.h"
-#include "../Interface/PlotInterface.h"
+#include "../Interface/PlotHelpers.h"
 
 #include "ofxImGui.h"
 #include "ofxImPlot.h"
@@ -89,9 +89,9 @@ public:
 	}
 	
 	
-	inline void gui(ONI::Device::BaseDevice& device){
+	inline void gui(ONI::Processor::BaseProcessor& processor){
 
-		ONI::Device::Rhs2116StimulusDevice& std = *reinterpret_cast<ONI::Device::Rhs2116StimulusDevice*>(&device);
+		ONI::Device::Rhs2116StimulusDevice& std = *reinterpret_cast<ONI::Device::Rhs2116StimulusDevice*>(&processor);
 
 		static bool bUseBurstFrequency = false;
 		static float burstFrequency = 1;
@@ -595,9 +595,9 @@ public:
 				float max = bPlotRelativeuA ?  stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01 : maxMicroAmps + 0.01;
 
 				if(bPlotTimes){
-					ONI::Interface::Plot::SparklineTimes("##spark", &plotAmplitudes[0], &allTimeStamps[0], plotAmplitudes.size(), min, max, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
+					ONI::Interface::SparklineTimes("##spark", &plotAmplitudes[0], &allTimeStamps[0], plotAmplitudes.size(), min, max, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
 				}else{
-					ONI::Interface::Plot::Sparkline("##spark", &plotAmplitudes[0], plotAmplitudes.size(), min, max, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
+					ONI::Interface::Sparkline("##spark", &plotAmplitudes[0], plotAmplitudes.size(), min, max, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
 
 				}
 				//

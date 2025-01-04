@@ -44,9 +44,9 @@ public:
 	inline void process(oni_frame_t* frame){}; // nothing
 	inline void process(ONI::Frame::BaseFrame& frame){}; // nothing
 	
-	inline void gui(ONI::Device::BaseDevice& device){
+	inline void gui(ONI::Processor::BaseProcessor& processor){
 	
-		ONI::Device::FmcDevice& fmc = *reinterpret_cast<ONI::Device::FmcDevice*>(&device);
+		ONI::Device::FmcDevice& fmc = *reinterpret_cast<ONI::Device::FmcDevice*>(&processor);
 
 		if(!bIsApplying) nextSettings = fmc.settings;
 

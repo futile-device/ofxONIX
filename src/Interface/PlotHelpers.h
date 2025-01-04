@@ -29,7 +29,8 @@
 
 namespace ONI{
 namespace Interface{
-namespace Plot{
+
+
 
 /////////////////////////////////////////////
 ///
@@ -38,9 +39,9 @@ namespace Plot{
 /////////////////////////////////////////////
 
 static inline void Sparkline(const char* id, const float* values, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size, bool bLabelYAxis = false) {
-	
+
 	ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0));
-	
+
 	if (ImPlot::BeginPlot(id, size, ImPlotFlags_CanvasOnly)){
 		bLabelYAxis ? ImPlot::SetupAxes(nullptr, nullptr) : ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
 		ImPlot::SetupAxesLimits(0, count, min_v, max_v, ImGuiCond_Always);
@@ -54,9 +55,9 @@ static inline void Sparkline(const char* id, const float* values, int count, flo
 }
 
 static inline void SparklineTimes(const char* id, const float* values, const float* timeStamps, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size, bool bLabelYAxis = false) {
-	
+
 	ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0));
-	
+
 	if (ImPlot::BeginPlot(id, size, ImPlotFlags_CanvasOnly)){
 
 		//ImPlot::SetupAxisFormat(ImAxis_X1, "%g ms");
@@ -64,7 +65,7 @@ static inline void SparklineTimes(const char* id, const float* values, const flo
 
 		bLabelYAxis ? ImPlot::SetupAxes(nullptr, nullptr) : ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
 		//ImPlot::SetupAxesLimits(0, count - 1, min_v, max_v, ImGuiCond_Always);
-		
+
 		ImPlot::SetupAxesLimits(0, timeStamps[count - 1], min_v, max_v, ImGuiCond_Always);
 
 		ImPlot::SetNextLineStyle(col);
@@ -136,7 +137,7 @@ static inline void plotIndividualStimulus(const size_t& maxStimulusLength,
 			//for(size_t j = 0; j < allTimeStamps.size(); ++j) allTimeStamps[j] = j / 30.1932367151e3 * 1000.0f;
 
 			//ONI::Interface::Plot::SparklineTimes("##spark", &plotAmplitudes[0], &allTimeStamps[0], plotAmplitudes.size(), -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
-			ONI::Interface::Plot::Sparkline("##spark", &plotAmplitudes[0], plotAmplitudes.size(), -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
+			ONI::Interface::Sparkline("##spark", &plotAmplitudes[0], plotAmplitudes.size(), -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
 
 
 
@@ -166,15 +167,15 @@ enum PlotType{
 	PLOT_DC_DATA
 };
 
-static std::string toString(const ONI::Interface::Plot::PlotType& plotType){
+static std::string toString(const ONI::Interface::PlotType& plotType){
 	switch(plotType){
-		case PLOT_AC_DATA: {return "Plot AC Data"; break;}
-		case PLOT_DC_DATA: {return "Plot AC Data"; break;}
+	case PLOT_AC_DATA: {return "Plot AC Data"; break;}
+	case PLOT_DC_DATA: {return "Plot AC Data"; break;}
 	}
 };
 
 // Plot Combined AC or DC probe data
-static inline void plotCombinedProbes(const std::string plotName, const ProbeData& p, const ONI::Interface::Plot::PlotType& plotType){
+static inline void plotCombinedProbes(const std::string plotName, const ONI::Frame::Rhs2116ProbeData& p, const ONI::Interface::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -183,26 +184,26 @@ static inline void plotCombinedProbes(const std::string plotName, const ProbeDat
 	const std::vector<std::vector<float>>* voltages = nullptr;
 	std::string unitStr = "";
 	float voltageRange = 0;
-	
+
 	switch(plotType){
 
-		case PLOT_AC_DATA: {
-			numProbes = p.acProbeStats.size();
-			frameCount = p.acProbeVoltages[0].size();
-			voltages = &p.acProbeVoltages;
-			voltageRange = 5.0f;
-			unitStr = "mV";
-			break;
-		}
+	case PLOT_AC_DATA: {
+		numProbes = p.acProbeStats.size();
+		frameCount = p.acProbeVoltages[0].size();
+		voltages = &p.acProbeVoltages;
+		voltageRange = 5.0f;
+		unitStr = "mV";
+		break;
+	}
 
-		case PLOT_DC_DATA: {
-			numProbes = p.dcProbeStats.size();
-			frameCount = p.dcProbeVoltages[0].size();
-			voltages = &p.dcProbeVoltages;
-			voltageRange = 8.0f;
-			unitStr = "V";
-			break;
-		}
+	case PLOT_DC_DATA: {
+		numProbes = p.dcProbeStats.size();
+		frameCount = p.dcProbeVoltages[0].size();
+		voltages = &p.dcProbeVoltages;
+		voltageRange = 8.0f;
+		unitStr = "V";
+		break;
+	}
 
 	}
 
@@ -236,7 +237,7 @@ static inline void plotCombinedProbes(const std::string plotName, const ProbeDat
 
 		ImPlot::EndPlot();
 	}
-	
+
 	ImGui::PopID();
 	ImGui::End();
 
@@ -244,39 +245,39 @@ static inline void plotCombinedProbes(const std::string plotName, const ProbeDat
 
 
 // Plot Individual AC or DC probe data
-static inline void plotIndividualProbes(const std::string plotName, const ProbeData& p, const ONI::Interface::Plot::PlotType& plotType){
+static inline void plotIndividualProbes(const std::string plotName, const ONI::Frame::Rhs2116ProbeData& p, const ONI::Interface::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
 	size_t numProbes = 0;
 	size_t frameCount = 0;
 	const std::vector<std::vector<float>>* voltages = nullptr;
-	const std::vector<ONI::ProbeStatistics>* statistics = nullptr;
+	const std::vector<ONI::Frame::ProbeStatistics>* statistics = nullptr;
 	std::string voltageStr = "";
 	std::string unitStr = "";
 	float voltageRange = 0;
 
 	switch(plotType){
-		case PLOT_AC_DATA: {
-			numProbes = p.acProbeStats.size();
-			frameCount = p.acProbeVoltages[0].size();
-			voltages = &p.acProbeVoltages;
-			statistics = &p.acProbeStats;
-			voltageRange = 5.0f;
-			voltageStr = "AC Voltages (mV)";
-			unitStr = "mV";
-			break;
-		}
-		case PLOT_DC_DATA: {
-			numProbes = p.dcProbeStats.size();
-			frameCount = p.dcProbeVoltages[0].size();
-			voltages = &p.dcProbeVoltages;
-			statistics = &p.dcProbeStats;
-			voltageRange = 8.0f;
-			voltageStr = "DC Voltages (V)";
-			unitStr = "V";
-			break;
-		}
+	case PLOT_AC_DATA: {
+		numProbes = p.acProbeStats.size();
+		frameCount = p.acProbeVoltages[0].size();
+		voltages = &p.acProbeVoltages;
+		statistics = &p.acProbeStats;
+		voltageRange = 5.0f;
+		voltageStr = "AC Voltages (mV)";
+		unitStr = "mV";
+		break;
+	}
+	case PLOT_DC_DATA: {
+		numProbes = p.dcProbeStats.size();
+		frameCount = p.dcProbeVoltages[0].size();
+		voltages = &p.dcProbeVoltages;
+		statistics = &p.dcProbeStats;
+		voltageRange = 8.0f;
+		voltageStr = "DC Voltages (V)";
+		unitStr = "V";
+		break;
+	}
 	}
 
 	if(frameCount == 0) return;
@@ -307,7 +308,7 @@ static inline void plotIndividualProbes(const std::string plotName, const ProbeD
 
 			ImGui::PushID(probe);
 
-			ONI::Interface::Plot::Sparkline("##spark", &(*voltages)[probe][0], frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 120));
+			ONI::Interface::Sparkline("##spark", &(*voltages)[probe][0], frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 120));
 
 			ImGui::PopID();
 
@@ -316,12 +317,12 @@ static inline void plotIndividualProbes(const std::string plotName, const ProbeD
 		ImPlot::PopColormap();
 		ImGui::EndTable();
 	}
-	
+
 	ImGui::PopID();
 	ImGui::End();
 
 }
 
-} // namespace Plot
+
 } // namespace Interface
 } // namespace ONI

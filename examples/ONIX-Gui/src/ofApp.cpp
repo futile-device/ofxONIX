@@ -57,8 +57,8 @@ void ofApp::setup(){
 
     //fu::debug << rhs2116Device1->getFormat(true) << fu::endl;
 
-    //rhs2116Device1->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
-    //rhs2116Device2->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
+    rhs2116Device1->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
+    rhs2116Device2->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
 
     //rhs2116Device1->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
     //rhs2116Device2->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
@@ -68,6 +68,9 @@ void ofApp::setup(){
     ONI::Device::Rhs2116MultiDevice* multi = oni.getMultiDevice();
     multi->addDevice(rhs2116Device1);
     multi->addDevice(rhs2116Device2);
+
+    ONI::Processor::FrameProcessor* frameProcessor = oni.getFrameProcessor(); // this auto creates
+    ONI::Processor::SpikeProcessor* spikeProcessor = oni.getSpikeProcessor(); // this auto creates
 
     //std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
     //multi->setChannelMap(t);

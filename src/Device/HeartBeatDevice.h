@@ -59,19 +59,19 @@ public:
 	}
 
 	inline void process(oni_frame_t* frame){
-		const std::lock_guard<std::mutex> lock(mutex);
-		if(postFrameProcessors.size() > 0){
+		//const std::lock_guard<std::mutex> lock(mutex);
+		if(postProcessors.size() > 0){
 			ONI::Frame::HeartBeatFrame processedFrame(frame, (uint64_t)ONI::Device::BaseDevice::getAcqDeltaTimeMicros(frame->time));
 			process(processedFrame);
 		}
-		for(auto it : preFrameProcessors){
+		for(auto it : preProcessors){
 			it.second->process(frame);
 		}
 	}
 
 	inline void process(ONI::Frame::BaseFrame& frame){
 		//const std::lock_guard<std::mutex> lock(mutex);
-		for(auto it : postFrameProcessors){
+		for(auto it : postProcessors){
 			it.second->process(frame);
 		}
 	}

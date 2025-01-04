@@ -1,0 +1,98 @@
+//
+//  BaseDevice.h
+//
+//  Created by Matt Gingold on 13.09.2024.
+//
+
+#include "oni.h"
+#include "onix.h"
+
+#include <cassert>
+#include <string>
+#include <vector>
+#include <map>
+#include <cstdio>
+#include <iostream>
+#include <sstream>
+#include <iomanip>
+#include <algorithm>
+#include <chrono>
+#include <thread>
+#include <mutex>
+#include <syncstream>
+
+#include "../Type/Log.h"
+#include "../Type/DataBuffer.h"
+#include "../Type/RegisterTypes.h"
+#include "../Type/SettingTypes.h"
+#include "../Type/FrameTypes.h"
+#include "../Type/DeviceTypes.h"
+
+#pragma once
+
+namespace ONI{
+namespace Processor{
+
+class BaseProcessor{
+
+public:
+
+	virtual ~BaseProcessor(){};
+
+	virtual inline void process(oni_frame_t* frame) = 0;
+	virtual inline void process(ONI::Frame::BaseFrame& frame) = 0;
+
+	inline void subscribeProcessor(const std::string& processorName, const ProcessorType& type, BaseProcessor * processor){
+		const std::lock_guard<std::mutex> lock(mutex);
+		std::map<std::string, BaseProcessor*>& processors = (type == PRE_PROCESSOR ? preProcessors : postProcessors);
+		auto it = processors.find(processorName);
+		if(it == processors.end()){
+			LOGINFO("Adding processor %s", processorName.c_str());
+			processors[processorName] = processor;
+		}else{
+			//LOGALERT("Processor %s already exists", processorName.c_str());
+		}
+	}
+
+	inline void unsubscribeProcessor(const std::string& processorName, const ProcessorType& type, BaseProcessor * processor){
+		const std::lock_guard<std::mutex> lock(mutex);
+		std::map<std::string, BaseProcessor*>& processors = (type == PRE_PROCESSOR ? preProcessors : postProcessors);
+		auto it = processors.find(processorName);
+		if(it == processors.end()){
+			LOGALERT("No processor %s", processorName.c_str());
+		}else{
+			LOGINFO("Deleting processor %s", processorName.c_str());
+			processors.erase(it);
+		}
+	}
+
+	inline const std::string& getName(){
+		return processorName;
+	}
+
+protected:
+
+	std::map<std::string, BaseProcessor*> preProcessors;
+	std::map<std::string, BaseProcessor*> postProcessors;
+
+	std::string processorName = "UNDEFINED";
+
+private:
+
+	std::mutex mutex;
+
+};
+
+
+} // namespace Processor
+} // namespace ONI
+
+
+
+
+
+
+
+
+
+

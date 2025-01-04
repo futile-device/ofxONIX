@@ -50,11 +50,11 @@ public:
 		deltaTime = frame.getDeltaTime();
 	};
 
-	inline void gui(ONI::Device::BaseDevice& device){
+	inline void gui(ONI::Processor::BaseProcessor& processor){
 
-		ONI::Device::HeartBeatDevice& hbd = *reinterpret_cast<ONI::Device::HeartBeatDevice*>(&device);
+		ONI::Device::HeartBeatDevice& hbd = *reinterpret_cast<ONI::Device::HeartBeatDevice*>(&processor);
 
-		hbd.subscribeProcessor(processorName, ONI::Device::FrameProcessorType::POST_FRAME_PROCESSOR, this);
+		hbd.subscribeProcessor(processorName, ONI::Processor::ProcessorType::POST_PROCESSOR, this);
 
 		ImGui::PushID(hbd.getName().c_str());
 		ImGui::Text(hbd.getName().c_str());

@@ -42,7 +42,8 @@
 #include "../Interface/Rhs2116MultiInterface.h"
 #include "../Interface/Rhs2116StimulusInterface.h"
 
-
+#include "../Processor/FrameProcessor.h"
+#include "../Processor/SpikeProcessor.h"
 
 #pragma once
 
@@ -374,6 +375,7 @@ public:
 		if(rhs2116MultiDevice != nullptr && bForceNewDevice){
 			LOGINFO("Deleting old multi device");
 			delete rhs2116MultiDevice;
+			rhs2116MultiDevice = nullptr;
 		}
 		if(rhs2116MultiDevice == nullptr){
 			LOGINFO("Creating new multi device");
@@ -387,6 +389,7 @@ public:
 		if(rhs2116StimDevice != nullptr && bForceNewDevice){
 			LOGINFO("Deleting old stimulus device");
 			delete rhs2116StimDevice;
+			rhs2116StimDevice = nullptr;
 		}
 		if(rhs2116StimDevice == nullptr){
 			LOGINFO("Creating new stimulus device");
@@ -394,6 +397,34 @@ public:
 			rhs2116StimDevice->setup(rhs2116MultiDevice);
 		}
 		return rhs2116StimDevice;
+	}
+
+	ONI::Processor::SpikeProcessor* getSpikeProcessor(const bool& bForceNewProcessor = false){
+		if(spikeProcessor != nullptr && bForceNewProcessor){
+			LOGINFO("Deleting old spike processor");
+			delete spikeProcessor;
+			spikeProcessor = nullptr;
+		}
+		if(spikeProcessor == nullptr){
+			LOGINFO("Creating new spike processor");
+			spikeProcessor = new ONI::Processor::SpikeProcessor;
+			spikeProcessor->setup(rhs2116MultiDevice);
+		}
+		return spikeProcessor;
+	}
+
+	ONI::Processor::FrameProcessor* getFrameProcessor(const bool& bForceNewProcessor = false){
+		if(frameProcessor != nullptr && bForceNewProcessor){
+			LOGINFO("Deleting old spike processor");
+			delete frameProcessor;
+			frameProcessor = nullptr;
+		}
+		if(frameProcessor == nullptr){
+			LOGINFO("Creating new spike processor");
+			frameProcessor = new ONI::Processor::FrameProcessor;
+			frameProcessor->setup(rhs2116MultiDevice);
+		}
+		return frameProcessor;
 	}
 
 private:
@@ -648,6 +679,15 @@ private:
 
 		oniDevices.clear();
 
+		delete frameProcessor;
+		frameProcessor = nullptr;
+
+		delete spikeProcessor;
+		spikeProcessor = nullptr;
+
+		delete rhs2116StimDevice;
+		rhs2116StimDevice = nullptr;
+
 		delete rhs2116MultiDevice;
 		rhs2116MultiDevice = nullptr;
 
@@ -657,6 +697,11 @@ private:
 
 	ONI::Device::Rhs2116MultiDevice * rhs2116MultiDevice = nullptr; // TODO: this better!!
 	ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = nullptr;
+
+	ONI::Processor::FrameProcessor * frameProcessor = nullptr;
+	ONI::Processor::SpikeProcessor * spikeProcessor = nullptr;
+
+	
 
 	unsigned int blockReadBytes = 0;
 	unsigned int blockWriteBytes = 0;

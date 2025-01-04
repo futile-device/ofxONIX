@@ -45,23 +45,24 @@ static std::string toString(const ONI::Device::TypeID& typeID){
 	}
 };
 
-enum FrameProcessorType{
-	PRE_FRAME_PROCESSOR = 0,
-	POST_FRAME_PROCESSOR
-};
-
-static std::string toString(const ONI::Device::FrameProcessorType& typeID){
-	switch(typeID){
-		case PRE_FRAME_PROCESSOR: {return "PRE_FRAME_PROCESSOR"; break;}
-		case POST_FRAME_PROCESSOR: {return "POST_FRAME_PROCESSOR"; break;}
-	}
-};
-
-
 
 } // namespace Device
 
+namespace Processor{
 
+enum ProcessorType{
+	PRE_PROCESSOR = 0,
+	POST_PROCESSOR
+};
+
+static std::string toString(const ONI::Processor::ProcessorType& typeID){
+	switch(typeID){
+	case PRE_PROCESSOR: {return "PRE_PROCESSOR"; break;}
+	case POST_PROCESSOR: {return "POST_PROCESSOR"; break;}
+	}
+};
+
+} // namespace Processor{
 
 
 

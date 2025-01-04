@@ -74,24 +74,6 @@ inline bool operator==(const Rhs2116StimulusData& lhs, const Rhs2116StimulusData
 inline bool operator!=(const Rhs2116StimulusData& lhs, const Rhs2116StimulusData& rhs) { return !(lhs == rhs); }
 
 
-
-struct ProbeStatistics{
-	float sum;
-	float mean;
-	float ss;
-	float variance;
-	float deviation;
-};
-
-struct ProbeData{
-	std::vector< std::vector<float> > acProbeVoltages;
-	std::vector< std::vector<float> > dcProbeVoltages;
-	std::vector< std::vector<float> > probeTimeStamps;
-	std::vector<ProbeStatistics> acProbeStats;
-	std::vector<ProbeStatistics> dcProbeStats;
-};
-
-
 namespace Settings{
 
 struct FmcDeviceSettings{
@@ -437,8 +419,75 @@ inline bool operator==(const Rhs2116StimulusSettings& lhs, const Rhs2116Stimulus
 inline bool operator!=(const Rhs2116StimulusSettings& lhs, const Rhs2116StimulusSettings& rhs) { return !(lhs == rhs); }
 
 
+struct FrameProcessorSettings{
 
+public:
 
+	inline void setBufferSizeMillis(const size_t& millis){ // handle 0ms case?
+		bufferSizeMillis = millis;
+		bufferSizeSamples =  std::floor(millis * sampleFrequencyHz / 1000.0f);
+	}
+
+	inline void setSparseStepSizeMillis(const size_t& millis){
+		sparseStepMillis = millis;
+		sparseStepSamples = std::floor(millis * sampleFrequencyHz  / 1000.0f);
+		if(sparseStepSamples == 0) sparseStepSamples = 1;
+	}
+
+	inline void setBufferSizeSamples(const size_t& samples){
+		bufferSizeSamples = samples;
+		bufferSizeMillis = std::floor(samples / sampleFrequencyHz * 1000.0f);
+	}
+
+	inline void setSparseStepSizeSamples(const size_t& samples){
+		sparseStepSamples = samples;
+		sparseStepMillis =  std::floor(samples / sampleFrequencyHz * 1000.0f);
+	}
+
+	const inline size_t getBufferSizeMillis(){
+		return bufferSizeMillis;
+	}
+
+	const inline size_t& getSparseStepMillis(){
+		return sparseStepMillis;
+	}
+
+	const inline size_t& getBufferSizeSamples(){
+		return bufferSizeSamples;
+	}
+
+	const inline size_t& getSparseStepSamples(){
+		return sparseStepSamples;
+	}
+
+	const inline long double& getSampleRateHz(){
+		return sampleFrequencyHz;
+	}
+
+	// copy assignment (copy-and-swap idiom)
+	FrameProcessorSettings& FrameProcessorSettings::operator=(FrameProcessorSettings other) noexcept{
+		std::swap(bufferSizeMillis, other.bufferSizeMillis);
+		std::swap(sparseStepMillis, other.sparseStepMillis);
+		std::swap(bufferSizeSamples, other.bufferSizeSamples);
+		std::swap(sparseStepSamples, other.sparseStepSamples);
+		return *this;
+	}
+
+protected:
+
+	size_t bufferSizeMillis = 5000;
+	size_t sparseStepMillis = 10;
+
+	size_t bufferSizeSamples = 5000 * sampleFrequencyHz;
+	size_t sparseStepSamples = 10 * sampleFrequencyHz;
+
+	const long double sampleFrequencyHz = 30.1932367151e3; //30000;
+
+};
+
+inline bool operator==(FrameProcessorSettings& lhs, FrameProcessorSettings& rhs){ return (lhs.getBufferSizeSamples() == rhs.getBufferSizeSamples() &&
+																						  lhs.getSparseStepSamples() == rhs.getSparseStepSamples()); }
+inline bool operator!=(FrameProcessorSettings& lhs, FrameProcessorSettings& rhs) { return !(lhs == rhs); }
 
 } // namespace Settings
 } // namespace ONI

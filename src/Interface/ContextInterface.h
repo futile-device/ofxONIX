@@ -25,6 +25,7 @@
 
 #include "../Interface/BaseInterface.h"
 #include "../Interface/FmcInterface.h"
+#include "../Interface/FrameProcessorInterface.h"
 #include "../Interface/HeartBeatInterface.h"
 #include "../Interface/Rhs2116Interface.h"
 #include "../Interface/Rhs2116MultiInterface.h"
@@ -50,7 +51,7 @@ public:
 
 	inline void process(ONI::Frame::BaseFrame& frame){}; // nothing
 	inline void process(oni_frame_t* frame){}; // nothing
-	inline void gui(ONI::Device::BaseDevice& device){}; //nothing
+	inline void gui(ONI::Processor::BaseProcessor& processor){};
 
 	inline void gui(ONI::Context& context){
 
@@ -190,7 +191,12 @@ public:
 
 		if(context.rhs2116MultiDevice != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
-			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*context.rhs2116MultiDevice); //context.rhs2116MultiDevice->gui();
+			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*context.rhs2116MultiDevice);
+		}
+
+		if(context.frameProcessor != nullptr){
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if(ImGui::CollapsingHeader("FrameProcessor", true)) frameProcessorInterface.gui(*context.frameProcessor);
 		}
 
 		if(context.rhs2116StimDevice != nullptr){
@@ -216,6 +222,7 @@ public:
 protected:
 
 	ONI::Interface::FmcInterface fmcInterface[2];
+	ONI::Interface::FrameProcessorInterface frameProcessorInterface;
 	ONI::Interface::HeartBeatInterface heartBeatInterface;
 	ONI::Interface::Rhs2116Interface rhsInterface[2];
 	ONI::Interface::Rhs2116MultiInterface multiInterface;
@@ -387,13 +394,13 @@ public:
 	~_HeartBeatDeviceConfig(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+		device->unsubscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
 	};
 
 	void deviceConfigSetup(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+		device->subscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
 	}
 
 	inline void process(oni_frame_t* frame){}; // nothing
@@ -467,14 +474,14 @@ public:
 		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		//std::string processorName = device->getName() + " GUI PROC";
-		//device->unsubscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+		//device->unsubscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
 	};
 
 	void deviceConfigSetup(){
 		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+		device->subscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
 	}
 
 	void defaults(){
@@ -596,7 +603,7 @@ public:
 	~_Rhs2116MultiDeviceConfig(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+		device->unsubscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
 		bThread = false;
 		if(thread.joinable()) thread.join();
 	};
@@ -604,7 +611,7 @@ public:
 	void deviceConfigSetup(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, FrameProcessorType::POST_FRAME_PROCESSOR, this);
+		device->subscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
 		//buffer.resize(currentSettings.bufferSize);
 		bThread = true;
 		thread = std::thread(&_Rhs2116MultiDeviceConfig::processBufferThread, this);

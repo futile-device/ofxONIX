@@ -175,7 +175,11 @@
     <ClCompile Include="..\..\..\..\addons\ofxImPlot\libs\implot\implot_items.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\Interface\PlotInterface.h" />
+    <ClInclude Include="..\..\src\Interface\FrameProcessorInterface.h" />
+    <ClInclude Include="..\..\src\Interface\PlotHelpers.h" />
+    <ClInclude Include="..\..\src\Processor\BaseProcessor.h" />
+    <ClInclude Include="..\..\src\Processor\FrameProcessor.h" />
+    <ClInclude Include="..\..\src\Processor\SpikeProcessor.h" />
     <ClInclude Include="src\ofApp.h" />
     <ClInclude Include="..\..\..\..\addons\ofxBoost1.81\src\BoostSerializer.h" />
     <ClInclude Include="..\..\..\..\addons\ofxOpenCv\src\ofxCvBlob.h" />

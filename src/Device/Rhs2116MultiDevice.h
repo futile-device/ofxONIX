@@ -33,6 +33,11 @@ namespace Interface{
 class Rhs2116MultiInterface;
 } // namespace Interface
 
+namespace Processor{
+class SpikeProcessor;
+class FrameProcessor;
+} // namespace Processor
+
 namespace Device{
 
 class Rhs2116StimulusDevice;
@@ -43,6 +48,9 @@ public:
 
 	friend class ONI::Interface::Rhs2116MultiInterface;
 	friend class ONI::Device::Rhs2116StimulusDevice;
+
+	friend class ONI::Processor::SpikeProcessor;
+	friend class ONI::Processor::FrameProcessor;
 
 	Rhs2116MultiDevice(){
 		numProbes = 0;							// default for base ONIProbeDevice
@@ -64,7 +72,7 @@ public:
 		deviceType.id = RHS2116MULTI;
 		deviceTypeID = RHS2116MULTI;
 		std::ostringstream os; os << ONI::Device::toString(deviceTypeID) << " (" << deviceType.idx << ")";
-		deviceName = os.str();
+		BaseProcessor::processorName = os.str();
 		this->acq_clock_khz = acq_clock_khz;
 		reset(); // always call device specific setup/reset
 		//deviceSetup(); // always call device specific setup/reset
@@ -78,8 +86,8 @@ public:
 		}else{
 			LOGERROR("Device already added: %s", device->getName().c_str());
 		}
-		std::string processorName = deviceName + " MULTI PROC";
-		device->subscribeProcessor(processorName, FrameProcessorType::PRE_FRAME_PROCESSOR, this);
+		std::string processorName = BaseProcessor::processorName + " MULTI PROC";
+		device->subscribeProcessor(processorName, ONI::Processor::ProcessorType::PRE_PROCESSOR, this);
 		numProbes += device->getNumProbes();
 		expectDevceIDXNext.push_back(device->getDeviceTableID());
 		multiFrameBuffer.resize(multiFrameBuffer.size() + 1);
@@ -252,7 +260,7 @@ public:
 
 		//const std::lock_guard<std::mutex> lock(mutex);
 
-		if(postFrameProcessors.size() > 0){
+		if(postProcessors.size() > 0){
 
 			unsigned int nextDeviceIndex = nextDeviceCounter % devices.size();
 
@@ -270,7 +278,7 @@ public:
 					// process the multi frame
 					ONI::Frame::Rhs2116MultiFrame processedFrame(multiFrameBufferRaw, channelIDX);
 
-					for(auto it : postFrameProcessors){
+					for(auto it : postProcessors){
 						it.second->process(processedFrame);
 					}
 
@@ -279,7 +287,7 @@ public:
 			}
 		}
 
-		//for(auto it : preFrameProcessors){
+		//for(auto it : preProcessors){
 		//	it.second->process(frame);
 		//}
 		
@@ -303,7 +311,7 @@ public:
 				// process the multi frame
 				ONI::Frame::Rhs2116MultiFrame processedFrame(multiFrameBuffer, channelIDX);
 
-				for(auto it : postFrameProcessors){
+				for(auto it : postProcessors){
 					it.second->process(processedFrame);
 				}
 
@@ -321,6 +329,10 @@ public:
 		}else{
 			return it->second;
 		}
+	}
+
+	std::map<unsigned int, Rhs2116Device*>& getDevices(){
+		return devices;
 	}
 
 protected:

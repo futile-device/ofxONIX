@@ -696,6 +696,9 @@
     <Filter Include="addons\ofxONIX\libs\liboni\include">
       <UniqueIdentifier>{24611C80--F6D-6-4E-9A-B-0AC-9B533DE5F31A}</UniqueIdentifier>
     </Filter>
+    <Filter Include="addons\ofxONIX\src\Processor">
+      <UniqueIdentifier>{165bc9df-2492-4fc1-8d9d-5aeccfb42474}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\ofApp.h">
@@ -2948,7 +2951,19 @@
     <ClInclude Include="..\..\..\..\addons\ofxONIX\libs\liboni\include\riffa_driver.h">
       <Filter>addons\ofxONIX\libs\liboni\include</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Interface\PlotInterface.h">
+    <ClInclude Include="..\..\src\Interface\PlotHelpers.h">
+      <Filter>addons\ofxONIX\src\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Processor\BaseProcessor.h">
+      <Filter>addons\ofxONIX\src\Processor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Processor\SpikeProcessor.h">
+      <Filter>addons\ofxONIX\src\Processor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Processor\FrameProcessor.h">
+      <Filter>addons\ofxONIX\src\Processor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Interface\FrameProcessorInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
   </ItemGroup>

@@ -65,6 +65,24 @@ struct acquisition_clock_compare {
 	}
 };
 
+
+
+struct ProbeStatistics{
+	float sum;
+	float mean;
+	float ss;
+	float variance;
+	float deviation;
+};
+
+struct Rhs2116ProbeData{
+	std::vector< std::vector<float> > acProbeVoltages;
+	std::vector< std::vector<float> > dcProbeVoltages;
+	std::vector< std::vector<float> > probeTimeStamps;
+	std::vector<ProbeStatistics> acProbeStats;
+	std::vector<ProbeStatistics> dcProbeStats;
+};
+
 //// onix.h Frame type
 //typedef struct {
 //	const oni_fifo_time_t time;     // Frame time (ACQCLKHZ)

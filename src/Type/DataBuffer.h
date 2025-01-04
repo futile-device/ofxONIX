@@ -55,6 +55,7 @@ public:
 		this->bufferSampleRateStep = step;
 		currentBufferIndex = 0;
 		bufferSampleCount = 0;
+		bIsFrameNew = false;
 		return buffer.size();
 	}
 
@@ -82,9 +83,11 @@ public:
 
 	inline bool isFrameNew(){ // should I really auto reset? means it can only be called once per cycle
 		const std::lock_guard<std::mutex> lock(mutex);
-		bool b = bIsFrameNew;
-		bIsFrameNew = false;
-		return b;
+		if(bIsFrameNew){
+			bIsFrameNew = false;
+			return true;
+		}
+		return false;
 	}
 
 	inline DataType& at(const size_t& index){

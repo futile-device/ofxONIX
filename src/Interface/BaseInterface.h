@@ -21,7 +21,8 @@
 #include <mutex>
 #include <syncstream>
 
-#include "../Device/BaseDevice.h"
+//#include "../Device/BaseDevice.h"
+#include "../Processor/BaseProcessor.h"
 
 #pragma once
 
@@ -31,7 +32,7 @@ namespace Interface{
 
 
 
-class BaseInterface : public ONI::Device::FrameProcessor{
+class BaseInterface : public ONI::Processor::BaseProcessor{
 
 public:
 
@@ -41,11 +42,11 @@ public:
 	// inherited from FrameProcessor
 	//virtual inline void process(ONI::Frame::BaseFrame& frame) = 0;
 	//virtual inline void process(oni_frame_t* frame) = 0;
-	//void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, FrameProcessor * processor){...}
-	//void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, FrameProcessor * processor){...}
+	//void subscribeProcessor(const std::string& processorName, const ProcessorType& type, FrameProcessor * processor){...}
+	//void unsubscribeProcessor(const std::string& processorName, const ProcessorType& type, FrameProcessor * processor){...}
 	//std::mutex& getMutex(){...}
 
-	virtual inline void gui(ONI::Device::BaseDevice& device) = 0;
+	virtual inline void gui(ONI::Processor::BaseProcessor& processor) = 0;
 
 	virtual bool save(std::string presetName) = 0;
 	virtual bool load(std::string presetName) = 0;
