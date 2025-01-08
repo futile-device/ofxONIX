@@ -90,7 +90,7 @@ public:
 
 			ImVec2 outer_size = ImVec2(0.0f, 400.0f);
 
-			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(true);
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(false);
 
 			if(ImGui::CollapsingHeader("Device List")){
 				if (ImGui::BeginTable("Device Types", 6, flags, outer_size)){
@@ -139,30 +139,38 @@ public:
 		}
 
 		for(auto device : context.oniDevices){
-			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(false);
 			if(ImGui::CollapsingHeader(device.second->getName().c_str(), true)){
 				//device.second->gui()
 				// ;
 				switch(device.first){
-				case 0: // heart beat device
-				{
-					heartBeatInterface.gui(*device.second);
-					break;
-				}
-				case 1: // fmc devices
-				case 2:
-				{
-					fmcInterface[device.first - 1].gui(*device.second);
-					break;
-				}
-				case 256:
-				case 257:
-				{
-					if(context.rhs2116MultiDevice != nullptr) ImGui::BeginDisabled();
-					rhsInterface[device.first - 256].gui(*device.second);
-					if(context.rhs2116MultiDevice != nullptr) ImGui::EndDisabled();
-					break;
-				}
+					case 0: // heart beat device
+					{
+						heartBeatInterface.gui(*device.second);
+						break;
+					}
+					case 1: // fmc devices
+					case 2:
+					{
+						fmcInterface[device.first - 1].gui(*device.second);
+						break;
+					}
+					case 256:
+					case 257:
+					{
+						if(context.rhs2116MultiDevice != nullptr) ImGui::BeginDisabled();
+						rhsInterface[device.first - 256].gui(*device.second); // terrible indexing :(
+						if(context.rhs2116MultiDevice != nullptr) ImGui::EndDisabled();
+						break;
+					}
+					case 512:
+					case 513:
+					{
+						if(context.rhs2116MultiDevice != nullptr) ImGui::BeginDisabled();
+						rhsInterface[device.first - 512 + 2].gui(*device.second); // terrible indexing :(
+						if(context.rhs2116MultiDevice != nullptr) ImGui::EndDisabled();
+						break;
+					}
 				}
 			}
 		}
@@ -224,7 +232,7 @@ protected:
 	ONI::Interface::FmcInterface fmcInterface[2];
 	ONI::Interface::FrameProcessorInterface frameProcessorInterface;
 	ONI::Interface::HeartBeatInterface heartBeatInterface;
-	ONI::Interface::Rhs2116Interface rhsInterface[2];
+	ONI::Interface::Rhs2116Interface rhsInterface[4];
 	ONI::Interface::Rhs2116MultiInterface multiInterface;
 	ONI::Interface::Rhs2116StimulusInterface stimInterface;
 
