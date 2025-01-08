@@ -57,11 +57,15 @@ public:
 		ImGui::PushID(rhsm.getName().c_str());
 		ImGui::Text(rhsm.getName().c_str());
 
+		//ImGui::NewLine();
+
 		if(ImGui::Button("Edit Channel Map")){
 			ImGui::OpenPopup("Channel Map");
 		}
 
+		//ImGui::NewLine();
 		ImGui::Separator();
+		//ImGui::NewLine();
 
 		Rhs2116Interface::deviceGui(rhsm.settings); // draw the common device gui settings
 
@@ -125,23 +129,24 @@ public:
 
 							// always swap the selected mapping for an electrode
 							if(b != nextSettings.channelMap[y][x]){
-								size_t swapIDXx, swapIDXy = 0;
+								int swapIDXx = -1;
+								int swapIDXy = -1;
 								for(size_t xx = 0; xx < numProbes; ++xx) {
-									if(nextSettings.channelMap[y][xx]){
+									if(nextSettings.channelMap[y][xx] && swapIDXx == -1){
 										swapIDXx = xx;  
 										LOGDEBUG("From (x,y) (%i,%i) to (%i,%i)", y, swapIDXx, y, x);
 									}
 									nextSettings.channelMap[y][xx] = false; // toggle off everything in this row
 								}
 								for(size_t yy = 0; yy < numProbes; ++yy){
-									if(nextSettings.channelMap[yy][x]) {
+									if(nextSettings.channelMap[yy][x] && swapIDXy == -1) {
 										swapIDXy = yy;
 										LOGDEBUG("Switch (x,y) (%i,%i) to (%i,%i)", swapIDXy, x, swapIDXy, swapIDXx);
 									}
 									nextSettings.channelMap[yy][x] = false; // toggle off everything in this col
 								}
 								nextSettings.channelMap[y][x] = true;
-								nextSettings.channelMap[swapIDXy][swapIDXx] = true;
+								if(swapIDXy != -1 && swapIDXx != -1) nextSettings.channelMap[swapIDXy][swapIDXx] = true;
 								bChannelMapNeedsUpdate = true;
 							}
 							ImGui::PopID();

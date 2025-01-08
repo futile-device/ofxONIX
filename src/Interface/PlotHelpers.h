@@ -175,7 +175,7 @@ static std::string toString(const ONI::Interface::PlotType& plotType){
 };
 
 // Plot Combined AC or DC probe data
-static inline void plotCombinedProbes(const std::string plotName, const ONI::Frame::Rhs2116ProbeData& p, const ONI::Interface::PlotType& plotType){
+static inline void plotCombinedProbes(const std::string plotName, const ONI::Frame::Rhs2116ProbeData& p, const std::vector<bool>& channelSelect, const ONI::Interface::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -218,6 +218,8 @@ static inline void plotCombinedProbes(const std::string plotName, const ONI::Fra
 
 		for (int probe = 0; probe < numProbes; probe++) {
 
+			if(!channelSelect[probe]) continue; // only show selected probes
+
 			ImGui::PushID(probe);
 			ImPlot::SetNextLineStyle(ImPlot::GetColormapColor(probe));
 
@@ -245,7 +247,7 @@ static inline void plotCombinedProbes(const std::string plotName, const ONI::Fra
 
 
 // Plot Individual AC or DC probe data
-static inline void plotIndividualProbes(const std::string plotName, const ONI::Frame::Rhs2116ProbeData& p, const ONI::Interface::PlotType& plotType){
+static inline void plotIndividualProbes(const std::string plotName, const ONI::Frame::Rhs2116ProbeData& p, const std::vector<bool>& channelSelect, const std::vector<size_t>& channelIDX, const ONI::Interface::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -289,6 +291,9 @@ static inline void plotIndividualProbes(const std::string plotName, const ONI::F
 	static int offset = 0;
 
 	if(ImGui::BeginTable("##probetable", 3, flags, ImVec2(-1, 0))){
+
+		
+
 		ImGui::TableSetupColumn("Probe", ImGuiTableColumnFlags_WidthFixed, 75.0f);
 		ImGui::TableSetupColumn("Metrics", ImGuiTableColumnFlags_WidthFixed, 75.0f);
 		ImGui::TableSetupColumn(voltageStr.c_str());
@@ -298,10 +303,12 @@ static inline void plotIndividualProbes(const std::string plotName, const ONI::F
 
 		for (int probe = 0; probe < numProbes; probe++){
 
+			if(!channelSelect[probe]) continue; // only show selected probes
+
 			ImGui::TableNextRow();
 
 			ImGui::TableSetColumnIndex(0);
-			ImGui::Text("Probe %d", probe);
+			ImGui::Text("Probe %d (%d)", probe, channelIDX[probe]);
 			ImGui::TableSetColumnIndex(1);
 			ImGui::Text("%.3f %s \n%.3f avg \n%.3f dev \n%i N", (*voltages)[probe][offset], unitStr.c_str(), (*statistics)[probe].mean, (*statistics)[probe].deviation, frameCount);
 			ImGui::TableSetColumnIndex(2);

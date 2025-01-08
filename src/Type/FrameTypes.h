@@ -76,6 +76,59 @@ struct ProbeStatistics{
 };
 
 struct Rhs2116ProbeData{
+
+	inline void reset(){
+
+		size_t numProbes = acProbeVoltages.size();
+
+		if(numProbes == 0){
+			LOGERROR("ProbeData numProbes is not setup - can't reset");
+			return;
+		}
+
+		size_t numFrames = acProbeVoltages[0].size();
+
+		if(numFrames == 0){
+			LOGERROR("ProbeData numFrames is not setup - can't reset");
+			return;
+		}
+		
+		resize(numProbes, numFrames, true);
+
+	}
+
+	inline void resize(size_t numProbes, size_t numFrames, bool bForceReset = false){
+
+		if(bForceReset) clear();
+
+		if(acProbeVoltages.size() == numProbes){
+			if(acProbeVoltages[0].size() == numFrames){
+				return;
+			}
+		}
+
+		acProbeVoltages.resize(numProbes);
+		dcProbeVoltages.resize(numProbes);
+		acProbeStats.resize(numProbes);
+		dcProbeStats.resize(numProbes);
+		probeTimeStamps.resize(numProbes);
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			acProbeVoltages[probe].resize(numFrames);
+			dcProbeVoltages[probe].resize(numFrames);
+			probeTimeStamps[probe].resize(numFrames);
+		}
+
+	}
+
+	void clear(){
+		acProbeStats.clear();
+		dcProbeStats.clear();
+		acProbeVoltages.clear();
+		dcProbeVoltages.clear();
+		probeTimeStamps.clear();
+	}
+
 	std::vector< std::vector<float> > acProbeVoltages;
 	std::vector< std::vector<float> > dcProbeVoltages;
 	std::vector< std::vector<float> > probeTimeStamps;

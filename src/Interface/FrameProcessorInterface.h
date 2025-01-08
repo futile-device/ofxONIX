@@ -57,26 +57,28 @@ public:
 		ImGui::PushID(fp.getName().c_str());
 		ImGui::Text(fp.getName().c_str());
 
+		static bool bBuffersNeedUpdate = false;
+
 		if(bufferSizeTimeMillis == -1 || sparseStepSizeMillis == -1){ // first time
 			bufferSizeTimeMillis = fp.settings.getBufferSizeMillis();
 			sparseStepSizeMillis = fp.settings.getSparseStepMillis();
 		}
 
-		static bool bBuffersNeedUpdate = false;
+		int step = std::floor(sparseStepSizeMillis * fp.settings.getSampleRateHz() / 1000.0f);
+		if(step == 0) step = 1;
+		int szfine = std::floor(bufferSizeTimeMillis * fp.settings.getSampleRateHz() / 1000.0f);
+		int szstep = std::floor((float)szfine / (float)step);
 		
-		ImGui::SetNextItemWidth(200);
-		if(ImGui::InputInt("Buffer Size (ms)", &bufferSizeTimeMillis)){
-			bBuffersNeedUpdate = true;
-			//resetBuffers();
-		}
 
 		ImGui::SetNextItemWidth(200);
-		
-		if(ImGui::InputInt("Buffer Sample Time (ms)", &sparseStepSizeMillis)){
-			bBuffersNeedUpdate = true;
-			//if(sparseStepSizeMillis == 0) sparseStepSizeMillis = 1;
-			//resetBuffers();
-		}
+		if(ImGui::InputInt("Buffer Size (ms)", &bufferSizeTimeMillis)) bBuffersNeedUpdate = true;
+		ImGui::SameLine();
+		ImGui::Text("Samples: %i Sparse: %i", szfine, szstep);
+
+		ImGui::SetNextItemWidth(200);
+		if(ImGui::InputInt("Buffer Step (ms)", &sparseStepSizeMillis)) bBuffersNeedUpdate = true;
+		ImGui::SameLine();
+		ImGui::Text("Samples: %i", step);
 
 		if(!bBuffersNeedUpdate) ImGui::BeginDisabled();
 
@@ -103,14 +105,41 @@ public:
 		//	fp.settings = nextSettings;
 		//}
 
-		
+		ImGui::Text("Select Probes to Plot");
+		ImGui::NewLine();
 
-		fp.mutex.lock();
-		ONI::Interface::plotCombinedProbes("AC Combined", fp.probeData, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotIndividualProbes("AC Probes", fp.probeData, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotCombinedProbes("DC Combined", fp.probeData, ONI::Interface::PLOT_DC_DATA);
-		ONI::Interface::plotIndividualProbes("DC Probes", fp.probeData, ONI::Interface::PLOT_DC_DATA);
-		fp.mutex.unlock();
+		bool bLastSelectAll = bSelectAll;
+		size_t selectCount = 0;
+
+		ImGui::Checkbox("Select All", &bSelectAll); //ImGui::SameLine();
+
+		if(bLastSelectAll != bSelectAll && bSelectAll) for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = true;
+		if(bLastSelectAll != bSelectAll && !bSelectAll) for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = false;
+
+		if(channelSelect.size() != fp.multi->getNumProbes()){
+			channelSelect.resize(fp.multi->getNumProbes());
+			for(size_t i = 0; i < fp.multi->getNumProbes(); ++i) channelSelect[i] = true;
+		}
+
+		for(size_t i = 0; i < fp.multi->getNumProbes(); ++i){
+			if(i != 0 && i % 8 != 0) ImGui::SameLine();
+			char buf[16];
+			std::sprintf(buf, "%02i", i);
+			bool b = channelSelect[i];
+			ImGui::Checkbox(buf, &b);
+			channelSelect[i] = b;
+			if(bSelectAll && !b) bSelectAll = false;
+			if(b) ++selectCount;
+		}
+
+		if(selectCount == fp.multi->getNumProbes()) bSelectAll = true;
+		
+		fp.processMutex.lock();
+		ONI::Interface::plotCombinedProbes("AC Combined", fp.sparseProbeData, channelSelect, ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotIndividualProbes("AC Probes", fp.sparseProbeData, channelSelect, fp.multi->getChannelMapIDX(), ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotCombinedProbes("DC Combined", fp.sparseProbeData, channelSelect, ONI::Interface::PLOT_DC_DATA);
+		ONI::Interface::plotIndividualProbes("DC Probes", fp.sparseProbeData, channelSelect, fp.multi->getChannelMapIDX(), ONI::Interface::PLOT_DC_DATA);
+		fp.processMutex.unlock();
 
 		ImGui::PopID();
 
@@ -126,6 +155,10 @@ public:
 	}
 
 protected:
+
+	std::vector<bool> channelSelect;
+	bool bSelectAll = true;
+	
 
 	int bufferSizeTimeMillis = -1;
 	int sparseStepSizeMillis = -1;

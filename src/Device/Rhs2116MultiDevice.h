@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <cstdio>
 #include <iostream>
 #include <sstream>
@@ -89,7 +90,8 @@ public:
 		std::string processorName = BaseProcessor::processorName + " MULTI PROC";
 		device->subscribeProcessor(processorName, ONI::Processor::ProcessorType::PRE_PROCESSOR, this);
 		numProbes += device->getNumProbes();
-		expectDevceIDXNext.push_back(device->getDeviceTableID());
+		expectDevceIDOrdered.push_back(device->getDeviceTableID());
+		std::sort(expectDevceIDOrdered.begin(), expectDevceIDOrdered.end()); // sort so device frames get added in ascending order
 		multiFrameBuffer.resize(multiFrameBuffer.size() + 1);
 		multiFrameBufferRaw.resize(multiFrameBufferRaw.size() + 1);
 		settings = device->settings; // TODO: this is terrible; the devices could be diferent
@@ -262,29 +264,66 @@ public:
 
 		if(postProcessors.size() > 0){
 
-			unsigned int nextDeviceIndex = nextDeviceCounter % devices.size();
+			size_t nextDeviceIndex = nextDeviceCounter % devices.size();
 
-			if(frame->dev_idx != expectDevceIDXNext[nextDeviceIndex]){
-				LOGERROR("Unexpected frame order");
-			}else{
+			ONI::Frame::Rhs2116DataExtended& frameRaw = multiFrameRawMap[frame->dev_idx];
+			std::memcpy(&frameRaw, frame->data, frame->data_sz); // copy the data payload including hub clock
+			frameRaw.acqTime = frame->time;						 // copy the acquisition clock
+			frameRaw.deltaTime = ONI::Device::BaseDevice::getAcqDeltaTimeMicros(frame->time);
+			frameRaw.devIdx = frame->dev_idx;
 
-				// push or add the multiframe
-				std::memcpy(&multiFrameBufferRaw[nextDeviceIndex], frame->data, frame->data_sz); // copy the data payload including hub clock
-				multiFrameBufferRaw[nextDeviceIndex].acqTime = frame->time;						 // copy the acquisition clock
-				multiFrameBufferRaw[nextDeviceIndex].deltaTime = ONI::Device::BaseDevice::getAcqDeltaTimeMicros(frame->time);
-				multiFrameBufferRaw[nextDeviceIndex].devIdx = frame->dev_idx;
+			if(nextDeviceCounter > 0 && nextDeviceCounter % devices.size() == 0){
 
-				if((nextDeviceCounter + 1) % devices.size() == 0){ // we have chexked off all the expectedIDs in order
+				if(multiFrameRawMap.size() == 4){
+
+					if(bBadFrame) LOGDEBUG("Corrected multi frame %i ==> %i", frame->dev_idx, nextDeviceCounter);
+					bBadFrame = false;
+
+					// order the frames by ascending device idx
+					for(size_t i = 0; i < devices.size(); ++i){
+						multiFrameBufferRaw[i] = std::move(multiFrameRawMap[expectDevceIDOrdered[i]]);
+					}
+
 					// process the multi frame
 					ONI::Frame::Rhs2116MultiFrame processedFrame(multiFrameBufferRaw, channelIDX);
-
 					for(auto it : postProcessors){
 						it.second->process(processedFrame);
 					}
 
+					// clear the map to keep tracking device idx
+					multiFrameRawMap.clear();
+
+				}else{
+					LOGERROR("Out of order for multiframe %i ==> %i", frame->dev_idx, nextDeviceCounter);
+					bBadFrame = true;
+					--nextDeviceCounter; // decrease the device id counter so we can check if this gets corrected on next frame
 				}
-				++nextDeviceCounter;
 			}
+
+			++nextDeviceCounter;
+
+			//LOGDEBUG
+			// ("Frame order: %i ==> %i || %i", frame->dev_idx, expectDevceIDOrdered[nextDeviceIndex], nextDeviceIndex);
+			//if(frame->dev_idx != expectDevceIDOrdered[nextDeviceIndex]){
+			//	LOGERROR("Unexpected frame order: %i ==> %i", frame->dev_idx, nextDeviceIndex);
+			//}else{
+
+			//	// push or add the multiframe
+				//std::memcpy(&multiFrameBufferRaw[nextDeviceIndex], frame->data, frame->data_sz); // copy the data payload including hub clock
+				//multiFrameBufferRaw[nextDeviceIndex].acqTime = frame->time;						 // copy the acquisition clock
+				//multiFrameBufferRaw[nextDeviceIndex].deltaTime = ONI::Device::BaseDevice::getAcqDeltaTimeMicros(frame->time);
+				//multiFrameBufferRaw[nextDeviceIndex].devIdx = frame->dev_idx;
+
+			//	if((nextDeviceCounter + 1) % devices.size() == 0){ // we have chexked off all the expectedIDs in order
+			//		// process the multi frame
+			//		ONI::Frame::Rhs2116MultiFrame processedFrame(multiFrameBufferRaw, channelIDX);
+			//		for(auto it : postProcessors){
+			//			it.second->process(processedFrame);
+			//		}
+
+			//	}
+			//	++nextDeviceCounter;
+			//}
 		}
 
 		//for(auto it : preProcessors){
@@ -301,7 +340,7 @@ public:
 
 		unsigned int nextDeviceIndex = nextDeviceCounter % devices.size();
 
-		if(frame.getDeviceTableID() != expectDevceIDXNext[nextDeviceIndex]){
+		if(frame.getDeviceTableID() != expectDevceIDOrdered[nextDeviceIndex]){
 			LOGERROR("Unexpected frame order");
 		}else{
 			// push or add the multiframe
@@ -335,6 +374,10 @@ public:
 		return devices;
 	}
 
+	const std::vector<size_t>& getChannelMapIDX(){
+		return channelIDX;
+	}
+
 protected:
 
 
@@ -345,7 +388,10 @@ private:
 	std::vector<ONI::Frame::Rhs2116Frame> multiFrameBuffer;
 	std::vector<ONI::Frame::Rhs2116DataExtended> multiFrameBufferRaw;
 
-	std::vector<unsigned int> expectDevceIDXNext;// = {257,256};
+	std::map<unsigned int, ONI::Frame::Rhs2116DataExtended> multiFrameRawMap;
+	bool bBadFrame = false; // for tracking out of order frame idx with multiple rhs2116 devices
+
+	std::vector<unsigned int> expectDevceIDOrdered;// = {257,256};
 	uint64_t nextDeviceCounter = 0;
 
 	std::vector<size_t> channelIDX;

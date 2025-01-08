@@ -436,19 +436,19 @@ public:
 
 	inline void setBufferSizeSamples(const size_t& samples){
 		bufferSizeSamples = samples;
-		bufferSizeMillis = std::floor(samples / sampleFrequencyHz * 1000.0f);
+		bufferSizeMillis = samples / sampleFrequencyHz * 1000.0f;
 	}
 
 	inline void setSparseStepSizeSamples(const size_t& samples){
 		sparseStepSamples = samples;
-		sparseStepMillis =  std::floor(samples / sampleFrequencyHz * 1000.0f);
+		sparseStepMillis =  samples / sampleFrequencyHz * 1000.0f;
 	}
 
-	const inline size_t getBufferSizeMillis(){
+	const inline float& getBufferSizeMillis(){
 		return bufferSizeMillis;
 	}
 
-	const inline size_t& getSparseStepMillis(){
+	const inline float& getSparseStepMillis(){
 		return sparseStepMillis;
 	}
 
@@ -475,11 +475,11 @@ public:
 
 protected:
 
-	size_t bufferSizeMillis = 5000;
-	size_t sparseStepMillis = 10;
+	float bufferSizeMillis = 5000.0f;
+	float sparseStepMillis = 10.0f;
 
-	size_t bufferSizeSamples = 5000 * sampleFrequencyHz;
-	size_t sparseStepSamples = 10 * sampleFrequencyHz;
+	size_t bufferSizeSamples = 5000.0f * sampleFrequencyHz;
+	size_t sparseStepSamples = 10.0f * sampleFrequencyHz;
 
 	const long double sampleFrequencyHz = 30.1932367151e3; //30000;
 

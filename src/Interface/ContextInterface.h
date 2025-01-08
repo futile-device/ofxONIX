@@ -194,14 +194,14 @@ public:
 			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*context.rhs2116MultiDevice);
 		}
 
-		if(context.frameProcessor != nullptr){
-			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
-			if(ImGui::CollapsingHeader("FrameProcessor", true)) frameProcessorInterface.gui(*context.frameProcessor);
-		}
-
 		if(context.rhs2116StimDevice != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if(ImGui::CollapsingHeader("Rhs2116Stimulus", true)) stimInterface.gui(*context.rhs2116StimDevice);
+		}
+
+		if(context.frameProcessor != nullptr){
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if(ImGui::CollapsingHeader("FrameProcessor", true)) frameProcessorInterface.gui(*context.frameProcessor);
 		}
 
 		ImGui::PopID();
@@ -725,16 +725,16 @@ public:
 
 		ImGui::PopID();
 
-		drawMutex.lock();
-		std::swap(probeData, frontProbeDataBuffers);
-		drawMutex.unlock();
+		processMutex.lock();
+		std::swap(sparseProbeData, frontProbeDataBuffers);
+		processMutex.unlock();
 		bufferPlot();
 		probePlot();
 
 		if(changedSettings != currentSettings) bApplySettings = true;
 
 	}
-	std::mutex drawMutex;
+	std::mutex processMutex;
 	//--------------------------------------------------------------
 	void bufferPlot(){
 		
@@ -889,7 +889,7 @@ public:
 		bufferFrameCounter = 0;
 		frameTimer.start<fu::millis>(bufferProcessDelay);
 
-		drawMutex.lock();
+		processMutex.lock();
 		const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
 		frontProbeDataBuffers.acProbeVoltages.resize(numProbes);
 		frontProbeDataBuffers.dcProbeVoltages.resize(numProbes);
@@ -903,8 +903,8 @@ public:
 			frontProbeDataBuffers.probeTimeStamps[probe].resize(frameCount);
 		}
 
-		probeData = frontProbeDataBuffers;
-		drawMutex.unlock();
+		sparseProbeData = frontProbeDataBuffers;
+		processMutex.unlock();
 
 	}
 
@@ -918,7 +918,7 @@ public:
 				std::vector<Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
 				mutex.unlock();
 				if(frameBuffer.size() != 0){
-					drawMutex.lock();
+					processMutex.lock();
 					const size_t& numProbes = reinterpret_cast<ONIProbeDevice*>(device)->getNumProbes();
 					size_t frameCount = frameBuffer.size();
 
@@ -926,42 +926,42 @@ public:
 
 					for(size_t probe = 0; probe < numProbes; ++probe){
 
-						probeData.acProbeStats[probe].sum = 0;
-						probeData.dcProbeStats[probe].sum = 0;
+						sparseProbeData.acProbeStats[probe].sum = 0;
+						sparseProbeData.dcProbeStats[probe].sum = 0;
 
 						for(size_t frame = 0; frame < frameCount; ++frame){
 
-							probeData.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
-							probeData.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_mV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
-							probeData.dcProbeVoltages[probe][frame] = frameBuffer[frame].dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
+							sparseProbeData.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
+							sparseProbeData.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_mV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
+							sparseProbeData.dcProbeVoltages[probe][frame] = frameBuffer[frame].dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
 
-							probeData.acProbeStats[probe].sum += probeData.acProbeVoltages[probe][frame];
-							probeData.dcProbeStats[probe].sum += probeData.dcProbeVoltages[probe][frame];
+							sparseProbeData.acProbeStats[probe].sum += sparseProbeData.acProbeVoltages[probe][frame];
+							sparseProbeData.dcProbeStats[probe].sum += sparseProbeData.dcProbeVoltages[probe][frame];
 
 						}
 
-						probeData.acProbeStats[probe].mean = probeData.acProbeStats[probe].sum / frameCount;
-						probeData.dcProbeStats[probe].mean = probeData.dcProbeStats[probe].sum / frameCount;
+						sparseProbeData.acProbeStats[probe].mean = sparseProbeData.acProbeStats[probe].sum / frameCount;
+						sparseProbeData.dcProbeStats[probe].mean = sparseProbeData.dcProbeStats[probe].sum / frameCount;
 
-						probeData.acProbeStats[probe].ss = 0;
-						probeData.dcProbeStats[probe].ss = 0;
+						sparseProbeData.acProbeStats[probe].ss = 0;
+						sparseProbeData.dcProbeStats[probe].ss = 0;
 
 						for(size_t frame = 0; frame < frameCount; ++frame){
-							float acdiff = probeData.acProbeVoltages[probe][frame] - probeData.acProbeStats[probe].mean;
-							float dcdiff = probeData.dcProbeVoltages[probe][frame] - probeData.dcProbeStats[probe].mean;
-							probeData.acProbeStats[probe].ss += acdiff * acdiff; 
-							probeData.dcProbeStats[probe].ss += dcdiff * dcdiff;
+							float acdiff = sparseProbeData.acProbeVoltages[probe][frame] - sparseProbeData.acProbeStats[probe].mean;
+							float dcdiff = sparseProbeData.dcProbeVoltages[probe][frame] - sparseProbeData.dcProbeStats[probe].mean;
+							sparseProbeData.acProbeStats[probe].ss += acdiff * acdiff; 
+							sparseProbeData.dcProbeStats[probe].ss += dcdiff * dcdiff;
 						}
 
-						probeData.acProbeStats[probe].variance = probeData.acProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
-						probeData.acProbeStats[probe].deviation = sqrt(probeData.acProbeStats[probe].variance);
+						sparseProbeData.acProbeStats[probe].variance = sparseProbeData.acProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+						sparseProbeData.acProbeStats[probe].deviation = sqrt(sparseProbeData.acProbeStats[probe].variance);
 
-						probeData.dcProbeStats[probe].variance = probeData.dcProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
-						probeData.dcProbeStats[probe].deviation = sqrt(probeData.dcProbeStats[probe].variance);
+						sparseProbeData.dcProbeStats[probe].variance = sparseProbeData.dcProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+						sparseProbeData.dcProbeStats[probe].deviation = sqrt(sparseProbeData.dcProbeStats[probe].variance);
 
 					}
 
-					drawMutex.unlock();
+					processMutex.unlock();
 					
 				}
 				ofSleepMillis(bufferProcessDelay);
@@ -987,7 +987,7 @@ public:
 	};
 
 	ProbeDataBuffers frontProbeDataBuffers;
-	ProbeDataBuffers probeData;
+	ProbeDataBuffers sparseProbeData;
 
 protected:
 

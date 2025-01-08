@@ -72,7 +72,7 @@ public:
 
         bThread = true;
 
-        thread = std::thread(&ONI::Processor::FrameProcessor::processProbeData, this);
+        thread = std::thread(&ONI::Processor::FrameProcessor::processProbeDataThread, this);
 
     }
 
@@ -80,108 +80,32 @@ public:
 	inline void process(oni_frame_t* frame){}; // nothing
 
 	inline void process(ONI::Frame::BaseFrame& frame){
-		
         //const std::lock_guard<std::mutex> lock(mutex);
-
-        fineBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame));
+        dataMutex.lock();
+        denseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame));
         sparseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame));
+        dataMutex.unlock();
 
 	}
 
-    void processProbeData(){
-
-        while(bThread){
-
-            if(sparseBuffer.isFrameNew()){ // is this helping at all? Or just locking up threads?!
-
-                std::vector<ONI::Frame::Rhs2116MultiFrame> frameBuffer = sparseBuffer.getBuffer();
-                std::sort(frameBuffer.begin(), frameBuffer.end(), ONI::Frame::acquisition_clock_compare());
-
-                mutex.lock();
-
-                size_t numProbes = probeData.acProbeStats.size();
-                size_t frameCount = frameBuffer.size();
-
-                for(size_t probe = 0; probe < numProbes; ++probe){
-
-                    probeData.acProbeStats[probe].sum = 0;
-                    probeData.dcProbeStats[probe].sum = 0;
-
-                    for(size_t frame = 0; frame < frameCount; ++frame){
-
-                        probeData.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
-                        probeData.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_uV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
-                        probeData.dcProbeVoltages[probe][frame] = frameBuffer[frame].dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
-
-                        probeData.acProbeStats[probe].sum += probeData.acProbeVoltages[probe][frame];
-                        probeData.dcProbeStats[probe].sum += probeData.dcProbeVoltages[probe][frame];
-
-                    }
-
-                    probeData.acProbeStats[probe].mean = probeData.acProbeStats[probe].sum / frameCount;
-                    probeData.dcProbeStats[probe].mean = probeData.dcProbeStats[probe].sum / frameCount;
-
-                    probeData.acProbeStats[probe].ss = 0;
-                    probeData.dcProbeStats[probe].ss = 0;
-
-                    for(size_t frame = 0; frame < frameCount; ++frame){
-                        float acdiff = probeData.acProbeVoltages[probe][frame] - probeData.acProbeStats[probe].mean;
-                        float dcdiff = probeData.dcProbeVoltages[probe][frame] - probeData.dcProbeStats[probe].mean;
-                        probeData.acProbeStats[probe].ss += acdiff * acdiff; 
-                        probeData.dcProbeStats[probe].ss += dcdiff * dcdiff;
-                    }
-
-                    probeData.acProbeStats[probe].variance = probeData.acProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
-                    probeData.acProbeStats[probe].deviation = sqrt(probeData.acProbeStats[probe].variance);
-
-                    probeData.dcProbeStats[probe].variance = probeData.dcProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
-                    probeData.dcProbeStats[probe].deviation = sqrt(probeData.dcProbeStats[probe].variance);
-
-                }
-
-                mutex.unlock();
-            }else{
-                std::this_thread::yield(); // if we don't yield then the thread spins too fast while waiting for a buffer.isFrameNew()
-            }
-
-
-
-        }
-
-    }
     void resetBuffers(){ // const bool& bUseSamplesForSize = true // Should we give user the choice?
 
-        //const std::lock_guard<std::mutex> lock(mutex);
-
-        fineBuffer.resize(settings.getBufferSizeSamples(), 1);
+        dataMutex.lock();
+        denseBuffer.resize(settings.getBufferSizeSamples(), 1);
         sparseBuffer.resize(settings.getBufferSizeMillis(), settings.getSparseStepMillis(), settings.getSampleRateHz());
+        dataMutex.unlock();
 
+        processMutex.lock();
+        sparseProbeData.resize(multi->numProbes, sparseBuffer.size(), true);
+        processMutex.unlock();
     }
 
     void resetProbeData(){
 
-        const std::lock_guard<std::mutex> lock(mutex);
-
-        size_t numProbes = multi->numProbes;
-        size_t sparseBufferSizeSamples = sparseBuffer.size();
-
-        if(probeData.acProbeVoltages.size() == numProbes){
-            if(probeData.acProbeVoltages[0].size() == sparseBufferSizeSamples){
-                return;
-            }
-        }
-
-        probeData.acProbeVoltages.resize(numProbes);
-        probeData.dcProbeVoltages.resize(numProbes);
-        probeData.acProbeStats.resize(numProbes);
-        probeData.dcProbeStats.resize(numProbes);
-        probeData.probeTimeStamps.resize(numProbes);
-
-        for(size_t probe = 0; probe < numProbes; ++probe){
-            probeData.acProbeVoltages[probe].resize(sparseBufferSizeSamples);
-            probeData.dcProbeVoltages[probe].resize(sparseBufferSizeSamples);
-            probeData.probeTimeStamps[probe].resize(sparseBufferSizeSamples);
-        }
+        processMutex.lock();
+        sparseProbeData.resize(multi->numProbes, sparseBuffer.size());
+        processMutex.unlock();
+        //denseProbeData.resize(multi->numProbes, denseBuffer.size());
 
     }
 
@@ -191,22 +115,94 @@ public:
         bThread = false;
         if(thread.joinable()) thread.join();
 
-        fineBuffer.clear();
+        denseBuffer.clear();
         sparseBuffer.clear();
 
-        probeData.acProbeStats.clear();
-        probeData.dcProbeStats.clear();
-        probeData.acProbeVoltages.clear();
-        probeData.dcProbeVoltages.clear();
-        probeData.probeTimeStamps.clear();
+        //denseProbeData.clear();
+        sparseProbeData.clear();
+
+    }
+
+private:
+
+    inline void processProbeData(ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame>& buffer, ONI::Frame::Rhs2116ProbeData& probeData){
+
+        if(buffer.isFrameNew()){ // is this helping at all? Or just locking up threads?!
+
+            dataMutex.lock();
+            std::vector<ONI::Frame::Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
+            dataMutex.unlock();
+
+            std::this_thread::yield(); //??
+            std::sort(frameBuffer.begin(), frameBuffer.end(), ONI::Frame::acquisition_clock_compare());
+
+            processMutex.lock();
+
+            size_t numProbes = probeData.acProbeVoltages.size();
+            size_t frameCount = std::min(probeData.acProbeVoltages[0].size(), frameBuffer.size()); // make sure we don't overflow during a buffer resize
+
+            for(size_t probe = 0; probe < numProbes; ++probe){
+
+                probeData.acProbeStats[probe].sum = 0;
+                probeData.dcProbeStats[probe].sum = 0;
+
+                for(size_t frame = 0; frame < frameCount; ++frame){
+
+                    probeData.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
+                    probeData.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_uV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
+                    probeData.dcProbeVoltages[probe][frame] = frameBuffer[frame].dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
+
+                    probeData.acProbeStats[probe].sum += probeData.acProbeVoltages[probe][frame];
+                    probeData.dcProbeStats[probe].sum += probeData.dcProbeVoltages[probe][frame];
+
+                }
+
+                probeData.acProbeStats[probe].mean = probeData.acProbeStats[probe].sum / frameCount;
+                probeData.dcProbeStats[probe].mean = probeData.dcProbeStats[probe].sum / frameCount;
+
+                probeData.acProbeStats[probe].ss = 0;
+                probeData.dcProbeStats[probe].ss = 0;
+
+                for(size_t frame = 0; frame < frameCount; ++frame){
+                    float acdiff = probeData.acProbeVoltages[probe][frame] - probeData.acProbeStats[probe].mean;
+                    float dcdiff = probeData.dcProbeVoltages[probe][frame] - probeData.dcProbeStats[probe].mean;
+                    probeData.acProbeStats[probe].ss += acdiff * acdiff; 
+                    probeData.dcProbeStats[probe].ss += dcdiff * dcdiff;
+                }
+
+                probeData.acProbeStats[probe].variance = probeData.acProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+                probeData.acProbeStats[probe].deviation = sqrt(probeData.acProbeStats[probe].variance);
+
+                probeData.dcProbeStats[probe].variance = probeData.dcProbeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+                probeData.dcProbeStats[probe].deviation = sqrt(probeData.dcProbeStats[probe].variance);
+
+            }
+
+            processMutex.unlock();
+        }else{
+            std::this_thread::yield(); // if we don't yield then the thread spins too fast while waiting for a buffer.isFrameNew()
+        }
+
+    }
+
+    void processProbeDataThread(){
+
+        while(bThread){
+
+            //processProbeData(denseBuffer, denseProbeData);
+            processProbeData(sparseBuffer, sparseProbeData);
+            //std::this_thread::yield(); // if we don't yield then the thread spins too fast while waiting for a buffer.isFrameNew()
+
+        }
 
     }
 
 protected:
 
-    ONI::Frame::Rhs2116ProbeData probeData; // TODO: Generalise this for other frame types
-    
-    ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame> fineBuffer;   // contains all frames at full sample rate
+    //ONI::Frame::Rhs2116ProbeData denseProbeData; // TODO: Generalise this for other frame types
+    ONI::Frame::Rhs2116ProbeData sparseProbeData;
+
+    ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame> denseBuffer;   // contains all frames at full sample rate
     ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame> sparseBuffer; // contains a sparse buffer sampled every N samples
     
 
@@ -217,7 +213,9 @@ protected:
     std::atomic_bool bThread = false;
 
     std::thread thread;
-    std::mutex mutex;
+
+    std::mutex dataMutex;
+    std::mutex processMutex;
 
 };
 

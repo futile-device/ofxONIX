@@ -100,8 +100,7 @@ public:
 		static bool bDeleted = false;
 		static bool bSelectAll = false;
 		bool bLastSelectAll = bSelectAll;
-		static size_t lastSelected = -1;
-		size_t selectCount = 0;
+		
 		char buf[64];
 
 		//ImGui::Begin(std.getName().c_str());
@@ -109,9 +108,47 @@ public:
 		ImGui::Text(std.getName().c_str());
 
 
-		if(stimuli.size() == 0){ // ...then this is the first time we are drawing the gui
+		if(stimuli.size() == 0 || std.isChannelMapChanged()){ // ...then this is the first time we are drawing the gui
 			refreshStimuliData(std);
 		}
+
+		/////////////////////////////////////////////////////////////////////
+		///
+		/// TRIGGER SEQUENCE
+		/// 
+		/////////////////////////////////////////////////////////////////////
+
+		
+		ImGui::NewLine();
+
+		//ImGui::Text("Stimulus Trigger");
+
+		if(ImGui::Button("Trigger Stimulus")){
+			std.triggerStimulusSequence();
+		}
+
+		/////////////////////////////////////////////////////////////////////
+		///
+		/// PLOTTING OPTIONS
+		/// 
+		/////////////////////////////////////////////////////////////////////
+
+		ImGui::NewLine();
+		ImGui::Separator();
+		ImGui::NewLine();
+
+		ImGui::Text("Stimulus Plot Options");
+
+		ImGui::NewLine();
+
+		static bool bPlotTimes = true;
+		ImGui::Checkbox("Plot Times", &bPlotTimes); ImGui::SameLine();
+
+		static bool bShowOnlySetStimuli = true;
+		ImGui::Checkbox("Plot Only Set Stimuli", &bShowOnlySetStimuli); ImGui::SameLine();
+
+		static bool bPlotRelativeuA = true;
+		ImGui::Checkbox("Plot Relative uA", &bPlotRelativeuA); //ImGui::SameLine();
 
 		/////////////////////////////////////////////////////////////////////
 		///
@@ -119,11 +156,13 @@ public:
 		/// 
 		/////////////////////////////////////////////////////////////////////
 
-		
-		//ImGui::Text("Probe Selection");
+		ImGui::NewLine();
+		ImGui::Separator();
 		ImGui::NewLine();
 
 		ImGui::Text("Stimulus Load/Delete");
+		ImGui::NewLine();
+
 
 		ImGui::SetNextItemWidth(200);
 		static int probeItemIDX = 0; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
@@ -198,6 +237,7 @@ public:
 			ImGui::EndPopup();
 		}
 
+		ImGui::NewLine();
 		ImGui::Separator();
 		ImGui::NewLine();
 
@@ -208,6 +248,7 @@ public:
 		/////////////////////////////////////////////////////////////////////
 
 		ImGui::Text("Stimulus Editor");
+		ImGui::NewLine();
 
 		if(lastStimulus != currentStimulus){ // ... then this stimulus has been edited
 			refreshStimuliData(std);
@@ -306,6 +347,7 @@ public:
 
 		ImGui::PopItemWidth();
 
+		ImGui::NewLine();
 		if(ImGui::Button("Reset Stimulus Editor")){
 			currentStimulus = std.defaultStimulus;
 		}
@@ -317,8 +359,13 @@ public:
 		/////////////////////////////////////////////////////////////////////
 
 		ImGui::NewLine();
-		
+		ImGui::Separator();
+		ImGui::NewLine();
+
 		ImGui::Text("Select Probes to Apply Stimulus");
+		ImGui::NewLine();
+
+		size_t selectCount = 0;
 
 		ImGui::Checkbox("Select All", &bSelectAll); //ImGui::SameLine();
 
@@ -337,10 +384,7 @@ public:
 			ImGui::Checkbox(buf, &b);
 			channelSelect[i] = b;
 			if(bSelectAll && !b) bSelectAll = false;
-			if(b){
-				lastSelected = i;
-				++selectCount;
-			}
+			if(b) ++selectCount;
 		}
 
 		if(selectCount == stimuli.size()) bSelectAll = true;
@@ -359,13 +403,15 @@ public:
 
 		ONI::Settings::Rhs2116StimulusStep stagedStepSize = ONI::Settings::Rhs2116StimulusStep::Step10nA;
 
-		if(ImGui::Button("Apply Stimulus to Selected") || bDeleted){
+		ImGui::NewLine();
 
+		if(ImGui::Button("Apply Stimulus to Selected") || bDeleted){
 
 			stagedStimuli = stimuli;
 
 			size_t stepCount = 0;
 			for(size_t i = 0; i < stimuli.size(); ++i){
+				//size_t channelMappedIDX = std.multi->getChannelMapIDX()[i]; // make sure we set things to the mapped IDX!!
 				if(channelSelect[i] && !bDeleted){
 					stagedStimuli[i] = currentStimulus;
 				}
@@ -420,6 +466,8 @@ public:
 
 		}
 
+		ImGui::NewLine();
+
 		/////////////////////////////////////////////////////////////////////
 		///
 		/// POP UP TO NOTIFY THAT THE NUMBER OF STIMULI EXCEEDS RAM
@@ -468,40 +516,6 @@ public:
 			refreshStimuliData(std);
 		}
 
-		/////////////////////////////////////////////////////////////////////
-		///
-		/// PLOTTING OPTIONS
-		/// 
-		/////////////////////////////////////////////////////////////////////
-
-		ImGui::Separator();
-		ImGui::NewLine();
-
-		ImGui::Text("Stimulus Plot Options");
-
-		static bool bPlotTimes = true;
-		ImGui::Checkbox("Plot Times", &bPlotTimes); ImGui::SameLine();
-
-		static bool bShowOnlySetStimuli = true;
-		ImGui::Checkbox("Plot Only Set Stimuli", &bShowOnlySetStimuli); ImGui::SameLine();
-
-		static bool bPlotRelativeuA = true;
-		ImGui::Checkbox("Plot Relative uA", &bPlotRelativeuA); //ImGui::SameLine();
-
-		/////////////////////////////////////////////////////////////////////
-		///
-		/// TRIGGER SEQUENCE
-		/// 
-		/////////////////////////////////////////////////////////////////////
-
-		ImGui::Separator();
-		ImGui::NewLine();
-
-		ImGui::Text("Stimulus Trigger");
-
-		if(ImGui::Button("Trigger Stimulus")){
-			std.triggerStimulusSequence();
-		}
 
 		/////////////////////////////////////////////////////////////////////
 		///
@@ -576,7 +590,7 @@ public:
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("Probe %d", i);
+				ImGui::Text("Probe %d (%d)", i, std.multi->getChannelMapIDX()[i]);
 				ImGui::TableSetColumnIndex(1);
 				//ImGui::Text("  delay-t %.3f ms", stimuli[i].delaySamples / 30.1932367151e3 * 1000.0f);
 				//ImGui::Text("  anode-t %.3f ms", stimuli[i].anodicWidthSamples / 30.1932367151e3 * 1000.0f);
@@ -632,6 +646,7 @@ protected:
 
 	float maxMicroAmps = 0;
 	float minMicroAmps = 0;
+
 	std::vector<ONI::Rhs2116StimulusData> stimuli;
 	
 	std::vector<char*> probeDropDownChar;

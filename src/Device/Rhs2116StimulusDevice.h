@@ -89,6 +89,8 @@ public:
 
         defaultStimuli.resize(numProbes / multi->devices.size()); // brittle? hard coded to 16?
 
+        lastChannelMapIDX = multi->getChannelMapIDX();
+
         reset(); // always call device specific setup/reset
         deviceSetup(); // always call device specific setup/reset
 
@@ -324,7 +326,7 @@ public:
         return false;
     }
 
-    bool setProbeStimulus(const ONI::Rhs2116StimulusData& stimulus, const unsigned int& probeIDX, const unsigned int& deviceTableIDX){
+    bool setProbeStimulus(const ONI::Rhs2116StimulusData& stimulus, const unsigned int& channelMappedProbeIDX, const unsigned int& deviceTableIDX){
 
         auto& it = settings.deviceStimuli.find(deviceTableIDX);
 
@@ -338,8 +340,9 @@ public:
             return false;
         }
 
+        size_t idx = multi->channelIDX[channelMappedProbeIDX];
         std::vector<ONI::Rhs2116StimulusData>& stimuli = it->second;
-        stimuli[probeIDX] = stimulus;
+        stimuli[idx] = stimulus;
 
         return true;
 
@@ -367,7 +370,7 @@ public:
 
     }
 
-    ONI::Rhs2116StimulusData& getProbeStimulus(const unsigned int& probeIDX, const unsigned int& deviceTableIDX){
+    ONI::Rhs2116StimulusData& getProbeStimulus(const unsigned int& channelMappedProbeIDX, const unsigned int& deviceTableIDX){
 
         auto& it = settings.deviceStimuli.find(deviceTableIDX);
 
@@ -376,38 +379,39 @@ public:
             return defaultStimulus;
         }
 
+        size_t idx = multi->channelIDX[channelMappedProbeIDX];
         std::vector<ONI::Rhs2116StimulusData>& stimuli = it->second;
-        return stimuli[probeIDX];
+        return stimuli[idx];
 
     }
 
-    bool setProbeStimuli(const std::vector<ONI::Rhs2116StimulusData>& stimuli, const unsigned int& deviceTableIDX){
+    //bool setProbeStimuli(const std::vector<ONI::Rhs2116StimulusData>& stimuli, const unsigned int& deviceTableIDX){
 
-        auto& it = settings.deviceStimuli.find(deviceTableIDX);
+    //    auto& it = settings.deviceStimuli.find(deviceTableIDX);
 
-        if(it == settings.deviceStimuli.end()){
-            LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
-            return false;
-        }
+    //    if(it == settings.deviceStimuli.end()){
+    //        LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
+    //        return false;
+    //    }
 
-        it->second = stimuli;
+    //    it->second = stimuli;
 
-        return true;
+    //    return true;
 
-    }
+    //}
 
-    std::vector<ONI::Rhs2116StimulusData>& getProbeStimuli(const unsigned int& deviceTableIDX){
+    //std::vector<ONI::Rhs2116StimulusData>& getProbeStimuli(const unsigned int& deviceTableIDX){
 
-        auto& it = settings.deviceStimuli.find(deviceTableIDX);
+    //    auto& it = settings.deviceStimuli.find(deviceTableIDX);
 
-        if(it == settings.deviceStimuli.end()){
-            LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
-            return defaultStimuli;
-        }
+    //    if(it == settings.deviceStimuli.end()){
+    //        LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
+    //        return defaultStimuli;
+    //    }
 
-        return it->second;
+    //    return it->second;
 
-    }
+    //}
 
     bool setProbStimuliMapped(const std::vector<ONI::Rhs2116StimulusData>& stimuli){
 
@@ -440,6 +444,10 @@ public:
 
     }
 
+    bool isChannelMapChanged(){
+        return lastChannelMapIDX != multi->getChannelMapIDX();
+    }
+
     std::vector<ONI::Rhs2116StimulusData> getProbeStimuliMapped(){
 
         std::vector<ONI::Rhs2116StimulusData> stimuli;
@@ -456,14 +464,40 @@ public:
             return defaultStimuli;
         }
 
-        return stimuli;
+        if(lastChannelMapIDX == multi->getChannelMapIDX()){
+            // we're all good
+        }else{
+            LOGDEBUG("Needs a change");
+            // the channel map has changed so we need to swap aroubd the stimuli 
+            // since the assumption is we are getting the stimulus as mapped...maybe ;)
+            std::vector<ONI::Rhs2116StimulusData> temp(stimuli.size());
+            for(size_t i = 0; i < temp.size(); ++i){
+                size_t mappedIDX = lastChannelMapIDX[i];
+                temp[i] = stimuli[mappedIDX];
+            }
+            for(size_t i = 0; i < temp.size(); ++i){
+                size_t mappedIDX = multi->getChannelMapIDX()[i];
+                stimuli[mappedIDX] = temp[i];
+            }
+            lastChannelMapIDX = multi->getChannelMapIDX();
+            setProbStimuliMapped(stimuli); //  need to update the device stimuli
+        }
 
+        return stimuli;
     }
 
+    std::vector<size_t> lastChannelMapIDX;
+
     inline void triggerStimulusSequence(){
+
         deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
         ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGER, 1);
+
+        deviceType.idx = 514; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 512/513]
+        ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGER, 1);
+
         deviceType.idx = 667;
+
     }
 
     bool setStimulusSequence(const std::vector<ONI::Rhs2116StimulusData>& stimuli, const ONI::Settings::Rhs2116StimulusStep& stepSize){
@@ -471,6 +505,13 @@ public:
         setProbStimuliMapped(stimuli);
 
         deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
+        //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
+        if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
+            LOGERROR("Error writing to TRIGGERSOURCE!!");
+            return false;
+        }
+
+        deviceType.idx = 514; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
         //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
         if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
             LOGERROR("Error writing to TRIGGERSOURCE!!");

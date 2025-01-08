@@ -34,10 +34,11 @@ void ofApp::setup(){
     oni.printDeviceTable();
 
     ONI::Device::FmcDevice* fmc1 = (ONI::Device::FmcDevice*)oni.getDevice(1);
-    fmc1->setPortVoltage(6.7);
+    fmc1->setPortVoltage(6.8);
     //fmc1->loadConfig("default");
 
     ONI::Device::FmcDevice* fmc2 = (ONI::Device::FmcDevice*)oni.getDevice(2);
+    fmc2->setPortVoltage(6.8);
     //fmc2->loadConfig("default");
     
     oni.update();
@@ -51,6 +52,10 @@ void ofApp::setup(){
 
     ONI::Device::Rhs2116Device* rhs2116Device1 = (ONI::Device::Rhs2116Device*)oni.getDevice(256);
     ONI::Device::Rhs2116Device* rhs2116Device2 = (ONI::Device::Rhs2116Device*)oni.getDevice(257);
+    ONI::Device::Rhs2116Device* rhs2116Device3 = (ONI::Device::Rhs2116Device*)oni.getDevice(512);
+    ONI::Device::Rhs2116Device* rhs2116Device4 = (ONI::Device::Rhs2116Device*)oni.getDevice(513);
+
+    
 
     //rhs2116Device1->loadConfig("default");
     //rhs2116Device2->loadConfig("default"); 
@@ -59,7 +64,8 @@ void ofApp::setup(){
 
     rhs2116Device1->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
     rhs2116Device2->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
-
+    rhs2116Device3->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
+    rhs2116Device4->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
     //rhs2116Device1->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
     //rhs2116Device2->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
 
@@ -68,6 +74,8 @@ void ofApp::setup(){
     ONI::Device::Rhs2116MultiDevice* multi = oni.getMultiDevice();
     multi->addDevice(rhs2116Device1);
     multi->addDevice(rhs2116Device2);
+    multi->addDevice(rhs2116Device3);
+    multi->addDevice(rhs2116Device4);
 
     ONI::Processor::FrameProcessor* frameProcessor = oni.getFrameProcessor(); // this auto creates
     ONI::Processor::SpikeProcessor* spikeProcessor = oni.getSpikeProcessor(); // this auto creates
