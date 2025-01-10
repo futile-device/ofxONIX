@@ -92,6 +92,7 @@ public:
 		numProbes += device->getNumProbes();
 		expectDevceIDOrdered.push_back(device->getDeviceTableID());
 		std::sort(expectDevceIDOrdered.begin(), expectDevceIDOrdered.end()); // sort so device frames get added in ascending order
+		//expectDevceIDOrdered = {257, 256, 513, 512};
 		multiFrameBuffer.resize(multiFrameBuffer.size() + 1);
 		multiFrameBufferRaw.resize(multiFrameBufferRaw.size() + 1);
 		settings = device->settings; // TODO: this is terrible; the devices could be diferent
@@ -221,14 +222,23 @@ public:
 	} 
 
 	void setChannelMap(const std::vector<size_t>& map){
+
 		if(map.size() == numProbes){
+
 			channelIDX = map;
+
 			for(size_t y = 0; y < numProbes; ++y){
 				for(size_t x = 0; x < numProbes; ++x){
 					settings.channelMap[y][x] = false;
 				}
 				size_t xx = channelIDX[y];
 				settings.channelMap[y][xx] = true;
+
+				inverseChannelIDX.resize(numProbes); // make an inverse for when we need to map in the other direction eg., for stimulus plots
+				for(size_t i = 0; i < channelIDX.size(); ++i){
+					inverseChannelIDX[channelIDX[i]] = i;
+				}
+
 			}
 		}else{
 			LOGERROR("Channel IDXs size doesn't equal number of probes");
@@ -251,6 +261,11 @@ public:
 			channelIDX[y] = idx;
 		}
 
+		inverseChannelIDX.resize(numProbes); // make an inverse for when we need to map in the other direction eg., for stimulus plots
+		for(size_t i = 0; i < channelIDX.size(); ++i){
+			inverseChannelIDX[channelIDX[i]] = i;
+		}
+
 		//ostringstream os;
 		//for(int i = 0; i < channelIDX.size(); i++){
 		//	os << channelIDX[i] << (i == channelIDX.size() - 1 ? "" : ", ");
@@ -265,7 +280,7 @@ public:
 		if(postProcessors.size() > 0){
 
 			size_t nextDeviceIndex = nextDeviceCounter % devices.size();
-
+			//LOGDEBUG("Dev-IDX: %i", frame->dev_idx);
 			ONI::Frame::Rhs2116DataExtended& frameRaw = multiFrameRawMap[frame->dev_idx];
 			std::memcpy(&frameRaw, frame->data, frame->data_sz); // copy the data payload including hub clock
 			frameRaw.acqTime = frame->time;						 // copy the acquisition clock
@@ -274,10 +289,14 @@ public:
 
 			if(nextDeviceCounter > 0 && nextDeviceCounter % devices.size() == 0){
 
-				if(multiFrameRawMap.size() == 4){
+				if(multiFrameRawMap.size() == devices.size()){
 
-					if(bBadFrame) LOGDEBUG("Corrected multi frame %i ==> %i", frame->dev_idx, nextDeviceCounter);
-					bBadFrame = false;
+					if(bBadFrame){
+						LOGDEBUG("Pickup multiframe %i (%llu) ==> %i", frame->dev_idx, frameRaw.hubTime, nextDeviceCounter);
+						bBadFrame = false;
+					}
+					
+					//lastMultiFrameRawMap = multiFrameRawMap;
 
 					// order the frames by ascending device idx
 					for(size_t i = 0; i < devices.size(); ++i){
@@ -294,7 +313,16 @@ public:
 					multiFrameRawMap.clear();
 
 				}else{
-					LOGERROR("Out of order for multiframe %i ==> %i", frame->dev_idx, nextDeviceCounter);
+
+					//LOGERROR("Out of order for multiframe %i ==> %i", frame->dev_idx, nextDeviceCounter);
+					//size_t t = multiFrameRawMap.size();
+					//std::memcpy(&errorFrameRaw, frame->data, frame->data_sz); // copy the data payload including hub clock
+					//errorFrameRaw.acqTime = frame->time;						 // copy the acquisition clock
+					//errorFrameRaw.deltaTime = ONI::Device::BaseDevice::getAcqDeltaTimeMicros(frame->time);
+					//errorFrameRaw.devIdx = frame->dev_idx;
+					
+					LOGDEBUG("Dropped multiframe %i (%llu) ==> %i", frame->dev_idx, reinterpret_cast<ONI::Frame::Rhs2116DataExtended*>(frame->data)->hubTime, nextDeviceCounter);
+
 					bBadFrame = true;
 					--nextDeviceCounter; // decrease the device id counter so we can check if this gets corrected on next frame
 				}
@@ -378,6 +406,10 @@ public:
 		return channelIDX;
 	}
 
+	const std::vector<size_t>& getInverseChannelMapIDX(){
+		return inverseChannelIDX;
+	}
+
 protected:
 
 
@@ -388,6 +420,8 @@ private:
 	std::vector<ONI::Frame::Rhs2116Frame> multiFrameBuffer;
 	std::vector<ONI::Frame::Rhs2116DataExtended> multiFrameBufferRaw;
 
+	ONI::Frame::Rhs2116DataExtended errorFrameRaw;
+	std::map<unsigned int, ONI::Frame::Rhs2116DataExtended> lastMultiFrameRawMap;
 	std::map<unsigned int, ONI::Frame::Rhs2116DataExtended> multiFrameRawMap;
 	bool bBadFrame = false; // for tracking out of order frame idx with multiple rhs2116 devices
 
@@ -395,6 +429,7 @@ private:
 	uint64_t nextDeviceCounter = 0;
 
 	std::vector<size_t> channelIDX;
+	std::vector<size_t> inverseChannelIDX;
 
 	bool bEnabled = false;
 

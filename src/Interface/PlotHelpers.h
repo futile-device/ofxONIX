@@ -247,7 +247,12 @@ static inline void plotCombinedProbes(const std::string plotName, const ONI::Fra
 
 
 // Plot Individual AC or DC probe data
-static inline void plotIndividualProbes(const std::string plotName, const ONI::Frame::Rhs2116ProbeData& p, const std::vector<bool>& channelSelect, const std::vector<size_t>& channelIDX, const ONI::Interface::PlotType& plotType){
+static inline void plotIndividualProbes(const std::string plotName, 
+										const ONI::Frame::Rhs2116ProbeData& p, 
+										const std::vector<bool>& channelSelect, 
+										const std::vector<size_t>& inverseChannelIDX, 
+										const int& probePlotHeight,
+										const ONI::Interface::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -303,19 +308,20 @@ static inline void plotIndividualProbes(const std::string plotName, const ONI::F
 
 		for (int probe = 0; probe < numProbes; probe++){
 
+
 			if(!channelSelect[probe]) continue; // only show selected probes
 
 			ImGui::TableNextRow();
 
 			ImGui::TableSetColumnIndex(0);
-			ImGui::Text("Probe %d (%d)", probe, channelIDX[probe]);
+			ImGui::Text("Probe %d (%d)", probe, inverseChannelIDX[probe]);
 			ImGui::TableSetColumnIndex(1);
 			ImGui::Text("%.3f %s \n%.3f avg \n%.3f dev \n%i N", (*voltages)[probe][offset], unitStr.c_str(), (*statistics)[probe].mean, (*statistics)[probe].deviation, frameCount);
 			ImGui::TableSetColumnIndex(2);
 
 			ImGui::PushID(probe);
 
-			ONI::Interface::Sparkline("##spark", &(*voltages)[probe][0], frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 120));
+			ONI::Interface::Sparkline("##spark", &(*voltages)[probe][0], frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, probePlotHeight));
 
 			ImGui::PopID();
 

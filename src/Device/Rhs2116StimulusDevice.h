@@ -89,7 +89,7 @@ public:
 
         defaultStimuli.resize(numProbes / multi->devices.size()); // brittle? hard coded to 16?
 
-        lastChannelMapIDX = multi->getChannelMapIDX();
+        lastInverseChannelMapIDX = multi->getInverseChannelMapIDX();
 
         reset(); // always call device specific setup/reset
         deviceSetup(); // always call device specific setup/reset
@@ -270,34 +270,39 @@ public:
 
     bool deleteProbeStimulus(const unsigned int& channelMappedProbeIDX){
 
-        if(channelMappedProbeIDX > multi->channelIDX.size()){
+        if(channelMappedProbeIDX > multi->getInverseChannelMapIDX().size()){
             LOGERROR("Channel mapped probe index out of range for stimulus: %i", channelMappedProbeIDX);
             return false;
         }
 
-        size_t idx = multi->channelIDX[channelMappedProbeIDX];
+        size_t idx = multi->getInverseChannelMapIDX()[channelMappedProbeIDX];
         size_t numProbesPerDevice = 16; // (numProbes / multi->devices.size())
         size_t deviceNum = floor(idx / numProbesPerDevice);
         size_t probeIDX = idx - deviceNum * numProbesPerDevice;
 
-        size_t i = 0;
-        for(auto& it : settings.deviceStimuli){
-            if(deviceNum == i){
-                std::vector<ONI::Rhs2116StimulusData>& stimuli = it.second;
-                stimuli[probeIDX] = defaultStimulus;
-                return true;
-            }
-            ++i;
-        }
+        auto& it =  settings.deviceStimuli.find(deviceOrderIDX[deviceNum]);
+        std::vector<ONI::Rhs2116StimulusData>& stimuli = it->second;
+        stimuli[probeIDX] = defaultStimulus;
 
+        return true;
 
-        return false;
+        //size_t i = 0;
+        //for(auto& it : settings.deviceStimuli){
+        //    if(deviceNum == i){
+        //        std::vector<ONI::Rhs2116StimulusData>& stimuli = it.second;
+        //        stimuli[probeIDX] = defaultStimulus;
+        //        return true;
+        //    }
+        //    ++i;
+        //}
+
+        //return false;
 
     }
 
     bool setProbeStimulus(const ONI::Rhs2116StimulusData& stimulus, const unsigned int& channelMappedProbeIDX){
 
-        if(channelMappedProbeIDX > multi->channelIDX.size()){
+        if(channelMappedProbeIDX > multi->getInverseChannelMapIDX().size()){
             LOGERROR("Channel mapped probe index out of range for stimulus: %i", channelMappedProbeIDX);
             return false;
         }
@@ -307,68 +312,74 @@ public:
             return false;
         }
 
-        size_t idx = multi->channelIDX[channelMappedProbeIDX];
+        size_t idx = multi->getInverseChannelMapIDX()[channelMappedProbeIDX];
         size_t numProbesPerDevice = 16; // (numProbes / multi->devices.size())
         size_t deviceNum = floor(idx / numProbesPerDevice);
         size_t probeIDX = idx - deviceNum * numProbesPerDevice;
 
-        size_t i = 0;
-        for(auto& it : settings.deviceStimuli){
-            if(deviceNum == i){
-                std::vector<ONI::Rhs2116StimulusData>& stimuli = it.second;
-                stimuli[probeIDX] = stimulus;
-                return true;
-            }
-            ++i;
-        }
-
-
-        return false;
-    }
-
-    bool setProbeStimulus(const ONI::Rhs2116StimulusData& stimulus, const unsigned int& channelMappedProbeIDX, const unsigned int& deviceTableIDX){
-
-        auto& it = settings.deviceStimuli.find(deviceTableIDX);
-
-        if(it == settings.deviceStimuli.end()){
-            LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
-            return false;
-        }
-
-        if(!isStimulusValid(stimulus)){
-            LOGERROR("Stimulus is invalid");
-            return false;
-        }
-
-        size_t idx = multi->channelIDX[channelMappedProbeIDX];
+        auto& it =  settings.deviceStimuli.find(deviceOrderIDX[deviceNum]);
         std::vector<ONI::Rhs2116StimulusData>& stimuli = it->second;
-        stimuli[idx] = stimulus;
+        stimuli[probeIDX] = stimulus;
 
         return true;
 
+        //size_t i = 0;
+        //for(auto& it : settings.deviceStimuli){
+        //    if(deviceNum == i){
+        //        std::vector<ONI::Rhs2116StimulusData>& stimuli = it.second;
+        //        stimuli[probeIDX] = stimulus;
+        //        return true;
+        //    }
+        //    ++i;
+        //}
+
+
+        //return false;
     }
 
-    ONI::Rhs2116StimulusData& getProbeStimulus(const unsigned int& channelMappedProbeIDX){
+    //bool setProbeStimulus(const ONI::Rhs2116StimulusData& stimulus, const unsigned int& channelMappedProbeIDX, const unsigned int& deviceTableIDX){
 
-        if(channelMappedProbeIDX > multi->channelIDX.size()){
-            LOGERROR("Channel mapped probe index out of range for stimulus: %i", channelMappedProbeIDX);
-            return defaultStimulus;
-        }
+    //    auto& it = settings.deviceStimuli.find(deviceTableIDX);
 
-        size_t idx = multi->channelIDX[channelMappedProbeIDX];
-        size_t numProbesPerDevice = 16; // (numProbes / multi->devices.size())
-        size_t deviceNum = floor(idx / numProbesPerDevice);
-        size_t probeIDX = idx - deviceNum * numProbesPerDevice;
+    //    if(it == settings.deviceStimuli.end()){
+    //        LOGERROR("Device IDX not available for stimulus: %i", deviceTableIDX);
+    //        return false;
+    //    }
 
-        size_t i = 0;
-        for(auto& it : settings.deviceStimuli){
-            if(deviceNum == i){
-                std::vector<ONI::Rhs2116StimulusData>& stimuli = it.second;
-                return stimuli[probeIDX];
-            }
-        }
+    //    if(!isStimulusValid(stimulus)){
+    //        LOGERROR("Stimulus is invalid");
+    //        return false;
+    //    }
 
-    }
+    //    size_t idx = multi->channelIDX[channelMappedProbeIDX];
+    //    std::vector<ONI::Rhs2116StimulusData>& stimuli = it->second;
+    //    stimuli[idx] = stimulus;
+
+    //    return true;
+
+    //}
+
+    //ONI::Rhs2116StimulusData& getProbeStimulus(const unsigned int& channelMappedProbeIDX){
+
+    //    if(channelMappedProbeIDX > multi->channelIDX.size()){
+    //        LOGERROR("Channel mapped probe index out of range for stimulus: %i", channelMappedProbeIDX);
+    //        return defaultStimulus;
+    //    }
+
+    //    size_t idx = multi->channelIDX[channelMappedProbeIDX];
+    //    size_t numProbesPerDevice = 16; // (numProbes / multi->devices.size())
+    //    size_t deviceNum = floor(idx / numProbesPerDevice);
+    //    size_t probeIDX = idx - deviceNum * numProbesPerDevice;
+
+    //    size_t i = 0;
+    //    for(auto& it : settings.deviceStimuli){
+    //        if(deviceNum == i){
+    //            std::vector<ONI::Rhs2116StimulusData>& stimuli = it.second;
+    //            return stimuli[probeIDX];
+    //        }
+    //    }
+
+    //}
 
     ONI::Rhs2116StimulusData& getProbeStimulus(const unsigned int& channelMappedProbeIDX, const unsigned int& deviceTableIDX){
 
@@ -379,7 +390,7 @@ public:
             return defaultStimulus;
         }
 
-        size_t idx = multi->channelIDX[channelMappedProbeIDX];
+        size_t idx = multi->getInverseChannelMapIDX()[channelMappedProbeIDX];
         std::vector<ONI::Rhs2116StimulusData>& stimuli = it->second;
         return stimuli[idx];
 
@@ -422,49 +433,74 @@ public:
 
         size_t numProbesPerDevice = 16; // (numProbes / multi->devices.size())
 
-        size_t deviceCount = 0;
-        for(auto& it : settings.deviceStimuli){
+        //size_t deviceCount = 0;
 
-            std::vector<ONI::Rhs2116StimulusData>& ds = it.second;
+        for(size_t i = 0; i < deviceOrderIDX.size(); ++i){
 
-            size_t startIDX = deviceCount * numProbesPerDevice;
+            auto& it =  settings.deviceStimuli.find(deviceOrderIDX[i]);
+            std::vector<ONI::Rhs2116StimulusData>& ds = it->second;
+
+            size_t startIDX = i * numProbesPerDevice;
             size_t endIDX = startIDX + numProbesPerDevice;
 
             size_t j = 0;
-            for(size_t i = startIDX; i < endIDX; ++i){
-                ds[j] = stimuli[i];
+            for(size_t k = startIDX; k < endIDX; ++k){
+                ds[j] = stimuli[k];
                 ++j;
             }
 
-            ++deviceCount;
-
         }
+
+        //for(auto& it : settings.deviceStimuli){
+
+        //    std::vector<ONI::Rhs2116StimulusData>& ds = it.second;
+
+        //    size_t startIDX = deviceCount * numProbesPerDevice;
+        //    size_t endIDX = startIDX + numProbesPerDevice;
+
+        //    size_t j = 0;
+        //    for(size_t k = startIDX; k < endIDX; ++k){
+        //        ds[j] = stimuli[k];
+        //        ++j;
+        //    }
+
+        //    ++deviceCount;
+
+        //}
 
         return true;
 
     }
 
     bool isChannelMapChanged(){
-        return lastChannelMapIDX != multi->getChannelMapIDX();
+        return lastInverseChannelMapIDX != multi->getInverseChannelMapIDX();
     }
 
     std::vector<ONI::Rhs2116StimulusData> getProbeStimuliMapped(){
 
         std::vector<ONI::Rhs2116StimulusData> stimuli;
 
-        for(auto& it : settings.deviceStimuli){
-            std::vector<ONI::Rhs2116StimulusData>& ds = it.second;
+        for(size_t i = 0; i < deviceOrderIDX.size(); ++i){
+            auto& it =  settings.deviceStimuli.find(deviceOrderIDX[i]);
+            std::vector<ONI::Rhs2116StimulusData>& ds = it->second;
             for(const auto& s : ds){
                 stimuli.push_back(s);
             }
         }
+
+        //for(auto& it : settings.deviceStimuli){
+        //    std::vector<ONI::Rhs2116StimulusData>& ds = it.second;
+        //    for(const auto& s : ds){
+        //        stimuli.push_back(s);
+        //    }
+        //}
 
         if(stimuli.size() != numProbes){
             LOGERROR("Stimuli and number of probes don't match!");
             return defaultStimuli;
         }
 
-        if(lastChannelMapIDX == multi->getChannelMapIDX()){
+        if(lastInverseChannelMapIDX == multi->getInverseChannelMapIDX()){
             // we're all good
         }else{
             LOGDEBUG("Needs a change");
@@ -472,23 +508,29 @@ public:
             // since the assumption is we are getting the stimulus as mapped...maybe ;)
             std::vector<ONI::Rhs2116StimulusData> temp(stimuli.size());
             for(size_t i = 0; i < temp.size(); ++i){
-                size_t mappedIDX = lastChannelMapIDX[i];
+                size_t mappedIDX = lastInverseChannelMapIDX[i];
                 temp[i] = stimuli[mappedIDX];
             }
             for(size_t i = 0; i < temp.size(); ++i){
-                size_t mappedIDX = multi->getChannelMapIDX()[i];
+                size_t mappedIDX = multi->getInverseChannelMapIDX()[i];
                 stimuli[mappedIDX] = temp[i];
             }
-            lastChannelMapIDX = multi->getChannelMapIDX();
+            lastInverseChannelMapIDX = multi->getInverseChannelMapIDX();
             setProbStimuliMapped(stimuli); //  need to update the device stimuli
         }
 
         return stimuli;
     }
 
-    std::vector<size_t> lastChannelMapIDX;
+    std::vector<size_t> lastInverseChannelMapIDX;
 
     inline void triggerStimulusSequence(){
+
+        //if(isChannelMapChanged()){
+        //    std::vector<ONI::Rhs2116StimulusData> stimuli = getProbeStimuliMapped();
+        //    ONI::Settings::Rhs2116StimulusStep stepSize = conformStepSize(stimuli);
+        //    setStimulusSequence(stimuli, stepSize);
+        //}
 
         deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
         ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGER, 1);
@@ -520,9 +562,14 @@ public:
 
         deviceType.idx = 667;
 
+        size_t deviceCount = 0;
+
         for(const auto& it : settings.deviceStimuli){
 
             Rhs2116Device* device = multi->getDevice(it.first);
+
+            //if(device->getDeviceTypeID() == 256 || device->getDeviceTypeID() == 257){
+            //}
 
             if(!device->setStepSize(stepSize)){
                 LOGERROR("Error setting STEPSZ!!");
@@ -539,7 +586,10 @@ public:
 
             const std::vector<ONI::Rhs2116StimulusData>& thisStimuli = it.second;
 
+            size_t startIDX = deviceCount * 16;
+
             for(size_t i = 0; i < thisStimuli.size(); ++i){
+                LOGDEBUG("Set -ve probe stimulus: %d", startIDX + i);
                 if(!device->writeRegister(ONI::Register::Rhs2116::NEG[i], thisStimuli[i].anodicAmplitudeSteps)){
                     LOGERROR("Error writing to NEG!!");
                     return false;
@@ -547,6 +597,7 @@ public:
             }
 
             for(size_t i = 0; i < thisStimuli.size(); ++i){
+                LOGDEBUG("Set +ve probe stimulus: %d", startIDX + i);
                 if(!device->writeRegister(ONI::Register::Rhs2116::POS[i], thisStimuli[i].cathodicAmplitudeSteps)){
                     LOGERROR("Error writing to POS!!");
                     return false;
@@ -589,6 +640,8 @@ public:
                 return false;
             }
 
+            ++deviceCount;
+
         }
 
         return true;
@@ -602,6 +655,8 @@ public:
                !(s.cathodicWidthSamples == 0 && s.cathodicAmplitudeSteps > 0) &&
                ((s.numberOfStimuli == 1 && s.interStimulusIntervalSamples >= 0) || (s.numberOfStimuli > 1 && s.interStimulusIntervalSamples > 0));
     }
+
+private:
 
     void addOrInsert(std::map<uint32_t, std::bitset<32>>& table, int channel, uint32_t key, bool polarity, bool enable) {
         // Check if key exists in the map
@@ -664,6 +719,10 @@ public:
     //}
 
 protected:
+
+
+
+    std::vector<unsigned int> deviceOrderIDX = {257, 256, 513, 512};
 
     ONI::Rhs2116StimulusData defaultStimulus;
     std::vector<ONI::Rhs2116StimulusData> defaultStimuli;

@@ -46,6 +46,8 @@ public:
 
 	inline void refreshStimuliData(ONI::Device::Rhs2116StimulusDevice& std){
 
+		bool bResetUploadedStimuli = std.isChannelMapChanged();
+
 		stimuli = std.getProbeStimuliMapped();
 		maxStimulusLength = std.getMaxLengthSamples(stimuli);
 		allStimulusAmplitudes = std.getAllStimulusAmplitudes(stimuli);
@@ -84,7 +86,11 @@ public:
 			std::sprintf(probeDropDownChar[i], "Probe %02i", i);
 		}
 
-
+		if(bResetUploadedStimuli){
+			LOGDEBUG("Updating the stimuli upload cos channel map changed -->> DO THIS BETTER WITH EVENT LISTENER");
+			ONI::Settings::Rhs2116StimulusStep  stepSize = std.conformStepSize(stimuli);
+			std.setStimulusSequence(stimuli, stepSize);
+		}
 
 	}
 	
@@ -585,12 +591,14 @@ public:
 
 			for(size_t i = 0; i < allStimulusAmplitudes.size(); ++i){
 
-				if(bShowOnlySetStimuli && stimuli[i].numberOfStimuli == 0) continue;
+				size_t probe_idx = std.multi->getInverseChannelMapIDX()[i]; ///HMMM WTF HEH
+
+				if(bShowOnlySetStimuli && stimuli[probe_idx].numberOfStimuli == 0) continue;
 
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("Probe %d (%d)", i, std.multi->getChannelMapIDX()[i]);
+				ImGui::Text("Probe %d (%d)", i, probe_idx); //std.multi->getChannelMapIDX()[i]
 				ImGui::TableSetColumnIndex(1);
 				//ImGui::Text("  delay-t %.3f ms", stimuli[i].delaySamples / 30.1932367151e3 * 1000.0f);
 				//ImGui::Text("  anode-t %.3f ms", stimuli[i].anodicWidthSamples / 30.1932367151e3 * 1000.0f);
@@ -603,10 +611,10 @@ public:
 
 				ImGui::PushID(i);
 
-				const std::vector<float>& plotAmplitudes = allStimulusAmplitudes[i];
+				const std::vector<float>& plotAmplitudes = allStimulusAmplitudes[probe_idx];
 
-				float min = bPlotRelativeuA ? -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01 : minMicroAmps - 0.01;
-				float max = bPlotRelativeuA ?  stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01 : maxMicroAmps + 0.01;
+				float min = bPlotRelativeuA ? -stimuli[probe_idx].actualAnodicAmplitudeMicroAmps - 0.01 : minMicroAmps - 0.01;
+				float max = bPlotRelativeuA ?  stimuli[probe_idx].actualCathodicAmplitudeMicroAmps + 0.01 : maxMicroAmps + 0.01;
 
 				if(bPlotTimes){
 					ONI::Interface::SparklineTimes("##spark", &plotAmplitudes[0], &allTimeStamps[0], plotAmplitudes.size(), min, max, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);

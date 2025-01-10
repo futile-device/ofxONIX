@@ -105,6 +105,9 @@ public:
 		//	fp.settings = nextSettings;
 		//}
 
+		ImGui::Separator();
+		ImGui::InputInt("Probe Plot Height", &probePlotHeight);
+
 		ImGui::Text("Select Probes to Plot");
 		ImGui::NewLine();
 
@@ -136,9 +139,9 @@ public:
 		
 		fp.processMutex.lock();
 		ONI::Interface::plotCombinedProbes("AC Combined", fp.sparseProbeData, channelSelect, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotIndividualProbes("AC Probes", fp.sparseProbeData, channelSelect, fp.multi->getChannelMapIDX(), ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotIndividualProbes("AC Probes", fp.sparseProbeData, channelSelect, fp.multi->getInverseChannelMapIDX(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
 		ONI::Interface::plotCombinedProbes("DC Combined", fp.sparseProbeData, channelSelect, ONI::Interface::PLOT_DC_DATA);
-		ONI::Interface::plotIndividualProbes("DC Probes", fp.sparseProbeData, channelSelect, fp.multi->getChannelMapIDX(), ONI::Interface::PLOT_DC_DATA);
+		ONI::Interface::plotIndividualProbes("DC Probes", fp.sparseProbeData, channelSelect, fp.multi->getInverseChannelMapIDX(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
 		fp.processMutex.unlock();
 
 		ImGui::PopID();
@@ -157,8 +160,10 @@ public:
 protected:
 
 	std::vector<bool> channelSelect;
+
 	bool bSelectAll = true;
 	
+	int probePlotHeight = 60;
 
 	int bufferSizeTimeMillis = -1;
 	int sparseStepSizeMillis = -1;
