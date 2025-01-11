@@ -90,7 +90,7 @@ static inline void SparklineTimes(const char* id, const float* values, const flo
 // Plot individual Stimulus data for all probes
 static inline void plotIndividualStimulus(const size_t& maxStimulusLength, 
 										  const std::vector<std::vector<float>>& allStimulusAmplitudes, 
-										  const std::vector<ONI::Rhs2116StimulusData>& stimuli){
+										  const std::vector<ONI::Rhs2116StimulusData>& deviceStimuli){
 
 	static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg;
 
@@ -137,7 +137,7 @@ static inline void plotIndividualStimulus(const size_t& maxStimulusLength,
 			//for(size_t j = 0; j < allTimeStamps.size(); ++j) allTimeStamps[j] = j / 30.1932367151e3 * 1000.0f;
 
 			//ONI::Interface::Plot::SparklineTimes("##spark", &plotAmplitudes[0], &allTimeStamps[0], plotAmplitudes.size(), -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
-			ONI::Interface::Sparkline("##spark", &plotAmplitudes[0], plotAmplitudes.size(), -stimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, stimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
+			ONI::Interface::Sparkline("##spark", &plotAmplitudes[0], plotAmplitudes.size(), -deviceStimuli[i].actualAnodicAmplitudeMicroAmps - 0.01, deviceStimuli[i].actualCathodicAmplitudeMicroAmps + 0.01, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
 
 
 

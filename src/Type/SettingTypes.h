@@ -401,21 +401,21 @@ inline bool operator!=(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSett
 
 struct Rhs2116StimulusSettings{
 
-	ONI::Settings::Rhs2116StimulusStep stepSize = Step10nA;
-	std::map<unsigned int, std::vector<ONI::Rhs2116StimulusData>> deviceStimuli;
+	std::vector<ONI::Rhs2116StimulusData> stimuli;
+	ONI::Settings::Rhs2116StimulusStep stepSize =  ONI::Settings::Step10nA;
 
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116StimulusSettings& Rhs2116StimulusSettings::operator=(Rhs2116StimulusSettings other) noexcept{
+		std::swap(stimuli, other.stimuli);
 		std::swap(stepSize, other.stepSize);
-		std::swap(deviceStimuli, other.deviceStimuli);
 		return *this;
 	}
 
 };
 
 
-inline bool operator==(const Rhs2116StimulusSettings& lhs, const Rhs2116StimulusSettings& rhs){ return (lhs.stepSize == rhs.stepSize &&
-																										lhs.deviceStimuli == rhs.deviceStimuli); }
+inline bool operator==(const Rhs2116StimulusSettings& lhs, const Rhs2116StimulusSettings& rhs){ return (lhs.stimuli == rhs.stimuli &&
+																										lhs.stepSize == rhs.stepSize); }
 inline bool operator!=(const Rhs2116StimulusSettings& lhs, const Rhs2116StimulusSettings& rhs) { return !(lhs == rhs); }
 
 

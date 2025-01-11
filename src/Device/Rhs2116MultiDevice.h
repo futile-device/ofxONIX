@@ -292,7 +292,7 @@ public:
 				if(multiFrameRawMap.size() == devices.size()){
 
 					if(bBadFrame){
-						LOGDEBUG("Pickup multiframe %i (%llu) ==> %i", frame->dev_idx, frameRaw.hubTime, nextDeviceCounter);
+						LOGDEBUG("Pickup  multiframe %i (%llu) ==> %i", frame->dev_idx, frameRaw.hubTime, nextDeviceCounter);
 						bBadFrame = false;
 					}
 					

@@ -108,7 +108,7 @@ protected:
 
 	}
 
-	bool writeRegister(const ONI::Register::BaseRegister& reg, const unsigned int& value){
+	bool writeRegister(const ONI::Register::BaseRegister& reg, const unsigned int& value, const bool& bSetWithoutCheck = false){
 
 		assert(ctx != NULL && deviceTypeID != -1, "ONIContext and ONIDevice must be setup");
 		LOGDEBUG("%s write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", BaseProcessor::processorName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
@@ -122,7 +122,8 @@ protected:
 			return false;
 		}
 
-		if(reg.getAddress() != ONI::Register::Fmc::SAVEVOLTAGE &&
+		if(!bSetWithoutCheck &&
+		   reg.getAddress() != ONI::Register::Fmc::SAVEVOLTAGE &&
 		   reg.getAddress() != ONI::Register::Rhs2116::DELTAIDXTIME &&
 		   reg.getAddress() != ONI::Register::Rhs2116::DELTAPOLEN &&
 		   reg.getAddress() != ONI::Register::Rhs2116::TRIGGER &&

@@ -207,8 +207,8 @@ public:
 		return ONI::Device::BaseDevice::readRegister(reg);
 	}
 
-	virtual bool writeRegister(const ONI::Register::Rhs2116Register& reg, const unsigned int& value){
-		return ONI::Device::BaseDevice::writeRegister(reg, value);
+	virtual bool writeRegister(const ONI::Register::Rhs2116Register& reg, const unsigned int& value, const bool& bSetWithoutCheck = false){
+		return ONI::Device::BaseDevice::writeRegister(reg, value, bSetWithoutCheck);
 	}
 
 	inline void forceGuiUpdate(){

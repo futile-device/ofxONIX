@@ -121,28 +121,30 @@ void ofApp::setup(){
 
     ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice(); // make sure to call this after multi device is initialized with devices!
 
-    rhs2116StimDevice->conformStepSize(s1);
-    rhs2116StimDevice->conformStepSize(s2);
+    rhs2116StimDevice->getRequiredStepSize(s1);
+    rhs2116StimDevice->getRequiredStepSize(s2);
 
-    rhs2116StimDevice->setProbeStimulus(s1, 0);
-    rhs2116StimDevice->setProbeStimulus(s2, 1);
+    rhs2116StimDevice->stageStimulus(s1, 0);
+    rhs2116StimDevice->stageStimulus(s2, 1);
 
-    std::vector<ONI::Rhs2116StimulusData> stimuli = rhs2116StimDevice->getProbeStimuliMapped();
-    std::vector<ONI::Rhs2116StimulusData> lastStimuli = stimuli;
+    std::vector<ONI::Rhs2116StimulusData> stagedStimuli = rhs2116StimDevice->getStimuli(ONI::Device::Rhs2116StimulusDevice::SettingType::STAGED);
+    std::vector<ONI::Rhs2116StimulusData> lastStimuli = stagedStimuli;
 
-    ONI::Settings::Rhs2116StimulusStep stepSize = rhs2116StimDevice->conformStepSize(stimuli);
+    ONI::Settings::Rhs2116StimulusStep stepSize = rhs2116StimDevice->getRequiredStepSize(stagedStimuli);
 
-    for(size_t i = 0; i < stimuli.size(); ++i){
-        if(stimuli[i].requestedAnodicAmplitudeMicroAmps != stimuli[i].actualAnodicAmplitudeMicroAmps){
-            LOGINFO("Probe %i anodic uA will change from %0.3f to %0.3f: ", i, stimuli[i].requestedAnodicAmplitudeMicroAmps, stimuli[i].actualAnodicAmplitudeMicroAmps);
-            LOGINFO("Probe %i cathod uA will change from %0.3f to %0.3f: ", i, stimuli[i].requestedCathodicAmplitudeMicroAmps, stimuli[i].actualCathodicAmplitudeMicroAmps);
+    for(size_t i = 0; i < stagedStimuli.size(); ++i){
+        if(stagedStimuli[i].requestedAnodicAmplitudeMicroAmps != stagedStimuli[i].actualAnodicAmplitudeMicroAmps){
+            LOGINFO("Probe %i anodic uA will change from %0.3f to %0.3f: ", i, stagedStimuli[i].requestedAnodicAmplitudeMicroAmps, stagedStimuli[i].actualAnodicAmplitudeMicroAmps);
+            LOGINFO("Probe %i cathod uA will change from %0.3f to %0.3f: ", i, stagedStimuli[i].requestedCathodicAmplitudeMicroAmps, stagedStimuli[i].actualCathodicAmplitudeMicroAmps);
         }
     }
+
+    rhs2116StimDevice->applyStagedStimuliToDevice();
 
     //rhs2116StimDevice->setProbStimuliMapped(stimuli);
 
 
-    rhs2116StimDevice->setStimulusSequence(stimuli, stepSize);
+    //rhs2116StimDevice->setStimulusSequence(stimuli, stepSize);
 
 
 

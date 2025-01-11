@@ -46,19 +46,20 @@ public:
 
 	inline void refreshStimuliData(ONI::Device::Rhs2116StimulusDevice& std){
 
-		bool bResetUploadedStimuli = std.isChannelMapChanged();
+		deviceStimuli = std.getStimuli(ONI::Device::Rhs2116StimulusDevice::SettingType::DEVICE);
+		stagedStimuli = std.getStimuli(ONI::Device::Rhs2116StimulusDevice::SettingType::STAGED);
 
-		stimuli = std.getProbeStimuliMapped();
-		maxStimulusLength = std.getMaxLengthSamples(stimuli);
-		allStimulusAmplitudes = std.getAllStimulusAmplitudes(stimuli);
+
+		maxStimulusLength = std.getMaxLengthSamples(ONI::Device::Rhs2116StimulusDevice::SettingType::DEVICE);
+		allStimulusAmplitudes = std.getAllStimulusAmplitudes(ONI::Device::Rhs2116StimulusDevice::SettingType::DEVICE);
 
 		maxMicroAmps = -INFINITY;
 		minMicroAmps = INFINITY;
 
 		// conform all amplitude plots to the same length
-		for(size_t i = 0; i < stimuli.size(); ++i){
-			if(-stimuli[i].actualAnodicAmplitudeMicroAmps < minMicroAmps) minMicroAmps = -stimuli[i].actualAnodicAmplitudeMicroAmps;
-			if(stimuli[i].actualCathodicAmplitudeMicroAmps > maxMicroAmps) maxMicroAmps = stimuli[i].actualCathodicAmplitudeMicroAmps;
+		for(size_t i = 0; i < deviceStimuli.size(); ++i){
+			if(-deviceStimuli[i].actualAnodicAmplitudeMicroAmps < minMicroAmps) minMicroAmps = -deviceStimuli[i].actualAnodicAmplitudeMicroAmps;
+			if(deviceStimuli[i].actualCathodicAmplitudeMicroAmps > maxMicroAmps) maxMicroAmps = deviceStimuli[i].actualCathodicAmplitudeMicroAmps;
 			
 			size_t sampleDiff = maxStimulusLength - allStimulusAmplitudes[i].size();
 			for(size_t j = 0; j < sampleDiff; ++j) allStimulusAmplitudes[i].push_back(0);
@@ -67,7 +68,7 @@ public:
 		allTimeStamps.resize(maxStimulusLength);
 		for(size_t j = 0; j < allTimeStamps.size(); ++j) allTimeStamps[j] = j / 30.1932367151e3 * 1000.0f;
 
-		currentStimulusStepSize = std.conformStepSize(currentStimulus);
+		currentStimulusStepSize = std.getRequiredStepSize(currentStimulus);
 		currentStimulusStepSizeMicroAmps = ONI::Settings::Rhs2116StimulusStepMicroAmps[currentStimulusStepSize];
 		currentStimulusAmplitudes = std.getStimulusAmplitudes(currentStimulus);
 
@@ -84,12 +85,6 @@ public:
 		for(size_t i = 0; i < std.getNumProbes(); ++i){
 			probeDropDownChar[i] = new char[16];
 			std::sprintf(probeDropDownChar[i], "Probe %02i", i);
-		}
-
-		if(bResetUploadedStimuli){
-			LOGDEBUG("Updating the stimuli upload cos channel map changed -->> DO THIS BETTER WITH EVENT LISTENER");
-			ONI::Settings::Rhs2116StimulusStep  stepSize = std.conformStepSize(stimuli);
-			std.setStimulusSequence(stimuli, stepSize);
 		}
 
 	}
@@ -114,7 +109,7 @@ public:
 		ImGui::Text(std.getName().c_str());
 
 
-		if(stimuli.size() == 0 || std.isChannelMapChanged()){ // ...then this is the first time we are drawing the gui
+		if(deviceStimuli.size() == 0){ // ...then this is the first time we are drawing the gui //|| std.isChannelMapChanged()
 			refreshStimuliData(std);
 		}
 
@@ -174,11 +169,11 @@ public:
 		static int probeItemIDX = 0; //format.dspEnable == 1 ? format.dspCutoff : Rhs2116DspCutoff::Off;
 		ImGui::Combo("##", &probeItemIDX, &probeDropDownChar[0], probeDropDownChar.size(), 5);
 
-		if(stimuli[probeItemIDX].numberOfStimuli == 0)  ImGui::BeginDisabled();
+		if(stagedStimuli[probeItemIDX].numberOfStimuli == 0)  ImGui::BeginDisabled();
 		ImGui::SameLine();
 		if(ImGui::Button("Load")){
 			lastStimulus = std.defaultStimulus;
-			currentStimulus = stimuli[probeItemIDX];
+			currentStimulus = stagedStimuli[probeItemIDX];
 			bLastSelectAll = bSelectAll = false;
 			for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = false;
 			channelSelect[probeItemIDX] = true;
@@ -190,23 +185,23 @@ public:
 		ImGui::SameLine();
 		if(ImGui::Button("Delete")){ // let's load it just in case?
 			lastStimulus = std.defaultStimulus;
-			currentStimulus = stimuli[probeItemIDX];
+			currentStimulus = stagedStimuli[probeItemIDX];
 			bLastSelectAll = bSelectAll = false;
 			for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = false;
 			channelSelect[probeItemIDX] = true;
 			toDeleteIDX.push_back(probeItemIDX);
 		}
 
-		if(stimuli[probeItemIDX].numberOfStimuli == 0)  ImGui::EndDisabled();
+		if(stagedStimuli[probeItemIDX].numberOfStimuli == 0)  ImGui::EndDisabled();
 
 		ImGui::SameLine();
 		if(ImGui::Button("Delete All")){ // let's load it just in case?
 			lastStimulus = std.defaultStimulus;
-			currentStimulus = stimuli[probeItemIDX];
+			currentStimulus = stagedStimuli[probeItemIDX];
 			bLastSelectAll = bSelectAll = false;
 			for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = false;
 			channelSelect[probeItemIDX] = true;
-			for(size_t i = 0; i < stimuli.size(); ++i) if(stimuli[i].numberOfStimuli > 0) toDeleteIDX.push_back(i);
+			for(size_t i = 0; i < stagedStimuli.size(); ++i) if(stagedStimuli[i].numberOfStimuli > 0) toDeleteIDX.push_back(i);
 		}
 
 		if(toDeleteIDX.size() > 0){
@@ -233,7 +228,7 @@ public:
 			} 
 			ImGui::SameLine();
 			if (ImGui::Button("OK", ImVec2(120, 0))){ 
-				for(size_t i = 0; i < toDeleteIDX.size(); ++i) std.deleteProbeStimulus(toDeleteIDX[i]);
+				for(size_t i = 0; i < toDeleteIDX.size(); ++i) std.unstageStimulus(toDeleteIDX[i]);
 				toDeleteIDX.clear();
 				refreshStimuliData(std);
 				bDeleted = true;
@@ -367,7 +362,7 @@ public:
 		ImGui::NewLine();
 		ImGui::Separator();
 		ImGui::NewLine();
-
+		if(!std.isDeviceChannelMapSynced()) ImGui::BeginDisabled();
 		ImGui::Text("Select Probes to Apply Stimulus");
 		ImGui::NewLine();
 
@@ -379,11 +374,11 @@ public:
 		if(bLastSelectAll != bSelectAll && !bSelectAll) for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = false;
 
 		if(channelSelect.size() == 0){
-			channelSelect.resize(stimuli.size());
-			for(size_t i = 0; i < stimuli.size(); ++i) channelSelect[i] = false;
+			channelSelect.resize(deviceStimuli.size());
+			for(size_t i = 0; i < deviceStimuli.size(); ++i) channelSelect[i] = false;
 		}
 
-		for(size_t i = 0; i < stimuli.size(); ++i){
+		for(size_t i = 0; i < deviceStimuli.size(); ++i){
 			if(i != 0 && i % 8 != 0) ImGui::SameLine();
 			std::sprintf(buf, "%02i", i);
 			bool b = channelSelect[i];
@@ -393,8 +388,8 @@ public:
 			if(b) ++selectCount;
 		}
 
-		if(selectCount == stimuli.size()) bSelectAll = true;
-
+		if(selectCount == deviceStimuli.size()) bSelectAll = true;
+		if(!std.isDeviceChannelMapSynced()) ImGui::EndDisabled();
 
 
 		/////////////////////////////////////////////////////////////////////
@@ -407,21 +402,22 @@ public:
 		bool bStimuliNeedConfirmation = false;
 		bool bApplyStimulus = false;
 
-		ONI::Settings::Rhs2116StimulusStep stagedStepSize = ONI::Settings::Rhs2116StimulusStep::Step10nA;
+		ONI::Settings::Rhs2116StimulusStep editedStepSize = ONI::Settings::Rhs2116StimulusStep::Step10nA;
 
 		ImGui::NewLine();
 
+		if(!std.isDeviceChannelMapSynced()) ImGui::BeginDisabled();
 		if(ImGui::Button("Apply Stimulus to Selected") || bDeleted){
 
-			stagedStimuli = stimuli;
+			editedStimuli = stagedStimuli;
 
 			size_t stepCount = 0;
-			for(size_t i = 0; i < stimuli.size(); ++i){
+			for(size_t i = 0; i < deviceStimuli.size(); ++i){
 				//size_t channelMappedIDX = std.multi->getChannelMapIDX()[i]; // make sure we set things to the mapped IDX!!
 				if(channelSelect[i] && !bDeleted){
-					stagedStimuli[i] = currentStimulus;
+					editedStimuli[i] = currentStimulus;
 				}
-				stepCount += stagedStimuli[i].numberOfStimuli; // count the number of stimuli
+				stepCount += editedStimuli[i].numberOfStimuli; // count the number of stimuli
 			}
 
 			bDeleted = false;
@@ -430,23 +426,23 @@ public:
 
 				// IF THEY DO, CHECK IF WE NEED TO MODIFY STEP SIZES ACROSS STUMULI
 
-				stagedStepSize = std.conformStepSize(stagedStimuli);
+				editedStepSize = std.getRequiredStepSize(editedStimuli);
 
 				sequenceMessage = "The following stimuli will be changed:\n";
 
-				for(size_t i = 0; i < stagedStimuli.size(); ++i){
+				for(size_t i = 0; i < editedStimuli.size(); ++i){
 
-					if(stagedStimuli[i].requestedAnodicAmplitudeMicroAmps != stagedStimuli[i].actualAnodicAmplitudeMicroAmps){
+					if(editedStimuli[i].requestedAnodicAmplitudeMicroAmps != editedStimuli[i].actualAnodicAmplitudeMicroAmps){
 
 						bStimuliNeedConfirmation = true;
 
 						char buf[256];
-						std::sprintf(buf, "Probe %i anodic uA will change from %0.3f to %0.3f: \n", i, stagedStimuli[i].requestedAnodicAmplitudeMicroAmps, stagedStimuli[i].actualAnodicAmplitudeMicroAmps);
+						std::sprintf(buf, "Probe %i anodic uA will change from %0.3f to %0.3f: \n", i, editedStimuli[i].requestedAnodicAmplitudeMicroAmps, editedStimuli[i].actualAnodicAmplitudeMicroAmps);
 						sequenceMessage.append(buf);
-						std::sprintf(buf, "Probe %i cathod uA will change from %0.3f to %0.3f: \n", i, stagedStimuli[i].requestedCathodicAmplitudeMicroAmps, stagedStimuli[i].actualCathodicAmplitudeMicroAmps);
+						std::sprintf(buf, "Probe %i cathod uA will change from %0.3f to %0.3f: \n", i, editedStimuli[i].requestedCathodicAmplitudeMicroAmps, editedStimuli[i].actualCathodicAmplitudeMicroAmps);
 						sequenceMessage.append(buf);
-						LOGALERT("Probe %i anodic uA will change from %0.3f to %0.3f: ", i, stagedStimuli[i].requestedAnodicAmplitudeMicroAmps, stagedStimuli[i].actualAnodicAmplitudeMicroAmps);
-						LOGALERT("Probe %i cathod uA will change from %0.3f to %0.3f: ", i, stagedStimuli[i].requestedCathodicAmplitudeMicroAmps, stagedStimuli[i].actualCathodicAmplitudeMicroAmps);
+						LOGALERT("Probe %i anodic uA will change from %0.3f to %0.3f: ", i, editedStimuli[i].requestedAnodicAmplitudeMicroAmps, editedStimuli[i].actualAnodicAmplitudeMicroAmps);
+						LOGALERT("Probe %i cathod uA will change from %0.3f to %0.3f: ", i, editedStimuli[i].requestedCathodicAmplitudeMicroAmps, editedStimuli[i].actualCathodicAmplitudeMicroAmps);
 					
 					}
 				}
@@ -470,6 +466,19 @@ public:
 
 			}
 
+		}
+		if(!std.isDeviceChannelMapSynced()) ImGui::EndDisabled();
+
+		if(!std.isDeviceChannelMapSynced()){
+			ImGui::SameLine();
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(255, 0, 0, 127));
+			if(ImGui::Button("Resync Device Stimulus")){
+				std.updateStimuliOnDevice();
+				refreshStimuliData(std);
+			}
+			ImGui::SameLine();
+			ImGui::Text("(channel map has changed!)");
+			ImGui::PopStyleColor();
 		}
 
 		ImGui::NewLine();
@@ -517,8 +526,10 @@ public:
 		/////////////////////////////////////////////////////////////////////
 
 		if(bApplyStimulus){
-			stimuli = stagedStimuli;
-			std.setStimulusSequence(stimuli, stagedStepSize);
+			//stimuli = editedStimuli;
+			std.stageStimuli(editedStimuli);
+			std.conformStepSize(ONI::Device::Rhs2116StimulusDevice::SettingType::STAGED);
+			std.applyStagedStimuliToDevice();
 			refreshStimuliData(std);
 		}
 
@@ -591,14 +602,15 @@ public:
 
 			for(size_t i = 0; i < allStimulusAmplitudes.size(); ++i){
 
-				size_t probe_idx = std.multi->getInverseChannelMapIDX()[i]; ///HMMM WTF HEH
+				size_t rhsProbeIDX = std.multi->getInverseChannelMapIDX()[i]; ///HMMM WTF HEH
+				size_t meaProbeIDX =  std.multi->getChannelMapIDX()[rhsProbeIDX]; ///HMMM WTF HEH
 
-				if(bShowOnlySetStimuli && stimuli[probe_idx].numberOfStimuli == 0) continue;
+				if(bShowOnlySetStimuli && deviceStimuli[rhsProbeIDX].numberOfStimuli == 0) continue;
 
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("Probe %d (%d)", i, probe_idx); //std.multi->getChannelMapIDX()[i]
+				ImGui::Text("Probe %d (%d)", meaProbeIDX, rhsProbeIDX); //std.multi->getChannelMapIDX()[i]
 				ImGui::TableSetColumnIndex(1);
 				//ImGui::Text("  delay-t %.3f ms", stimuli[i].delaySamples / 30.1932367151e3 * 1000.0f);
 				//ImGui::Text("  anode-t %.3f ms", stimuli[i].anodicWidthSamples / 30.1932367151e3 * 1000.0f);
@@ -611,10 +623,10 @@ public:
 
 				ImGui::PushID(i);
 
-				const std::vector<float>& plotAmplitudes = allStimulusAmplitudes[probe_idx];
+				const std::vector<float>& plotAmplitudes = allStimulusAmplitudes[rhsProbeIDX];
 
-				float min = bPlotRelativeuA ? -stimuli[probe_idx].actualAnodicAmplitudeMicroAmps - 0.01 : minMicroAmps - 0.01;
-				float max = bPlotRelativeuA ?  stimuli[probe_idx].actualCathodicAmplitudeMicroAmps + 0.01 : maxMicroAmps + 0.01;
+				float min = bPlotRelativeuA ? -deviceStimuli[rhsProbeIDX].actualAnodicAmplitudeMicroAmps - 0.01 : minMicroAmps - 0.01;
+				float max = bPlotRelativeuA ?  deviceStimuli[rhsProbeIDX].actualCathodicAmplitudeMicroAmps + 0.01 : maxMicroAmps + 0.01;
 
 				if(bPlotTimes){
 					ONI::Interface::SparklineTimes("##spark", &plotAmplitudes[0], &allTimeStamps[0], plotAmplitudes.size(), min, max, offset, ImPlot::GetColormapColor(i), ImVec2(-1, 80), true);
@@ -655,8 +667,9 @@ protected:
 	float maxMicroAmps = 0;
 	float minMicroAmps = 0;
 
-	std::vector<ONI::Rhs2116StimulusData> stimuli;
-	
+	std::vector<ONI::Rhs2116StimulusData> deviceStimuli;
+	std::vector<ONI::Rhs2116StimulusData> stagedStimuli;
+
 	std::vector<char*> probeDropDownChar;
 
 	std::vector<std::vector<float>> allStimulusAmplitudes;
@@ -673,7 +686,7 @@ protected:
 	ONI::Settings::Rhs2116StimulusStep currentStimulusStepSize = ONI::Settings::Rhs2116StimulusStep::Step10nA;
 	float currentStimulusStepSizeMicroAmps = 0.01;
 
-	std::vector<ONI::Rhs2116StimulusData> stagedStimuli;
+	std::vector<ONI::Rhs2116StimulusData> editedStimuli;
 	std::vector<bool> channelSelect;
 
 	std::string sequenceMessage = "";
