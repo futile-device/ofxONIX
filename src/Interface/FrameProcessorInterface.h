@@ -101,9 +101,6 @@ public:
 
 		if(!bBuffersNeedUpdate && !bAppliedSettings) ImGui::EndDisabled();
 
-		//if(fp.settings != nextSettings) {
-		//	fp.settings = nextSettings;
-		//}
 
 		ImGui::Separator();
 		ImGui::InputInt("Probe Plot Height", &probePlotHeight);
