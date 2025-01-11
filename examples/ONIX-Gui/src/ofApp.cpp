@@ -141,12 +141,6 @@ void ofApp::setup(){
 
     rhs2116StimDevice->applyStagedStimuliToDevice();
 
-    //rhs2116StimDevice->setProbStimuliMapped(stimuli);
-
-
-    //rhs2116StimDevice->setStimulusSequence(stimuli, stepSize);
-
-
 
     //rhs2116Device1->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
     //rhs2116Device1->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);

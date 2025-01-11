@@ -273,6 +273,7 @@ namespace Rhs2116Stimulus{
 static inline const Rhs2116StimulusRegister ENABLE = Rhs2116StimulusRegister(0, "ENABLE"); // Writes and reads to ENABLE are ignored without error
 static inline const Rhs2116StimulusRegister TRIGGERSOURCE = Rhs2116StimulusRegister(1, "TRIGGERSOURCE"); // The LSB is used to determine the trigger source
 static inline const Rhs2116StimulusRegister TRIGGER = Rhs2116StimulusRegister(2, "TRIGGER"); // Writing 0x1 to this register will trigger a stimulation sequence if the TRIGGERSOURCE is set to 0.
+//TODO: do we need to have two TRIGGER registers defined???
 }; //namespace Rhs2116Stimulus{
 
 

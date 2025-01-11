@@ -114,6 +114,17 @@ public:
 			}
 		}
 
+		//if(rhs2116StimDevice != nullptr){
+		//	if(rhs2116StimDevice->getContexteNeedsReset()){
+		//		device_changed = (ONI::Device::BaseDevice*)rhs2116StimDevice;
+		//		bContextNeedsReset = true;
+		//	}
+		//	if(rhs2116StimDevice->getContexteNeedsRestart()){
+		//		device_changed = (ONI::Device::BaseDevice*)rhs2116StimDevice;
+		//		bContextNeedsRestart = true;
+		//	}
+		//}
+
 		if(bContextNeedsRestart){
 			LOGDEBUG("Device requires context restart: %s", device_changed->getName().c_str());
 			setupContext();
@@ -125,13 +136,11 @@ public:
 			bool bResetAcquire = bIsAcquiring;
 			if(bResetAcquire) stopAcquisition();
 			setContextOption(ONI::ContextOption::RESET, 1);
-			//setContextOption(ONIContext::BLOCKREADSIZE, blockReadBytes); // WHY? For some reason this needs resetting 
-			//setContextOption(ONIContext::BLOCKWRITESIZE, blockWriteBytes);
-			if(bResetAcquire){ 
-				startAcquisition();
-			}else{
-				device_changed->reset();
-			}
+			if(bResetAcquire) startAcquisition();
+			//else{
+			//	device_changed->reset();
+			//}
+			device_changed->reset();
 		}
 
 		if(bStopPlaybackThread) stopPlaying();
@@ -204,6 +213,14 @@ public:
 				rhd2116->reset();
 				oniDevices[devices_t[i].idx] = rhd2116;
 			}
+
+			//if(devices_t[i].id == ONI::Device::TypeID::RHS2116){ // 31 RHS2116 Device
+			//	LOGDEBUG("Mapping Rhs2116 Stim Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
+			//	//ONI::Device::Rhs2116Device* rhd2116 = new ONI::Device::Rhs2116Device;
+			//	//rhd2116->setup(&ctx, devices_t[i], acq_clock_khz);
+			//	//rhd2116->reset();
+			//	//oniDevices[devices_t[i].idx] = rhd2116;
+			//}
 
 		}
 

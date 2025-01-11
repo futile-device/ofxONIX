@@ -91,6 +91,21 @@ public:
         BaseDevice::reset(); // always call device specific setup/reset
         deviceSetup(); // always call device specific setup/reset
 
+        deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
+        //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
+        if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
+            LOGERROR("Error writing to TRIGGERSOURCE!!");
+        }
+
+        deviceType.idx = 514; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
+        //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
+        if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
+            LOGERROR("Error writing to TRIGGERSOURCE!!");
+        }
+
+        deviceType.idx = 667;
+
+
     }
 
     void deviceSetup(){
@@ -211,8 +226,14 @@ public:
 
     bool updateStimuliOnDevice(){
         ONI::Settings::Rhs2116StimulusSettings tempStagedSettings = stagedSettings; // make a back up, so we can restore
+        const std::vector<size_t>& currentChannelMap = multi->getChannelMapIDX();
+        const std::vector<size_t>& currentInverseChannelMap = multi->getInverseChannelMapIDX();
         for(size_t i = 0; i < deviceSettings.stimuli.size(); ++i){
-            size_t probeIDX = multi->getChannelMapIDX()[lastAppliedChannelMap[i]];
+            size_t a = currentChannelMap[i];
+            size_t b = currentInverseChannelMap[i];
+            if(a == lastAppliedChannelMap[i] || b == lastAppliedInverseChannelMap[i]) continue; // don't swap things that are unchanged
+            size_t probeIDX = currentChannelMap[lastAppliedChannelMap[i]];
+
             stagedSettings.stimuli[probeIDX] = deviceSettings.stimuli[i]; // SO WE ONLY DO THE ACTUAL MAPPING WHEN SENDING THE STIMULI TO DEVICE (use a different function for plotting in the interface)
         }
         bool bOK = applyStagedStimuliToDevice();
@@ -221,6 +242,8 @@ public:
     }
 
     bool applyStagedStimuliToDevice(){
+
+
 
         // conform stepsize just in case
         ONI::Settings::Rhs2116StimulusStep ss = stagedSettings.stepSize;
@@ -238,6 +261,7 @@ public:
         }
 
         lastAppliedChannelMap = multi->getChannelMapIDX();
+        lastAppliedInverseChannelMap = multi->getInverseChannelMapIDX();
 
         deviceSettings.stepSize = stagedSettings.stepSize; // conformStepSize(SettingType::DEVICE);
         
@@ -335,26 +359,6 @@ public:
             }
 
         }
-
-        deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
-        //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
-        if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
-            LOGERROR("Error writing to TRIGGERSOURCE!!");
-            deviceSettings.stimuli = defaultStimuli; // hard reset device settings
-            deviceSettings.stepSize = ONI::Settings::Step10nA;
-            return false;
-        }
-
-        deviceType.idx = 514; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
-        //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
-        if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
-            LOGERROR("Error writing to TRIGGERSOURCE!!");
-            deviceSettings.stimuli = defaultStimuli; // hard reset device settings
-            deviceSettings.stepSize = ONI::Settings::Step10nA;
-            return false;
-        }
-
-        deviceType.idx = 667;
 
     }
 
@@ -625,6 +629,7 @@ protected:
     ONI::Settings::Rhs2116StimulusSettings deviceSettings; // these should always reflect what's programmed on the devices
 
     std::vector<size_t> lastAppliedChannelMap;
+    std::vector<size_t> lastAppliedInverseChannelMap;
 
 };
 

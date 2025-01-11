@@ -568,6 +568,7 @@ public:
 				}
 
 			}
+
 			ImGui::PopID();
 
 			ImPlot::EndPlot();
@@ -600,17 +601,35 @@ public:
 			ImGui::TableHeadersRow();
 			ImPlot::PushColormap(ImPlotColormap_Cool);
 
+
+
 			for(size_t i = 0; i < allStimulusAmplitudes.size(); ++i){
 
-				size_t rhsProbeIDX = std.multi->getInverseChannelMapIDX()[i]; ///HMMM WTF HEH
-				size_t meaProbeIDX =  std.multi->getChannelMapIDX()[rhsProbeIDX]; ///HMMM WTF HEH
+				size_t rhsProbeIDX = std.lastAppliedInverseChannelMap[i];
+				size_t meaProbeIDX =  std.lastAppliedChannelMap[rhsProbeIDX];
 
 				if(bShowOnlySetStimuli && deviceStimuli[rhsProbeIDX].numberOfStimuli == 0) continue;
 
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("Probe %d (%d)", meaProbeIDX, rhsProbeIDX); //std.multi->getChannelMapIDX()[i]
+
+				if(std.isDeviceChannelMapSynced()){
+					ImGui::Text("Probe %d (%d)", meaProbeIDX, rhsProbeIDX);
+				}else{
+					const std::vector<size_t>& currentChannelMap = std.multi->getChannelMapIDX();
+					const std::vector<size_t>& currentInverseChannelMap = std.multi->getInverseChannelMapIDX();
+					size_t tRhsProbeIDX = currentInverseChannelMap[i];
+					size_t tMeaProbeIDX =  currentChannelMap[tRhsProbeIDX];
+					if(tRhsProbeIDX != rhsProbeIDX || meaProbeIDX != tMeaProbeIDX){
+						ImGui::Text("SYNC %d (%d)", tMeaProbeIDX, tRhsProbeIDX);
+					}else{
+						ImGui::Text("Probe %d (%d)", meaProbeIDX, rhsProbeIDX);
+					}
+					
+					
+				}
+
 				ImGui::TableSetColumnIndex(1);
 				//ImGui::Text("  delay-t %.3f ms", stimuli[i].delaySamples / 30.1932367151e3 * 1000.0f);
 				//ImGui::Text("  anode-t %.3f ms", stimuli[i].anodicWidthSamples / 30.1932367151e3 * 1000.0f);
