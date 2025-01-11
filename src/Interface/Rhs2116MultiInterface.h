@@ -122,31 +122,31 @@ public:
 
 							size_t x = column - 1;
 							size_t y = row;
-							bool b = nextSettings.channelMap[y][x];
+							bool b = nextSettings.channelMap[x][y];
 
 							ImGui::Checkbox("", &b);
 							ImGui::SetItemTooltip("Probe %i to Electrode %i", y, x);
 
 							// always swap the selected mapping for an electrode
-							if(b != nextSettings.channelMap[y][x]){
+							if(b != nextSettings.channelMap[x][y]){
 								int swapIDXx = -1;
 								int swapIDXy = -1;
 								for(size_t xx = 0; xx < numProbes; ++xx) {
-									if(nextSettings.channelMap[y][xx] && swapIDXx == -1){
+									if(nextSettings.channelMap[xx][y] && swapIDXx == -1){
 										swapIDXx = xx;  
 										LOGDEBUG("From (x,y) (%i,%i) to (%i,%i)", y, swapIDXx, y, x);
 									}
-									nextSettings.channelMap[y][xx] = false; // toggle off everything in this row
+									nextSettings.channelMap[xx][y] = false; // toggle off everything in this row
 								}
 								for(size_t yy = 0; yy < numProbes; ++yy){
-									if(nextSettings.channelMap[yy][x] && swapIDXy == -1) {
+									if(nextSettings.channelMap[x][yy] && swapIDXy == -1) {
 										swapIDXy = yy;
 										LOGDEBUG("Switch (x,y) (%i,%i) to (%i,%i)", swapIDXy, x, swapIDXy, swapIDXx);
 									}
-									nextSettings.channelMap[yy][x] = false; // toggle off everything in this col
+									nextSettings.channelMap[x][yy] = false; // toggle off everything in this col
 								}
-								nextSettings.channelMap[y][x] = true;
-								if(swapIDXy != -1 && swapIDXx != -1) nextSettings.channelMap[swapIDXy][swapIDXx] = true;
+								nextSettings.channelMap[x][y] = true;
+								if(swapIDXy != -1 && swapIDXx != -1) nextSettings.channelMap[swapIDXx][swapIDXy] = true;
 								bChannelMapNeedsUpdate = true;
 							}
 							ImGui::PopID();

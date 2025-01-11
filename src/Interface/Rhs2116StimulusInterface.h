@@ -626,8 +626,6 @@ public:
 					}else{
 						ImGui::Text("Probe %d (%d)", meaProbeIDX, rhsProbeIDX);
 					}
-					
-					
 				}
 
 				ImGui::TableSetColumnIndex(1);
