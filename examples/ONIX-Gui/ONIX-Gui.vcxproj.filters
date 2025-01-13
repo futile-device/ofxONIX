@@ -2885,12 +2885,6 @@
     <ClInclude Include="..\..\src\Device\Rhs2116Device.h">
       <Filter>addons\ofxONIX\src\Device</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Device\Rhs2116MultiDevice.h">
-      <Filter>addons\ofxONIX\src\Device</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\src\Device\Rhs2116StimulusDevice.h">
-      <Filter>addons\ofxONIX\src\Device</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\BaseInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
@@ -2909,13 +2903,13 @@
     <ClInclude Include="..\..\src\Interface\Rhs2116MultiInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Interface\Rhs2116StimulusInterface.h">
+    <ClInclude Include="..\..\src\Interface\Rhs2116StimInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\DataBuffer.h">
       <Filter>addons\ofxONIX\src\Type</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\DeviceTypes.h">
+    <ClInclude Include="..\..\src\Type\GlobalTypes.h">
       <Filter>addons\ofxONIX\src\Type</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\FrameTypes.h">
@@ -2960,10 +2954,25 @@
     <ClInclude Include="..\..\src\Processor\SpikeProcessor.h">
       <Filter>addons\ofxONIX\src\Processor</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Processor\FrameProcessor.h">
+    <ClInclude Include="..\..\src\Processor\BufferProcessor.h">
       <Filter>addons\ofxONIX\src\Processor</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Interface\FrameProcessorInterface.h">
+    <ClInclude Include="..\..\src\Interface\BufferInterface.h">
+      <Filter>addons\ofxONIX\src\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Processor\Rhs2116MultiProcessor.h">
+      <Filter>addons\ofxONIX\src\Processor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Processor\Rhs2116StimProcessor.h">
+      <Filter>addons\ofxONIX\src\Processor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Device\Rhs2116StimDevice.h">
+      <Filter>addons\ofxONIX\src\Device</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Processor\ChannelMapProcessor.h">
+      <Filter>addons\ofxONIX\src\Processor</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Interface\ChannelMapInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
   </ItemGroup>

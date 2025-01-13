@@ -55,36 +55,37 @@ void ofApp::setup(){
     ONI::Device::Rhs2116Device* rhs2116Device3 = (ONI::Device::Rhs2116Device*)oni.getDevice(512);
     ONI::Device::Rhs2116Device* rhs2116Device4 = (ONI::Device::Rhs2116Device*)oni.getDevice(513);
 
-    
+    //rhs2116Device1->readRegister(ONI::Register::Rhs2116::MAXDELTAS);
 
-    //rhs2116Device1->loadConfig("default");
-    //rhs2116Device2->loadConfig("default"); 
+    ONI::Processor::Rhs2116MultiProcessor* multi = oni.createRhs2116MultiProcessor();
 
-    //fu::debug << rhs2116Device1->getFormat(true) << fu::endl;
+    multi->setup();
 
-    rhs2116Device1->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
-    rhs2116Device2->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
-    rhs2116Device3->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
-    rhs2116Device4->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
-    //rhs2116Device1->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
-    //rhs2116Device2->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
-
-    rhs2116Device1->readRegister(ONI::Register::Rhs2116::MAXDELTAS);
-
-    ONI::Device::Rhs2116MultiDevice* multi = oni.getMultiDevice();
     multi->addDevice(rhs2116Device1);
     multi->addDevice(rhs2116Device2);
     multi->addDevice(rhs2116Device3);
     multi->addDevice(rhs2116Device4);
 
-    ONI::Processor::FrameProcessor* frameProcessor = oni.getFrameProcessor(); // this auto creates
-    ONI::Processor::SpikeProcessor* spikeProcessor = oni.getSpikeProcessor(); // this auto creates
+    multi->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Differential);
+    multi->setAnalogLowCutoff(ONI::Settings::Rhs2116AnalogLowCutoff::Low100mHz);
+    multi->setAnalogLowCutoffRecovery(ONI::Settings::Rhs2116AnalogLowCutoff::Low250Hz);
+    multi->setAnalogHighCutoff(ONI::Settings::Rhs2116AnalogHighCutoff::High10000Hz);
+
+    ONI::Processor::BufferProcessor* bufferProcessor = oni.createBufferProcessor();
+    bufferProcessor->setup(multi);
+
+    ONI::Processor::SpikeProcessor* spikeProcessor = oni.createSpikeProcessor();
+    spikeProcessor->setup();
+
+    ONI::Processor::ChannelMapProcessor* channelProcessor = oni.createChannelMapProcessor();
+    channelProcessor->setup(multi);
 
     std::vector<size_t> channelMap = {59, 34, 33, 32, 63, 16, 17, 11, 58, 35, 60, 61, 14, 13, 18, 10, 57, 36, 19, 62, 15, 12, 20, 9, 56, 38, 37, 39, 23, 21, 22, 8, 40, 54, 53, 55, 7, 5, 6, 24, 41, 52, 44, 47, 0, 28, 4, 25, 42, 51, 45, 46, 1, 2, 3, 26, 43, 50, 49, 48, 31, 30, 29, 27};
     //std::vector<size_t> channelMap = {44, 52, 53, 54, 46, 37, 38, 36, 31, 23, 15, 7, 21, 13, 12, 20, 5, 6, 14, 18, 22, 29, 30, 28, 39, 47, 55, 63, 45, 62, 61, 60, 3, 2, 1, 9, 17, 26, 25, 27, 32, 40, 48, 56, 42, 50, 51, 43, 59, 58, 57, 49, 41, 34, 33, 35, 24, 16, 8, 0, 10, 11, 19, 4};
 
-    multi->setChannelMap(channelMap);
+    channelProcessor->setChannelMap(channelMap);
 
+    const std::vector<size_t>& chi = oni.getChannelMapProcessor()->getInverseChannelMap();
 
     //std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
     //multi->setChannelMap(t);
@@ -119,18 +120,34 @@ void ofApp::setup(){
     s2.interStimulusIntervalSamples = 362;
     s2.numberOfStimuli = 2;
 
-    ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice(); // make sure to call this after multi device is initialized with devices!
+    ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = oni.createRhs2116StimProcessor(); // make sure to call this after multi device is initialized with devices!
+    rhs2116StimProcessor->setup();
 
-    rhs2116StimDevice->getRequiredStepSize(s1);
-    rhs2116StimDevice->getRequiredStepSize(s2);
+    ONI::Device::Rhs2116StimDevice * rhs2116StimDevice1 = (ONI::Device::Rhs2116StimDevice*)oni.getDevice(258);
+    ONI::Device::Rhs2116StimDevice * rhs2116StimDevice2 = (ONI::Device::Rhs2116StimDevice*)oni.getDevice(514);
 
-    rhs2116StimDevice->stageStimulus(s1, 0);
-    rhs2116StimDevice->stageStimulus(s2, 1);
+    rhs2116StimDevice1->getTriggerSource();
+    rhs2116StimDevice1->setTriggerSource(true);
+    rhs2116StimDevice2->setTriggerSource(true);
 
-    std::vector<ONI::Rhs2116StimulusData> stagedStimuli = rhs2116StimDevice->getStimuli(ONI::Device::Rhs2116StimulusDevice::SettingType::STAGED);
+    rhs2116StimProcessor->addStimDevice(rhs2116StimDevice1);
+    rhs2116StimProcessor->addStimDevice(rhs2116StimDevice2);
+
+    rhs2116StimProcessor->addDevice(rhs2116Device1);
+    rhs2116StimProcessor->addDevice(rhs2116Device2);
+    rhs2116StimProcessor->addDevice(rhs2116Device3);
+    rhs2116StimProcessor->addDevice(rhs2116Device4);
+
+    rhs2116StimProcessor->getRequiredStepSize(s1);
+    rhs2116StimProcessor->getRequiredStepSize(s2);
+
+    rhs2116StimProcessor->stageStimulus(s1, 0);
+    rhs2116StimProcessor->stageStimulus(s2, 1);
+
+    std::vector<ONI::Rhs2116StimulusData> stagedStimuli = rhs2116StimProcessor->getStimuli(ONI::Processor::Rhs2116StimProcessor::SettingType::STAGED);
     std::vector<ONI::Rhs2116StimulusData> lastStimuli = stagedStimuli;
 
-    ONI::Settings::Rhs2116StimulusStep stepSize = rhs2116StimDevice->getRequiredStepSize(stagedStimuli);
+    ONI::Settings::Rhs2116StimulusStep stepSize = rhs2116StimProcessor->getRequiredStepSize(stagedStimuli);
 
     for(size_t i = 0; i < stagedStimuli.size(); ++i){
         if(stagedStimuli[i].requestedAnodicAmplitudeMicroAmps != stagedStimuli[i].actualAnodicAmplitudeMicroAmps){
@@ -139,22 +156,10 @@ void ofApp::setup(){
         }
     }
 
-    rhs2116StimDevice->applyStagedStimuliToDevice();
+    
 
+    rhs2116StimProcessor->applyStagedStimuliToDevice();
 
-    //rhs2116Device1->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
-    //rhs2116Device1->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
-    //rhs2116Device1->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
-
-    //rhs2116Device2->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
-    //rhs2116Device2->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
-    //rhs2116Device2->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
-
-    //rhs2116Device1->setEnabled(true);
-    //rhs2116Device2->setEnabled(true);
-
-    //rhs2116Device1->saveConfig("default");
-    //rhs2116Device2->saveConfig("default");
 
     oni.update();
 
@@ -228,8 +233,8 @@ void ofApp::keyPressed(int key){
     }
 
     if(key == 't'){
-        ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = oni.getStimulusDevice();
-        rhs2116StimDevice->triggerStimulusSequence();
+        ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = oni.getRhs2116StimProcessor();
+        rhs2116StimProcessor->triggerStimulusSequence();
     }
 }
 

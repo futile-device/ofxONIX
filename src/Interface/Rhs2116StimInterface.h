@@ -24,6 +24,8 @@
 #include "../Interface/BaseInterface.h"
 #include "../Interface/PlotHelpers.h"
 
+#include "../Processor/Rhs2116StimProcessor.h"
+
 #include "ofxImGui.h"
 #include "ofxImPlot.h"
 #include "ofxFutilities.h"
@@ -41,58 +43,13 @@ public:
 
 	};
 
+	void reset(){};
 	inline void process(oni_frame_t* frame){}; // nothing
-	inline void process(ONI::Frame::BaseFrame& frame){};// nothing
-
-	inline void refreshStimuliData(ONI::Device::Rhs2116StimulusDevice& std){
-
-		deviceStimuli = std.getStimuli(ONI::Device::Rhs2116StimulusDevice::SettingType::DEVICE);
-		stagedStimuli = std.getStimuli(ONI::Device::Rhs2116StimulusDevice::SettingType::STAGED);
-
-
-		maxStimulusLength = std.getMaxLengthSamples(ONI::Device::Rhs2116StimulusDevice::SettingType::DEVICE);
-		allStimulusAmplitudes = std.getAllStimulusAmplitudes(ONI::Device::Rhs2116StimulusDevice::SettingType::DEVICE);
-
-		maxMicroAmps = -INFINITY;
-		minMicroAmps = INFINITY;
-
-		// conform all amplitude plots to the same length
-		for(size_t i = 0; i < deviceStimuli.size(); ++i){
-			if(-deviceStimuli[i].actualAnodicAmplitudeMicroAmps < minMicroAmps) minMicroAmps = -deviceStimuli[i].actualAnodicAmplitudeMicroAmps;
-			if(deviceStimuli[i].actualCathodicAmplitudeMicroAmps > maxMicroAmps) maxMicroAmps = deviceStimuli[i].actualCathodicAmplitudeMicroAmps;
-			
-			size_t sampleDiff = maxStimulusLength - allStimulusAmplitudes[i].size();
-			for(size_t j = 0; j < sampleDiff; ++j) allStimulusAmplitudes[i].push_back(0);
-		}
-
-		allTimeStamps.resize(maxStimulusLength);
-		for(size_t j = 0; j < allTimeStamps.size(); ++j) allTimeStamps[j] = j / 30.1932367151e3 * 1000.0f;
-
-		currentStimulusStepSize = std.getRequiredStepSize(currentStimulus);
-		currentStimulusStepSizeMicroAmps = ONI::Settings::Rhs2116StimulusStepMicroAmps[currentStimulusStepSize];
-		currentStimulusAmplitudes = std.getStimulusAmplitudes(currentStimulus);
-
-		currentTimeStamps.resize(currentStimulusAmplitudes.size());
-		for(size_t j = 0; j < currentTimeStamps.size(); ++j) currentTimeStamps[j] = j / 30.1932367151e3 * 1000.0f;
-
-		// SURELY THERE IS A NICER WAY TO DO THIS!!!
-		for(size_t i = 0; i < probeDropDownChar.size(); ++i){
-			delete [] probeDropDownChar[i];
-		}
-
-		probeDropDownChar.clear();
-		probeDropDownChar.resize(std.getNumProbes());
-		for(size_t i = 0; i < std.getNumProbes(); ++i){
-			probeDropDownChar[i] = new char[16];
-			std::sprintf(probeDropDownChar[i], "Probe %02i", i);
-		}
-
-	}
-	
+	inline void process(ONI::Frame::BaseFrame& frame){};// nothing	
 	
 	inline void gui(ONI::Processor::BaseProcessor& processor){
 
-		ONI::Device::Rhs2116StimulusDevice& std = *reinterpret_cast<ONI::Device::Rhs2116StimulusDevice*>(&processor);
+		ONI::Processor::Rhs2116StimProcessor& std = *reinterpret_cast<ONI::Processor::Rhs2116StimProcessor*>(&processor);
 
 		static bool bUseBurstFrequency = false;
 		static float burstFrequency = 1;
@@ -258,11 +215,11 @@ public:
 
 		//float anodicAmplitudeMicroAmps = currentStimulus.actualAnodicAmplitudeMicroAmps / currentStimulusStepSizeMicroAmps;
 		//float cathodicAmplitudeMicroAmps = currentStimulus.actualCathodicAmplitudeMicroAmps / currentStimulusStepSizeMicroAmps;
-		float delaySamplesMs = currentStimulus.delaySamples / std.sampleFrequencyHz * 1000.0f;
-		float anodicWidthSamplesMs = currentStimulus.anodicWidthSamples / std.sampleFrequencyHz * 1000.0f;
-		float cathodicWidthSamplesMs = currentStimulus.cathodicWidthSamples / std.sampleFrequencyHz * 1000.0f;
-		float dwellSamplesMs = currentStimulus.dwellSamples / std.sampleFrequencyHz * 1000.0f;
-		float interStimulusIntervalSamplesMs = currentStimulus.interStimulusIntervalSamples / std.sampleFrequencyHz * 1000.0f;
+		float delaySamplesMs = currentStimulus.delaySamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
+		float anodicWidthSamplesMs = currentStimulus.anodicWidthSamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
+		float cathodicWidthSamplesMs = currentStimulus.cathodicWidthSamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
+		float dwellSamplesMs = currentStimulus.dwellSamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
+		float interStimulusIntervalSamplesMs = currentStimulus.interStimulusIntervalSamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
 		int numberOfStimuli = currentStimulus.numberOfStimuli;
 
 
@@ -313,11 +270,11 @@ public:
 		ImGui::InputInt("Number of Stimuli", &numberOfStimuli, 1, 512);
 		if(bUseBurstFrequency) ImGui::EndDisabled();
 
-		currentStimulus.delaySamples = std::round(delaySamplesMs * std.sampleFrequencyHz / 1000.0f);
-		currentStimulus.anodicWidthSamples = std::round(anodicWidthSamplesMs * std.sampleFrequencyHz / 1000.0f);
-		currentStimulus.cathodicWidthSamples = std::round(cathodicWidthSamplesMs * std.sampleFrequencyHz / 1000.0f);
-		currentStimulus.dwellSamples = std::round(dwellSamplesMs * std.sampleFrequencyHz / 1000.0f);
-		currentStimulus.interStimulusIntervalSamples = std::round(interStimulusIntervalSamplesMs * std.sampleFrequencyHz / 1000.0f);
+		currentStimulus.delaySamples = std::round(delaySamplesMs *RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
+		currentStimulus.anodicWidthSamples = std::round(anodicWidthSamplesMs * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
+		currentStimulus.cathodicWidthSamples = std::round(cathodicWidthSamplesMs * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
+		currentStimulus.dwellSamples = std::round(dwellSamplesMs * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
+		currentStimulus.interStimulusIntervalSamples = std::round(interStimulusIntervalSamplesMs * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
 		currentStimulus.numberOfStimuli = std::clamp(numberOfStimuli, 1, 256);
 
 		//if(currentStimulus.delaySamples == 0) currentStimulus.delaySamples = 1;
@@ -413,7 +370,7 @@ public:
 
 			size_t stepCount = 0;
 			for(size_t i = 0; i < deviceStimuli.size(); ++i){
-				//size_t channelMappedIDX = std.multi->getChannelMapIDX()[i]; // make sure we set things to the mapped IDX!!
+				//size_t channelMappedIDX = std.multi->getChannelMap()[i]; // make sure we set things to the mapped IDX!!
 				if(channelSelect[i] && !bDeleted){
 					editedStimuli[i] = currentStimulus;
 				}
@@ -528,7 +485,7 @@ public:
 		if(bApplyStimulus){
 			//stimuli = editedStimuli;
 			std.stageStimuli(editedStimuli);
-			std.conformStepSize(ONI::Device::Rhs2116StimulusDevice::SettingType::STAGED);
+			std.conformStepSize(ONI::Processor::Rhs2116StimProcessor::SettingType::STAGED);
 			std.applyStagedStimuliToDevice();
 			refreshStimuliData(std);
 		}
@@ -617,8 +574,8 @@ public:
 				if(std.isDeviceChannelMapSynced()){
 					ImGui::Text("Probe %d (%d)", meaProbeIDX, rhsProbeIDX);
 				}else{
-					const std::vector<size_t>& currentChannelMap = std.multi->getChannelMapIDX();
-					const std::vector<size_t>& currentInverseChannelMap = std.multi->getInverseChannelMapIDX();
+					const std::vector<size_t>& currentChannelMap = std.getChannelMap();
+					const std::vector<size_t>& currentInverseChannelMap = std.getInverseChannelMap();
 					size_t tRhsProbeIDX = currentInverseChannelMap[i];
 					size_t tMeaProbeIDX =  currentChannelMap[tRhsProbeIDX];
 					if(tRhsProbeIDX != rhsProbeIDX || meaProbeIDX != tMeaProbeIDX){
@@ -677,6 +634,53 @@ public:
 
 	bool load(std::string presetName){
 		return false;
+	}
+
+private:
+
+	inline void refreshStimuliData(ONI::Processor::Rhs2116StimProcessor& std){
+
+		deviceStimuli = std.getStimuli(ONI::Processor::Rhs2116StimProcessor::SettingType::DEVICE);
+		stagedStimuli = std.getStimuli(ONI::Processor::Rhs2116StimProcessor::SettingType::STAGED);
+
+
+		maxStimulusLength = std.getMaxLengthSamples(ONI::Processor::Rhs2116StimProcessor::SettingType::DEVICE);
+		allStimulusAmplitudes = std.getAllStimulusAmplitudes(ONI::Processor::Rhs2116StimProcessor::SettingType::DEVICE);
+
+		maxMicroAmps = -INFINITY;
+		minMicroAmps = INFINITY;
+
+		// conform all amplitude plots to the same length
+		for(size_t i = 0; i < deviceStimuli.size(); ++i){
+			if(-deviceStimuli[i].actualAnodicAmplitudeMicroAmps < minMicroAmps) minMicroAmps = -deviceStimuli[i].actualAnodicAmplitudeMicroAmps;
+			if(deviceStimuli[i].actualCathodicAmplitudeMicroAmps > maxMicroAmps) maxMicroAmps = deviceStimuli[i].actualCathodicAmplitudeMicroAmps;
+
+			size_t sampleDiff = maxStimulusLength - allStimulusAmplitudes[i].size();
+			for(size_t j = 0; j < sampleDiff; ++j) allStimulusAmplitudes[i].push_back(0);
+		}
+
+		allTimeStamps.resize(maxStimulusLength);
+		for(size_t j = 0; j < allTimeStamps.size(); ++j) allTimeStamps[j] = j / 30.1932367151e3 * 1000.0f;
+
+		currentStimulusStepSize = std.getRequiredStepSize(currentStimulus);
+		currentStimulusStepSizeMicroAmps = ONI::Settings::Rhs2116StimulusStepMicroAmps[currentStimulusStepSize];
+		currentStimulusAmplitudes = std.getStimulusAmplitudes(currentStimulus);
+
+		currentTimeStamps.resize(currentStimulusAmplitudes.size());
+		for(size_t j = 0; j < currentTimeStamps.size(); ++j) currentTimeStamps[j] = j / 30.1932367151e3 * 1000.0f;
+
+		// SURELY THERE IS A NICER WAY TO DO THIS!!!
+		for(size_t i = 0; i < probeDropDownChar.size(); ++i){
+			delete [] probeDropDownChar[i];
+		}
+
+		probeDropDownChar.clear();
+		probeDropDownChar.resize(std.getNumProbes());
+		for(size_t i = 0; i < std.getNumProbes(); ++i){
+			probeDropDownChar[i] = new char[16];
+			std::sprintf(probeDropDownChar[i], "Probe %02i", i);
+		}
+
 	}
 
 protected:

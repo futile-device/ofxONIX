@@ -50,7 +50,7 @@ public:
 	};
 
 
-	void deviceSetup(){
+	void reset(){
 		getPortVoltage(true);
 	}
 

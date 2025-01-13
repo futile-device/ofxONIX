@@ -26,63 +26,70 @@
 #include "../Type/RegisterTypes.h"
 #include "../Type/SettingTypes.h"
 #include "../Type/FrameTypes.h"
-#include "../Type/DeviceTypes.h"
+#include "../Type/GlobalTypes.h"
 #include "../Processor/BaseProcessor.h"
+//#include "../Processor/Rhs2116MultiProcessor.h"
 
 #pragma once
 
 namespace ONI{
 
 namespace Interface{
-class FrameProcessorInterface;
+class BufferInterface;
 }
 
 namespace Processor{
 
-class FrameProcessor : public BaseProcessor{
+class BufferProcessor : public BaseProcessor{
 
 public:
 
-    friend class ONI::Interface::FrameProcessorInterface;
+    friend class ONI::Interface::BufferInterface;
 
-	~FrameProcessor(){
+	~BufferProcessor(){
         close();
     };
 
-    void setup(ONI::Device::Rhs2116MultiDevice* multi){
 
-        LOGDEBUG("Setting up FrameProcessor");
+    void setup(ONI::Processor::BaseProcessor* source){
 
-        BaseProcessor::processorName = "FrameProcessor";
+        LOGDEBUG("Setting up Buffer Processor");
+        processorTypeID = ONI::Processor::TypeID::BUFFER_PROCESSOR;
+        processorName = toString(processorTypeID);
 
-        if(multi->devices.size() == 0){
-            LOGERROR("Add devices to Rhs2116MultiDevice before setting up frame processing");
-            assert(false);
-            return;
-        }
+        //if(multi->devices.size() == 0){
+        //    LOGERROR("Add devices to Rhs2116MultiProcessor before setting up frame processing");
+        //    assert(false);
+        //    return;
+        //}
 
-        this->multi = multi;
-        this->multi->subscribeProcessor("FrameProcessor", ONI::Processor::ProcessorType::POST_PROCESSOR, this);
+        this->source = source;
+        this->source->subscribeProcessor("BufferProcessor", ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
+
+        BaseProcessor::numProbes = source->getNumProbes();
 
         settings.setBufferSizeMillis(5000);
         settings.setSparseStepSizeMillis(10);
 
-        resetBuffers();
-        resetProbeData();
+        reset();
 
         bThread = true;
 
-        thread = std::thread(&ONI::Processor::FrameProcessor::processProbeDataThread, this);
+        thread = std::thread(&ONI::Processor::BufferProcessor::processProbeDataThread, this);
 
     }
 
+    void reset(){
+        resetBuffers();
+        resetProbeData();
+    }
 
 	inline void process(oni_frame_t* frame){}; // nothing
 
 	inline void process(ONI::Frame::BaseFrame& frame){
         //const std::lock_guard<std::mutex> lock(mutex);
         dataMutex.lock();
-        denseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame));
+        denseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)); // TODO:: right now I am assuming a Rhs2116MultiProcessor/multiframe but I shouldn't be!!!
         sparseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame));
         dataMutex.unlock();
 
@@ -96,16 +103,16 @@ public:
         dataMutex.unlock();
 
         processMutex.lock();
-        sparseProbeData.resize(multi->numProbes, sparseBuffer.size(), true);
+        sparseProbeData.resize(BaseProcessor::numProbes, sparseBuffer.size(), true);
         processMutex.unlock();
     }
 
     void resetProbeData(){
 
         processMutex.lock();
-        sparseProbeData.resize(multi->numProbes, sparseBuffer.size());
+        sparseProbeData.resize(BaseProcessor::numProbes, sparseBuffer.size());
         processMutex.unlock();
-        //denseProbeData.resize(multi->numProbes, denseBuffer.size());
+        //denseProbeData.resize(source->getNumProbes(), denseBuffer.size());
 
     }
 
@@ -123,17 +130,26 @@ public:
 
     }
 
+    const volatile uint64_t getProcessorTimeNs(){
+        return processorTimeNs;
+    }
+
 private:
+
+    volatile uint64_t processorTimeNs = 0;
 
     inline void processProbeData(ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame>& buffer, ONI::Frame::Rhs2116ProbeData& probeData){
 
         if(buffer.isFrameNew()){ // is this helping at all? Or just locking up threads?!
 
+            using namespace std::chrono;
+            volatile uint64_t startTime = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+
             dataMutex.lock();
             std::vector<ONI::Frame::Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
             dataMutex.unlock();
 
-            std::this_thread::yield(); //??
+            //std::this_thread::yield(); //??
             std::sort(frameBuffer.begin(), frameBuffer.end(), ONI::Frame::acquisition_clock_compare());
 
             processMutex.lock();
@@ -179,6 +195,9 @@ private:
             }
 
             processMutex.unlock();
+
+            processorTimeNs = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - startTime;
+
         }else{
             std::this_thread::yield(); // if we don't yield then the thread spins too fast while waiting for a buffer.isFrameNew()
         }
@@ -206,9 +225,9 @@ protected:
     ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame> sparseBuffer; // contains a sparse buffer sampled every N samples
     
 
-    ONI::Device::Rhs2116MultiDevice* multi = nullptr;
+    ONI::Processor::BaseProcessor* source = nullptr;
 
-    ONI::Settings::FrameProcessorSettings settings;
+    ONI::Settings::BufferProcessorSettings settings;
 
     std::atomic_bool bThread = false;
 

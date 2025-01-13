@@ -370,8 +370,6 @@ struct Rhs2116DeviceSettings{
 	Rhs2116AnalogLowCutoff lowCutoffRecovery = Low250Hz;
 	Rhs2116AnalogHighCutoff highCutoff = High10000Hz;
 
-	std::vector< std::vector<bool> > channelMap;
-
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116DeviceSettings& Rhs2116DeviceSettings::operator=(Rhs2116DeviceSettings other) noexcept{
 		std::swap(format, other.format);
@@ -380,7 +378,6 @@ struct Rhs2116DeviceSettings{
 		std::swap(lowCutoff, other.lowCutoff);
 		std::swap(lowCutoffRecovery, other.lowCutoffRecovery);
 		std::swap(highCutoff, other.highCutoff);
-		std::swap(channelMap, other.channelMap);
 		return *this;
 	}
 
@@ -391,8 +388,7 @@ inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSett
 																									lhs.dspCutoff == rhs.dspCutoff &&
 																									lhs.lowCutoff == rhs.lowCutoff &&
 																									lhs.lowCutoffRecovery == rhs.lowCutoffRecovery &&
-																									lhs.highCutoff == rhs.highCutoff &&
-																									lhs.channelMap == rhs.channelMap); }
+																									lhs.highCutoff == rhs.highCutoff); }
 inline bool operator!=(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs) { return !(lhs == rhs); }
 
 
@@ -419,7 +415,7 @@ inline bool operator==(const Rhs2116StimulusSettings& lhs, const Rhs2116Stimulus
 inline bool operator!=(const Rhs2116StimulusSettings& lhs, const Rhs2116StimulusSettings& rhs) { return !(lhs == rhs); }
 
 
-struct FrameProcessorSettings{
+struct BufferProcessorSettings{
 
 public:
 
@@ -465,7 +461,7 @@ public:
 	}
 
 	// copy assignment (copy-and-swap idiom)
-	FrameProcessorSettings& FrameProcessorSettings::operator=(FrameProcessorSettings other) noexcept{
+	BufferProcessorSettings& BufferProcessorSettings::operator=(BufferProcessorSettings other) noexcept{
 		std::swap(bufferSizeMillis, other.bufferSizeMillis);
 		std::swap(sparseStepMillis, other.sparseStepMillis);
 		std::swap(bufferSizeSamples, other.bufferSizeSamples);
@@ -485,9 +481,27 @@ protected:
 
 };
 
-inline bool operator==(FrameProcessorSettings& lhs, FrameProcessorSettings& rhs){ return (lhs.getBufferSizeSamples() == rhs.getBufferSizeSamples() &&
+inline bool operator==(BufferProcessorSettings& lhs, BufferProcessorSettings& rhs){ return (lhs.getBufferSizeSamples() == rhs.getBufferSizeSamples() &&
 																						  lhs.getSparseStepSamples() == rhs.getSparseStepSamples()); }
-inline bool operator!=(FrameProcessorSettings& lhs, FrameProcessorSettings& rhs) { return !(lhs == rhs); }
+inline bool operator!=(BufferProcessorSettings& lhs, BufferProcessorSettings& rhs) { return !(lhs == rhs); }
+
+
+
+
+struct ChannelMapProcessorSettings{
+
+	std::vector<size_t> channelMap;
+
+	// copy assignment (copy-and-swap idiom)
+	ChannelMapProcessorSettings& ChannelMapProcessorSettings::operator=(ChannelMapProcessorSettings other) noexcept{
+		std::swap(channelMap, other.channelMap);
+		return *this;
+	}
+
+};
+
+inline bool operator==(ChannelMapProcessorSettings& lhs, ChannelMapProcessorSettings& rhs){ return (lhs.channelMap == rhs.channelMap); }
+inline bool operator!=(ChannelMapProcessorSettings& lhs, ChannelMapProcessorSettings& rhs) { return !(lhs == rhs); }
 
 } // namespace Settings
 } // namespace ONI

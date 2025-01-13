@@ -175,10 +175,15 @@
     <ClCompile Include="..\..\..\..\addons\ofxImPlot\libs\implot\implot_items.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\src\Interface\FrameProcessorInterface.h" />
+    <ClInclude Include="..\..\src\Device\Rhs2116StimDevice.h" />
+    <ClInclude Include="..\..\src\Interface\BufferInterface.h" />
+    <ClInclude Include="..\..\src\Interface\ChannelMapInterface.h" />
     <ClInclude Include="..\..\src\Interface\PlotHelpers.h" />
     <ClInclude Include="..\..\src\Processor\BaseProcessor.h" />
-    <ClInclude Include="..\..\src\Processor\FrameProcessor.h" />
+    <ClInclude Include="..\..\src\Processor\BufferProcessor.h" />
+    <ClInclude Include="..\..\src\Processor\ChannelMapProcessor.h" />
+    <ClInclude Include="..\..\src\Processor\Rhs2116MultiProcessor.h" />
+    <ClInclude Include="..\..\src\Processor\Rhs2116StimProcessor.h" />
     <ClInclude Include="..\..\src\Processor\SpikeProcessor.h" />
     <ClInclude Include="src\ofApp.h" />
     <ClInclude Include="..\..\..\..\addons\ofxBoost1.81\src\BoostSerializer.h" />
@@ -907,17 +912,15 @@
     <ClInclude Include="..\..\src\Device\FmcDevice.h" />
     <ClInclude Include="..\..\src\Device\HeartBeatDevice.h" />
     <ClInclude Include="..\..\src\Device\Rhs2116Device.h" />
-    <ClInclude Include="..\..\src\Device\Rhs2116MultiDevice.h" />
-    <ClInclude Include="..\..\src\Device\Rhs2116StimulusDevice.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\BaseInterface.h" />
     <ClInclude Include="..\..\src\Interface\ContextInterface.h" />
     <ClInclude Include="..\..\src\Interface\FmcInterface.h" />
     <ClInclude Include="..\..\src\Interface\HeartBeatInterface.h" />
     <ClInclude Include="..\..\src\Interface\Rhs2116Interface.h" />
     <ClInclude Include="..\..\src\Interface\Rhs2116MultiInterface.h" />
-    <ClInclude Include="..\..\src\Interface\Rhs2116StimulusInterface.h" />
+    <ClInclude Include="..\..\src\Interface\Rhs2116StimInterface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\DataBuffer.h" />
-    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\DeviceTypes.h" />
+    <ClInclude Include="..\..\src\Type\GlobalTypes.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\FrameTypes.h" />
     <ClInclude Include="..\..\src\Type\Log.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\RegisterTypes.h" />

@@ -22,7 +22,7 @@
 #include <syncstream>
 
 #include "../Type/DataBuffer.h"
-#include "../Type/DeviceTypes.h"
+#include "../Type/GlobalTypes.h"
 #include "../Type/FrameTypes.h"
 #include "../Type/RegisterTypes.h"
 #include "../Type/SettingTypes.h"
@@ -32,18 +32,31 @@
 #include "../Device/FmcDevice.h"
 #include "../Device/HeartBeatDevice.h"
 #include "../Device/Rhs2116Device.h"
-#include "../Device/Rhs2116MultiDevice.h"
-#include "../Device/Rhs2116StimulusDevice.h"
+#include "../Device/Rhs2116StimDevice.h"
+
+#include "../Processor/BufferProcessor.h"
+#include "../Processor/ChannelMapProcessor.h"
+#include "../Processor/SpikeProcessor.h"
+#include "../Processor/Rhs2116MultiProcessor.h"
+#include "../Processor/Rhs2116StimProcessor.h"
 
 #include "../Interface/BaseInterface.h"
 #include "../Interface/FmcInterface.h"
 #include "../Interface/HeartBeatInterface.h"
 #include "../Interface/Rhs2116Interface.h"
 #include "../Interface/Rhs2116MultiInterface.h"
-#include "../Interface/Rhs2116StimulusInterface.h"
+#include "../Interface/Rhs2116StimInterface.h"
 
-#include "../Processor/FrameProcessor.h"
-#include "../Processor/SpikeProcessor.h"
+
+
+// Refactor ONIContext to Context and ofxOnix.h
+// Refactor Processor and Device base classes
+// Implement global/model for ctx, clocks, sample rates, channel map etc
+// Implement re-usable global device and processor factory/model
+// Implment audio output of frame buffers
+// Implement recorder interface: time, play, pause, load, save, export
+// Implement spike detector/classifier
+
 
 #pragma once
 
@@ -98,152 +111,76 @@ public:
 		bool bContextNeedsReset = false;
 
 		// check all the devices to see if they require an context restart eg., PORTVOLTAGE
+		std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
 
-		ONI::Device::BaseDevice* device_changed = NULL;
-
-		for(auto device : oniDevices){
-			if(device.second->getContexteNeedsRestart()){
-				device_changed = (ONI::Device::BaseDevice*)device.second;
+		for(auto& it : devices){
+			ONI::Device::BaseDevice* device = it.second;
+			if(device->getContexteNeedsRestart()){ // for now let's auto reset these
+				LOGDEBUG("Device requires context restart: %s", device->getName().c_str());
 				bContextNeedsRestart = true;
-				break;
 			}
-			if(device.second->getContexteNeedsReset()){
-				device_changed = (ONI::Device::BaseDevice*)device.second;
+			if(device->getContexteNeedsReset()){ // for now let's auto reset these
+				LOGDEBUG("Device requires context reset: %s", device->getName().c_str());
 				bContextNeedsReset = true;
-				//break;
 			}
 		}
 
-		//if(rhs2116StimDevice != nullptr){
-		//	if(rhs2116StimDevice->getContexteNeedsReset()){
-		//		device_changed = (ONI::Device::BaseDevice*)rhs2116StimDevice;
-		//		bContextNeedsReset = true;
-		//	}
-		//	if(rhs2116StimDevice->getContexteNeedsRestart()){
-		//		device_changed = (ONI::Device::BaseDevice*)rhs2116StimDevice;
+		//for(auto it : ONI::Global::model.getProcessors()){
+		//	ONI::Device::BaseProcessor* processor = it.second;
+		//	if(processor->getContexteNeedsRestart()){
+		//		LOGDEBUG("Processor requires context restart: %s", processor->getName().c_str());
 		//		bContextNeedsRestart = true;
+		//	}
+		//	if(processor->getContexteNeedsReset()){
+		//		LOGDEBUG("Processor requires context reset: %s", processor->getName().c_str());
+		//		bContextNeedsReset = true;
 		//	}
 		//}
 
 		if(bContextNeedsRestart){
-			LOGDEBUG("Device requires context restart: %s", device_changed->getName().c_str());
 			setupContext();
-
 		}
 
 		if(bContextNeedsReset){
-			LOGDEBUG("Device requires context reset: %s", device_changed->getName().c_str());
+			
 			bool bResetAcquire = bIsAcquiring;
 			if(bResetAcquire) stopAcquisition();
 			setContextOption(ONI::ContextOption::RESET, 1);
 			if(bResetAcquire) startAcquisition();
-			//else{
-			//	device_changed->reset();
-			//}
-			device_changed->reset();
+			//deviceRequestedChange->reset();
 		}
 
 		if(bStopPlaybackThread) stopPlaying();
 
 	}
 
-	bool setup(const std::string& driverName = "riffa", const unsigned int& blockReadBytes = 2048, const unsigned int& blockWriteBytes = 2048){
+	bool setup(const std::string& driverName = "riffa", const uint32_t& blockReadBytes = 2048, const uint32_t& blockWriteBytes = 2048){
 		this->driverName = driverName;
 		this->blockReadBytes = blockReadBytes;
 		this->blockWriteBytes = blockWriteBytes;
-
 		return setupContext();
 	}
 
-	const std::vector<oni_device_t>& getDeviceTypes(const bool& bForceList = false){
+	
 
-		if (!bForceList && deviceTypes.size() > 0) return deviceTypes; // is this just dangerous and stupid?
-
-		LOGDEBUG("Enumerating devices...");
-
-		clearDevices();
-
-		if(!bIsContextSetup){
-			LOGERROR("Context and driver not setup!");
-			return deviceTypes;
-		}
-
-		int rc = ONI_ESUCCESS;
-
-		// Examine device table
-		oni_size_t num_devs = getContextOption(ONI::ContextOption::NUMDEVICES);
-
-		oni_device_t* devices_t;
-
-		// Get the device table
-		size_t devices_sz = sizeof(oni_device_t) * num_devs;
-		devices_t = (oni_device_t*)malloc(devices_sz);
-		if(devices_t == NULL){
-			LOGERROR("No devices found!!");
-			free(devices_t);
-			return deviceTypes;
-		}
-
-		oni_get_opt(ctx, ONI_OPT_DEVICETABLE, devices_t, &devices_sz);
-
-		for(size_t i = 0; i < num_devs; ++i){
-
-			deviceTypes.push_back(devices_t[i]);
-
-			if(devices_t[i].id == ONI::Device::TypeID::FMC){ // 23 FMC Host Device
-				LOGDEBUG("Mapping FMC Host Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
-				ONI::Device::FmcDevice* fmc = new ONI::Device::FmcDevice;
-				fmc->setup(&ctx, devices_t[i], acq_clock_khz);
-				fmc->reset();
-				oniDevices[devices_t[i].idx] = fmc;
-			}
-
-			if(devices_t[i].id == ONI::Device::TypeID::HEARTBEAT){ // 12 HeartBeat Device
-				LOGDEBUG("Mapping HeartBeat Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
-				ONI::Device::HeartBeatDevice* hbd = new ONI::Device::HeartBeatDevice;
-				hbd->setup(&ctx, devices_t[i], acq_clock_khz);
-				hbd->reset();
-				oniDevices[devices_t[i].idx] = hbd;
-			}
-
-			if(devices_t[i].id == ONI::Device::TypeID::RHS2116){ // 31 RHS2116 Device
-				LOGDEBUG("Mapping Rhs2116 Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
-				ONI::Device::Rhs2116Device* rhd2116 = new ONI::Device::Rhs2116Device;
-				rhd2116->setup(&ctx, devices_t[i], acq_clock_khz);
-				rhd2116->reset();
-				oniDevices[devices_t[i].idx] = rhd2116;
-			}
-
-			//if(devices_t[i].id == ONI::Device::TypeID::RHS2116){ // 31 RHS2116 Device
-			//	LOGDEBUG("Mapping Rhs2116 Stim Device: %i device idx: %i", devices_t[i].id, devices_t[i].idx);
-			//	//ONI::Device::Rhs2116Device* rhd2116 = new ONI::Device::Rhs2116Device;
-			//	//rhd2116->setup(&ctx, devices_t[i], acq_clock_khz);
-			//	//rhd2116->reset();
-			//	//oniDevices[devices_t[i].idx] = rhd2116;
-			//}
-
-		}
-
-		free(devices_t);
-
-		LOGINFO("Found %i Devices", deviceTypes.size());
-
-		return deviceTypes;
-
-	}
-
-	ONI::Device::BaseDevice* getDevice(const unsigned int& idx){
-		auto it = oniDevices.find(idx);
-		if(it == oniDevices.end()){
+	ONI::Device::BaseDevice* getDevice(const uint32_t& idx){
+		std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
+		auto it = devices.find(idx);
+		if(it == devices.end()){
 			LOGERROR("ONIDevice doesn't exist with idx: %i", idx);
-			return NULL;
+			return nullptr;
 		}
 		return it->second;
 	}
 
 	void printDeviceTable(){
 
-		getDeviceTypes(); // make sure we have the updated list?
+		//enumerateOnixDeviceTypes(); // make sure we have the updated list?
+
+		if(onixDeviceTypes.size() == 0){
+			LOGERROR("No ONIX devices found - perhaps you haven't setup the context?");
+			return;
+		}
 
 		std::ostringstream os;
 
@@ -252,40 +189,21 @@ public:
 		os << "   |Dev. idx\t\t|ID\t|ver. \t|size\t|size \t|Desc." << std::endl;
 		os << "   +--------------------+-------+-------+-------+-------+---------------------" << std::endl;
 
-		for(size_t i = 0; i < deviceTypes.size(); ++i){
-			os << std::setfill('0') << std::setw(2) << i << " |" << deviceTypes[i] << std::endl; // see stream operator<< overload for oni_device_t above
+		for(size_t i = 0; i < onixDeviceTypes.size(); ++i){
+			os << std::setfill('0') << std::setw(2) << i << " |" << onixDeviceTypes[i] << std::endl; // see stream operator<< overload for oni_device_t above
 		}
 
 		LOGINFO("ONI Device Table\n%s", os.str().c_str());
 
 	}
 
-	oni_size_t getMaxReadSize(){
-		assert(maxReadSize > 0);
-		return maxReadSize;
-	}
-
-	oni_size_t getMaxWriteSize(){
-		assert(maxWriteSize > 0);
-		return maxWriteSize;
-	}
-
-	oni_size_t getAcquireClockKHZ(){
-		assert(acq_clock_khz > 0);
-		return acq_clock_khz;
-	}
-
-	oni_size_t getSysClockKHZ(){
-		assert(sys_clock_khz > 0);
-		return sys_clock_khz;
-	}
-
 	oni_size_t setContextOption(const ONI::ContextOption::BaseOption& option, const oni_size_t& val){
 		int rc = ONI_ESUCCESS;
 		oni_size_t val_result;
 		size_t val_sz = sizeof(val);
-		rc = oni_set_opt(ctx, option.getOption(), &val, val_sz);
-		oni_get_opt(ctx, option.getOption(), &val_result, &val_sz);
+		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
+		rc = oni_set_opt(*ctx, option.getOption(), &val, val_sz);
+		oni_get_opt(*ctx, option.getOption(), &val_result, &val_sz);
 		if(rc && val_result != val){
 			LOGERROR("Can't set context option: %s :: %s", option.getName().c_str(), oni_error_str(rc));
 			return -1;
@@ -297,15 +215,16 @@ public:
 		int rc = ONI_ESUCCESS;
 		oni_size_t val = (oni_size_t)0;
 		size_t val_sz = sizeof(val);
-		rc = oni_get_opt(ctx, option.getOption(), &val, &val_sz);
+		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
+		rc = oni_get_opt(*ctx, option.getOption(), &val, &val_sz);
 		if(rc){ LOGERROR("Can't get context option: %s :: %s", option.getName().c_str(), oni_error_str(rc)); return -1; };
 		LOGINFO("Context option: %s == %i", option.getName().c_str(), val);
 		return val;
 	}
 
-	volatile oni_ctx* getContext(){
-		return &ctx;
-	}
+	//volatile oni_ctx* getContext(){
+	//	return &ctx;
+	//}
 
 	void startAcquisition(){
 		startFrameRead();
@@ -320,21 +239,15 @@ public:
 	}
 
 	void closeContext(){
-
-		LOGDEBUG("Closing ONIContext...");
-
-		if(ctx == NULL) return; // nothing to do
-
+		LOGDEBUG("Closing ONIX Context...");
+		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
+		if(ctx == nullptr) return; // nothing to do
 		bIsAcquiring = false;
-
 		stopFrameRead();
-		clearDevices();
+		onixDeviceTypes.clear();
 		stopContext();
-
-		oni_destroy_ctx(ctx);
-
-		LOGINFO("...ONIContext closed");
-
+		oni_destroy_ctx(*ctx);
+		LOGINFO("...ONIX Context closed");
 	}
 
 	void startRecording(){
@@ -370,7 +283,7 @@ public:
 		contextTimeStream.seekg(0, ::std::ios::beg);
 		contextTimeStream.read(reinterpret_cast<char*>(&lastAcquireTimeStamp),  sizeof(uint64_t));
 		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
-		for(auto device : oniDevices) device.second->reset();
+		for(auto& device : ONI::Global::model.getDevices()) device.second->reset();
 		bThread = true;
 		bIsPlaying = true;
 		thread = std::thread(&Context::playFrames, this);
@@ -388,60 +301,100 @@ public:
 		bStopPlaybackThread = false;
 	}
 
-	ONI::Device::Rhs2116MultiDevice* getMultiDevice(const bool& bForceNewDevice = false){
-		if(rhs2116MultiDevice != nullptr && bForceNewDevice){
-			LOGINFO("Deleting old multi device");
-			delete rhs2116MultiDevice;
-			rhs2116MultiDevice = nullptr;
+	ONI::Processor::BufferProcessor* createBufferProcessor(){
+		//std::map<ONI::Processor::TypeID, ONI::Processor::BaseProcessor*>& processors = ONI::Global::model.getProcessors();
+		if(ONI::Global::model.bufferProcessor != nullptr){
+			LOGINFO("Deleting old BufferProcessor");
+			delete ONI::Global::model.bufferProcessor;
+			ONI::Global::model.bufferProcessor = nullptr;
 		}
-		if(rhs2116MultiDevice == nullptr){
-			LOGINFO("Creating new multi device");
-			rhs2116MultiDevice = new ONI::Device::Rhs2116MultiDevice;
-			rhs2116MultiDevice->setup(&ctx, acq_clock_khz);
+		if(ONI::Global::model.bufferProcessor == nullptr){
+			LOGINFO("Creating new BufferProcessor");
+			ONI::Global::model.bufferProcessor = new ONI::Processor::BufferProcessor;
 		}
-		return rhs2116MultiDevice;
+		return ONI::Global::model.bufferProcessor;
 	}
 
-	ONI::Device::Rhs2116StimulusDevice* getStimulusDevice(const bool& bForceNewDevice = false){
-		if(rhs2116StimDevice != nullptr && bForceNewDevice){
-			LOGINFO("Deleting old stimulus device");
-			delete rhs2116StimDevice;
-			rhs2116StimDevice = nullptr;
+	ONI::Processor::ChannelMapProcessor* createChannelMapProcessor(){
+		//ONI::Processor::ChannelMapProcessor * channelMapProcessor = ONI::Global::model.channelMapProcessor;
+		if(ONI::Global::model.channelMapProcessor != nullptr){
+			LOGINFO("Deleting old ChannelMapProcessor");
+			delete ONI::Global::model.channelMapProcessor;
+			ONI::Global::model.channelMapProcessor = nullptr;
 		}
-		if(rhs2116StimDevice == nullptr){
-			LOGINFO("Creating new stimulus device");
-			rhs2116StimDevice = new ONI::Device::Rhs2116StimulusDevice;
-			rhs2116StimDevice->setup(rhs2116MultiDevice);
+		if(ONI::Global::model.channelMapProcessor == nullptr){
+			LOGINFO("Creating new ChannelMapProcessor");
+			ONI::Global::model.channelMapProcessor = new ONI::Processor::ChannelMapProcessor;
+			//ONI::Global::model.setChannelMapProcessor(channelMapProcessor);
 		}
-		return rhs2116StimDevice;
+		return ONI::Global::model.channelMapProcessor;
 	}
 
-	ONI::Processor::SpikeProcessor* getSpikeProcessor(const bool& bForceNewProcessor = false){
-		if(spikeProcessor != nullptr && bForceNewProcessor){
-			LOGINFO("Deleting old spike processor");
-			delete spikeProcessor;
-			spikeProcessor = nullptr;
+	ONI::Processor::SpikeProcessor* createSpikeProcessor(){
+		//ONI::Processor::SpikeProcessor * spikeProcessor = ONI::Global::model.spikeProcessor;
+		if(ONI::Global::model.spikeProcessor != nullptr){
+			LOGINFO("Deleting old SpikeProcessor");
+			delete ONI::Global::model.spikeProcessor;
+			ONI::Global::model.spikeProcessor = nullptr;
 		}
-		if(spikeProcessor == nullptr){
-			LOGINFO("Creating new spike processor");
-			spikeProcessor = new ONI::Processor::SpikeProcessor;
-			spikeProcessor->setup(rhs2116MultiDevice);
+		if(ONI::Global::model.spikeProcessor == nullptr){
+			LOGINFO("Creating new SpikeProcessor");
+			ONI::Global::model.spikeProcessor = new ONI::Processor::SpikeProcessor;
 		}
-		return spikeProcessor;
+		return ONI::Global::model.spikeProcessor;
 	}
 
-	ONI::Processor::FrameProcessor* getFrameProcessor(const bool& bForceNewProcessor = false){
-		if(frameProcessor != nullptr && bForceNewProcessor){
-			LOGINFO("Deleting old spike processor");
-			delete frameProcessor;
-			frameProcessor = nullptr;
+	ONI::Processor::Rhs2116MultiProcessor* createRhs2116MultiProcessor(){
+		//ONI::Processor::Rhs2116MultiProcessor * rhs2116MultiProcessor = ONI::Global::model.rhs2116MultiProcessor;
+		if(ONI::Global::model.rhs2116MultiProcessor != nullptr){
+			LOGINFO("Deleting old Rhs2116MultiProcessor");
+			delete ONI::Global::model.rhs2116MultiProcessor;
+			ONI::Global::model.rhs2116MultiProcessor = nullptr;
 		}
-		if(frameProcessor == nullptr){
-			LOGINFO("Creating new spike processor");
-			frameProcessor = new ONI::Processor::FrameProcessor;
-			frameProcessor->setup(rhs2116MultiDevice);
+		if(ONI::Global::model.rhs2116MultiProcessor == nullptr){
+			LOGINFO("Creating new Rhs2116MultiProcessor");
+			ONI::Global::model.rhs2116MultiProcessor = new ONI::Processor::Rhs2116MultiProcessor;
 		}
-		return frameProcessor;
+		return ONI::Global::model.rhs2116MultiProcessor;
+	}
+
+	ONI::Processor::Rhs2116StimProcessor* createRhs2116StimProcessor(){
+		ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = ONI::Global::model.rhs2116StimProcessor;
+		if(ONI::Global::model.rhs2116StimProcessor != nullptr){
+			LOGINFO("Deleting old Rhs2116StimProcessor");
+			delete ONI::Global::model.rhs2116StimProcessor;
+			ONI::Global::model.rhs2116StimProcessor = nullptr;
+		}
+		if(ONI::Global::model.rhs2116StimProcessor == nullptr){
+			LOGINFO("Creating new Rhs2116StimProcessor");
+			ONI::Global::model.rhs2116StimProcessor = new ONI::Processor::Rhs2116StimProcessor;
+		}
+		return ONI::Global::model.rhs2116StimProcessor;
+	}
+
+	ONI::Processor::BufferProcessor* getBufferProcessor(){
+		assert(ONI::Global::model.getBufferProcessor() != nullptr, "User must create the BufferProcessor first!");
+		return ONI::Global::model.getBufferProcessor();
+	}
+
+	ONI::Processor::ChannelMapProcessor* getChannelMapProcessor(){
+		assert(ONI::Global::model.getChannelMapProcessor() != nullptr, "User must create the ChannelMapProcessor first!");
+		return ONI::Global::model.getChannelMapProcessor();
+	}
+
+	ONI::Processor::SpikeProcessor* getSpikeProcessor(){
+		assert(ONI::Global::model.getSpikeProcessor() != nullptr, "User must create the SpikeProcessor first!");
+		return ONI::Global::model.getSpikeProcessor();
+	}
+
+	ONI::Processor::Rhs2116MultiProcessor* getRhs2116MultiProcessor(){
+		assert(ONI::Global::model.getRhs2116MultiProcessor() != nullptr, "User must create the Rhs2116MultiProcessor first!");
+		return  ONI::Global::model.getRhs2116MultiProcessor();
+	}
+
+	ONI::Processor::Rhs2116StimProcessor* getRhs2116StimProcessor(){
+		assert(ONI::Global::model.getRhs2116StimProcessor() != nullptr, "User must create the Rhs2116StimProcessor first!");
+		return ONI::Global::model.getRhs2116StimProcessor();
 	}
 
 private:
@@ -469,12 +422,12 @@ private:
 		return true;
 	}
 
-	//std::ifstream contextPlayStream;
 	void startFrameRead(){
 		if(bThread) stopFrameRead();
 		LOGDEBUG("Starting frame read thread");
 		bThread = true;
-		for(auto device : oniDevices) device.second->reset();
+		for(auto& device : ONI::Global::model.getDevices()) device.second->reset();
+		ONI::Global::model.resetAcquireTimeStart();
 		thread = std::thread(&Context::readFrames, this);
 	}
 
@@ -499,10 +452,11 @@ private:
 
 		int rc = ONI_ESUCCESS;
 
-		// Generate context
-		ctx = oni_create_ctx(driverName.c_str());
+		// create context
+		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
+		*ctx = oni_create_ctx(driverName.c_str());
 
-		if(!ctx){
+		if(ctx == nullptr){
 			LOGERROR("ONI context create: FAIL with driver: %s", driverName.c_str());
 			return false;
 		}
@@ -511,7 +465,7 @@ private:
 
 		// Print the driver translator informaiton
 		char driver_version[128];
-		const oni_driver_info_t* di = oni_get_driver_info(ctx);
+		const oni_driver_info_t* di = oni_get_driver_info(*ctx);
 		if(di->pre_release == NULL){
 			LOGINFO("Driver version patch: %s v%d.%d.%d", di->name, di->major, di->minor, di->patch);
 		}else{
@@ -519,7 +473,7 @@ private:
 		}
 
 		// Initialize context and discover hardware
-		rc = oni_init_ctx(ctx, host_idx);
+		rc = oni_init_ctx(*ctx, host_idx);
 		if(rc){
 			LOGERROR("Hardware init: FAIL ==> %s", oni_error_str(rc));
 			return false;
@@ -529,9 +483,9 @@ private:
 
 		// there's a firmware bug which requires two context inits 
 		// for PORTVOLTAGE to be set, so let's just always do it!
-		oni_destroy_ctx(ctx);
-		ctx = oni_create_ctx(driverName.c_str());
-		rc = oni_init_ctx(ctx, host_idx);
+		oni_destroy_ctx(*ctx);
+		*ctx = oni_create_ctx(driverName.c_str());
+		rc = oni_init_ctx(*ctx, host_idx);
 
 		if(rc){
 			LOGERROR("Hardware re init: FAIL ==> %s", oni_error_str(rc));
@@ -540,15 +494,15 @@ private:
 			LOGINFO("Hardware re init: OK");
 		}
 
-		maxReadSize = getContextOption(ONI::ContextOption::MAXREADFRAMESIZE);
-		maxWriteSize = getContextOption(ONI::ContextOption::MAXWRITEFRAMESIZE);
-		acq_clock_khz = getContextOption(ONI::ContextOption::ACQCLKHZ);
-		sys_clock_khz = getContextOption(ONI::ContextOption::SYSCLKHZ);
+		ONI::Global::model.maxReadSize = getContextOption(ONI::ContextOption::MAXREADFRAMESIZE);
+		ONI::Global::model.maxWriteSize = getContextOption(ONI::ContextOption::MAXWRITEFRAMESIZE);
+		ONI::Global::model.acq_clock_khz = getContextOption(ONI::ContextOption::ACQCLKHZ);
+		ONI::Global::model.sys_clock_khz = getContextOption(ONI::ContextOption::SYSCLKHZ);
 
-		if(maxReadSize == -1) return false;
-		if(maxWriteSize == -1) return false;
-		if(acq_clock_khz == -1) return false;
-		if(sys_clock_khz == -1) return false;
+		if(ONI::Global::model.maxReadSize == -1) return false;
+		if(ONI::Global::model.maxWriteSize == -1) return false;
+		if(ONI::Global::model.acq_clock_khz == -1) return false;
+		if(ONI::Global::model.sys_clock_khz == -1) return false;
 
 		//blockReadBytes = setContextOption(BLOCKREADSIZE, blockReadSize);
 		//blockWriteBytes = setContextOption(BLOCKWRITESIZE, blockWriteSize);
@@ -558,7 +512,122 @@ private:
 
 		bIsContextSetup = startContext(); // is this ok? or should the user do it!?
 
-		getDeviceTypes(true); // hmm leave this to the user?
+		if(enumerateOnixDeviceTypes()){
+			createOnixDevices();
+			return true;
+		}
+
+		return false;
+
+	}
+
+	void createOnixDevices(){
+
+		std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
+
+		//devices.clear(); // or should we leave them and check if they exist?
+
+		for(auto& onixDeviceType : onixDeviceTypes){
+
+			auto it = devices.find(onixDeviceType.idx);
+
+			if(it == devices.end()){ // let's create an ofxONIX device that matches the oni_device_t
+
+				LOGINFO("Checking ONIX device type: %s", onix_device_str(onixDeviceType.id));
+
+				if(onixDeviceType.id == ONI::Processor::TypeID::FMC_DEVICE){ // 23 FMC Host Device
+					LOGINFO("Mapping FMC Host Device: %i device idx: %i", onixDeviceType.id, onixDeviceType.idx);
+					ONI::Device::FmcDevice* fmc = new ONI::Device::FmcDevice;
+					fmc->setup(onixDeviceType);
+					devices[onixDeviceType.idx] = fmc;
+				}
+
+				if(onixDeviceType.id == ONI::Processor::TypeID::HEARTBEAT_DEVICE){ // 12 HeartBeat Device
+					LOGINFO("Mapping HeartBeat Device: %i device idx: %i", onixDeviceType.id, onixDeviceType.idx);
+					ONI::Device::HeartBeatDevice* hbd = new ONI::Device::HeartBeatDevice;
+					hbd->setup(onixDeviceType);
+					devices[onixDeviceType.idx] = hbd;
+				}
+
+				if(onixDeviceType.id == ONI::Processor::TypeID::RHS2116_DEVICE){ // 31 RHS2116 Device
+					LOGINFO("Mapping Rhs2116 Device: %i device idx: %i",onixDeviceType.id, onixDeviceType.idx);
+					ONI::Device::Rhs2116Device* rhd2116 = new ONI::Device::Rhs2116Device;
+					rhd2116->setup(onixDeviceType);
+					devices[onixDeviceType.idx] = rhd2116;
+				}
+
+				if(onixDeviceType.id == ONI::Processor::TypeID::RHS2116STIM_DEVICE){ // 32 RHS2116 Stim Device
+					LOGINFO("Mapping Rhs2116 Stim Device: %i device idx: %i", onixDeviceType.id, onixDeviceType.idx);
+					ONI::Device::Rhs2116StimDevice* rhd2116Stim = new ONI::Device::Rhs2116StimDevice;
+					rhd2116Stim->setup(onixDeviceType);
+					devices[onixDeviceType.idx] = rhd2116Stim;
+				}
+
+			}else{
+				LOGDEBUG("Re setting up onix device type: %s", onix_device_str(onixDeviceType.id));
+				it->second->reset();
+			}
+		}
+
+		// delete any ofxONIX devices if they are no longer in the onix_device_t tree
+		for (auto it = devices.begin(); it != devices.end();){
+			bool bDeleteDevice = true;
+			for(auto& onixDeviceType : onixDeviceTypes){
+				if(onixDeviceType.idx == it->first){
+					bDeleteDevice = false;
+					break;
+				}
+			}
+			if (bDeleteDevice){
+				LOGINFO("Deleting Device: %s %i", it->second->getName(), it->second->getOnixDeviceTableIDX());
+				it = devices.erase(it);
+			}else{
+				it++;
+			}
+		}
+
+	}
+
+	bool enumerateOnixDeviceTypes(){
+
+		//if (!bForceList && onixDeviceTypes.size() > 0) return onixDeviceTypes; // is this just dangerous and stupid?
+
+		LOGDEBUG("Enumerating devices...");
+
+		onixDeviceTypes.clear();
+
+		if(!bIsContextSetup){
+			LOGERROR("Context and driver not setup!");
+			return false;
+		}
+
+		int rc = ONI_ESUCCESS;
+
+		// Examine device table
+		oni_size_t num_devs = getContextOption(ONI::ContextOption::NUMDEVICES);
+
+		oni_device_t* devices_t;
+
+		// Get the device table
+		size_t devices_sz = sizeof(oni_device_t) * num_devs;
+		devices_t = (oni_device_t*)malloc(devices_sz);
+		if(devices_t == NULL){
+			LOGERROR("No devices found!!");
+			free(devices_t);
+			return false;
+		}
+
+		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
+
+		oni_get_opt(*ctx, ONI_OPT_DEVICETABLE, devices_t, &devices_sz);
+
+		for(size_t i = 0; i < num_devs; ++i){
+			onixDeviceTypes.push_back(devices_t[i]);
+		}
+
+		free(devices_t);
+
+		LOGINFO("Found %i Devices", onixDeviceTypes.size());
 
 		return true;
 
@@ -614,10 +683,12 @@ private:
 			frame->data = new char[74];
 			memcpy(frame->data, frame_in->data, 74);
 
-			auto it = oniDevices.find((unsigned int)frame->dev_idx);
+			std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
 
-			if(it == oniDevices.end()){
-				LOGERROR("ONIDevice doesn't exist with idx: %i", frame->dev_idx);
+			auto it = devices.find((uint32_t)frame->dev_idx);
+
+			if(it == devices.end()){
+				LOGERROR("ONI Device doesn't exist with idx: %i", frame->dev_idx);
 			}else{
 
 				auto device = it->second;
@@ -659,15 +730,18 @@ private:
 			int rc = ONI_ESUCCESS;
 
 			oni_frame_t *frame = NULL;
-			rc = oni_read_frame(ctx, &frame);
+			volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
+			rc = oni_read_frame(*ctx, &frame);
 
 			if(rc < 0){
 				LOGERROR("Frame read error: %s", oni_error_str(rc));
 			}else{
 
-				auto it = oniDevices.find((unsigned int)frame->dev_idx);
+				std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
 
-				if(it == oniDevices.end()){
+				auto it = devices.find((uint32_t)frame->dev_idx);
+
+				if(it == devices.end()){
 					LOGERROR("ONIDevice doesn't exist with idx: %i", frame->dev_idx);
 				}else{
 
@@ -686,42 +760,42 @@ private:
 
 	}
 
-	void clearDevices(){
+	//void clearDevices(){
 
-		deviceTypes.clear();
+	//	onixDeviceTypes.clear();
 
-		for(auto device : oniDevices){
-			delete device.second;
-		}
+	//	for(auto device : oniDevices){
+	//		delete device.second;
+	//	}
 
-		oniDevices.clear();
+	//	oniDevices.clear();
 
-		delete frameProcessor;
-		frameProcessor = nullptr;
+	//	delete frameProcessor;
+	//	frameProcessor = nullptr;
 
-		delete spikeProcessor;
-		spikeProcessor = nullptr;
+	//	delete spikeProcessor;
+	//	spikeProcessor = nullptr;
 
-		delete rhs2116StimDevice;
-		rhs2116StimDevice = nullptr;
+	//	delete rhs2116StimDevice;
+	//	rhs2116StimDevice = nullptr;
 
-		delete rhs2116MultiDevice;
-		rhs2116MultiDevice = nullptr;
+	//	delete rhs2116MultiDevice;
+	//	rhs2116MultiDevice = nullptr;
 
-	}
+	//}
 
 private:
 
-	ONI::Device::Rhs2116MultiDevice * rhs2116MultiDevice = nullptr; // TODO: this better!!
-	ONI::Device::Rhs2116StimulusDevice * rhs2116StimDevice = nullptr;
+	//ONI::Processor::Rhs2116MultiProcessor * rhs2116MultiDevice = nullptr; // TODO: this better!!
+	//ONI::Processor::Rhs2116StimProcessor * rhs2116StimDevice = nullptr;
 
-	ONI::Processor::FrameProcessor * frameProcessor = nullptr;
-	ONI::Processor::SpikeProcessor * spikeProcessor = nullptr;
+	//ONI::Processor::BufferProcessor * frameProcessor = nullptr;
+	//ONI::Processor::SpikeProcessor * spikeProcessor = nullptr;
 
 	
 
-	unsigned int blockReadBytes = 0;
-	unsigned int blockWriteBytes = 0;
+	uint32_t blockReadBytes = 0;
+	uint32_t blockWriteBytes = 0;
 
 	std::atomic_bool bIsContextSetup = false;
 	std::atomic_bool bIsAcquiring = false;
@@ -740,18 +814,18 @@ private:
 	std::thread thread;
 	std::mutex mutex;
 
-	volatile oni_ctx ctx = NULL;
+	//volatile oni_ctx ctx = NULL;
 
-	std::map<unsigned int, ONI::Device::BaseDevice*> oniDevices;
-	std::vector<oni_device_t> deviceTypes = {};
+	//std::map<uint32_t, ONI::Device::BaseDevice*> oniDevices;
+	std::vector<oni_device_t> onixDeviceTypes = {};
 
 	int host_idx = -1;
 	std::string driverName = "riffa";
 
-	uint32_t maxReadSize = -1;
-	uint32_t maxWriteSize = -1;
-	uint32_t acq_clock_khz = -1;
-	uint32_t sys_clock_khz = -1;
+	//uint32_t maxReadSize = -1;
+	//uint32_t maxWriteSize = -1;
+	//uint32_t acq_clock_khz = -1;
+	//uint32_t sys_clock_khz = -1;
 
 
 };

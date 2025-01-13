@@ -25,11 +25,12 @@
 
 #include "../Interface/BaseInterface.h"
 #include "../Interface/FmcInterface.h"
-#include "../Interface/FrameProcessorInterface.h"
+#include "../Interface/BufferInterface.h"
+#include "../Interface/ChannelMapInterface.h"
 #include "../Interface/HeartBeatInterface.h"
 #include "../Interface/Rhs2116Interface.h"
 #include "../Interface/Rhs2116MultiInterface.h"
-#include "../Interface/Rhs2116StimulusInterface.h"
+#include "../Interface/Rhs2116StimInterface.h"
 
 #include "ofxImGui.h"
 #include "ofxImPlot.h"
@@ -49,8 +50,10 @@ public:
 
 	~ContextInterface(){};
 
+	void reset(){};
 	inline void process(ONI::Frame::BaseFrame& frame){}; // nothing
 	inline void process(oni_frame_t* frame){}; // nothing
+
 	inline void gui(ONI::Processor::BaseProcessor& processor){};
 
 	inline void gui(ONI::Context& context){
@@ -105,11 +108,11 @@ public:
 
 					// Demonstrate using clipper for large vertical lists
 					ImGuiListClipper clipper;
-					clipper.Begin(context.deviceTypes.size());
+					clipper.Begin(context.onixDeviceTypes.size());
 					while (clipper.Step()){
 						for (int row = clipper.DisplayStart; row < clipper.DisplayEnd; row++){
 
-							const oni_device_t& type = context.deviceTypes[row];
+							const oni_device_t& type = context.onixDeviceTypes[row];
 							ImGui::TableNextRow();
 
 							ImGui::TableSetColumnIndex(0); // Device IDX
@@ -138,7 +141,7 @@ public:
 
 		}
 
-		for(auto device : context.oniDevices){
+		for(auto& device : ONI::Global::model.getDevices()){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(false);
 			if(ImGui::CollapsingHeader(device.second->getName().c_str(), true)){
 				//device.second->gui()
@@ -158,30 +161,30 @@ public:
 					case 256:
 					case 257:
 					{
-						if(context.rhs2116MultiDevice != nullptr) ImGui::BeginDisabled();
+						if(ONI::Global::model.getRhs2116MultiProcessor() != nullptr) ImGui::BeginDisabled();
 						rhsInterface[device.first - 256].gui(*device.second); // terrible indexing :(
-						if(context.rhs2116MultiDevice != nullptr) ImGui::EndDisabled();
+						if(ONI::Global::model.getRhs2116MultiProcessor() != nullptr) ImGui::EndDisabled();
 						break;
 					}
 					case 512:
 					case 513:
 					{
-						if(context.rhs2116MultiDevice != nullptr) ImGui::BeginDisabled();
+						if(ONI::Global::model.getRhs2116MultiProcessor() != nullptr) ImGui::BeginDisabled();
 						rhsInterface[device.first - 512 + 2].gui(*device.second); // terrible indexing :(
-						if(context.rhs2116MultiDevice != nullptr) ImGui::EndDisabled();
+						if(ONI::Global::model.getRhs2116MultiProcessor() != nullptr) ImGui::EndDisabled();
 						break;
 					}
 				}
 			}
 		}
 
-		//if(context.rhs2116MultiDevice == nullptr){
-		//	context.rhs2116MultiDevice = new Rhs2116MultiDevice;
-		//	context.rhs2116MultiDevice->setup(&context.ctx, context.acq_clock_khz);
+		//if(ONI::Global::model.getRhs2116MultiProcessor() == nullptr){
+		//	ONI::Global::model.getRhs2116MultiProcessor() = new Rhs2116MultiProcessor;
+		//	ONI::Global::model.getRhs2116MultiProcessor()->setup(&context.ctx, context.acq_clock_khz);
 		//	for(auto device : context.oniDevices){
 		//		if(device.second->getDeviceTypeID() == RHS2116){
-		//			context.rhs2116MultiDevice->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
-		//			//rhs2116MultiDevice->devices[device.second->getDeviceTableID()] = reinterpret_cast<Rhs2116Device*>(device.second);
+		//			ONI::Global::model.getRhs2116MultiProcessor()->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
+		//			//rhs2116MultiDevice->devices[device.second->getOnixDeviceTableIDX()] = reinterpret_cast<Rhs2116Device*>(device.second);
 		//		}
 		//	}
 		//	//rhs2116MultiDevice->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
@@ -189,27 +192,32 @@ public:
 		//	//rhs2116MultiDevice->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
 		//	//rhs2116MultiDevice->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
 		//	//rhs2116MultiDevice->saveConfig("default");
-		//	//context.rhs2116MultiDevice->loadConfig("default");
+		//	//ONI::Global::model.getRhs2116MultiProcessor()->loadConfig("default");
 		//	std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
-		//	//context.rhs2116MultiDevice->resetChannelMap();
-		//	context.rhs2116MultiDevice->setChannelMap(t);
+		//	//ONI::Global::model.getRhs2116MultiProcessor()->resetChannelMap();
+		//	ONI::Global::model.getRhs2116MultiProcessor()->setChannelMap(t);
 		//	//rhs2116MultiDevice->saveConfig("default");
 		//	//startAcquisition();
 		//}
 
-		if(context.rhs2116MultiDevice != nullptr){
+		if(ONI::Global::model.getRhs2116MultiProcessor() != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
-			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*context.rhs2116MultiDevice);
+			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*ONI::Global::model.getRhs2116MultiProcessor());
 		}
 
-		if(context.rhs2116StimDevice != nullptr){
+		if(ONI::Global::model.getRhs2116StimProcessor() != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
-			if(ImGui::CollapsingHeader("Rhs2116Stimulus", true)) stimInterface.gui(*context.rhs2116StimDevice);
+			if(ImGui::CollapsingHeader("Rhs2116Stimulus", true)) stimInterface.gui(*ONI::Global::model.getRhs2116StimProcessor());
 		}
 
-		if(context.frameProcessor != nullptr){
+		if(ONI::Global::model.getChannelMapProcessor() != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
-			if(ImGui::CollapsingHeader("FrameProcessor", true)) frameProcessorInterface.gui(*context.frameProcessor);
+			if(ImGui::CollapsingHeader("ChannelMapProcessor", true)) channelMapInterface.gui(*ONI::Global::model.getChannelMapProcessor());
+		}
+
+		if(ONI::Global::model.getBufferProcessor() != nullptr){
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if(ImGui::CollapsingHeader("BufferProcessor", true)) bufferProcessorInterface.gui(*ONI::Global::model.getBufferProcessor());
 		}
 
 		ImGui::PopID();
@@ -230,7 +238,8 @@ public:
 protected:
 
 	ONI::Interface::FmcInterface fmcInterface[2];
-	ONI::Interface::FrameProcessorInterface frameProcessorInterface;
+	ONI::Interface::BufferInterface bufferProcessorInterface;
+	ONI::Interface::ChannelMapInterface channelMapInterface;
 	ONI::Interface::HeartBeatInterface heartBeatInterface;
 	ONI::Interface::Rhs2116Interface rhsInterface[4];
 	ONI::Interface::Rhs2116MultiInterface multiInterface;
@@ -402,13 +411,13 @@ public:
 	~_HeartBeatDeviceConfig(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
+		device->unsubscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
 	};
 
 	void deviceConfigSetup(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
+		device->subscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
 	}
 
 	inline void process(oni_frame_t* frame){}; // nothing
@@ -482,14 +491,14 @@ public:
 		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		//std::string processorName = device->getName() + " GUI PROC";
-		//device->unsubscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
+		//device->unsubscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
 	};
 
 	void deviceConfigSetup(){
 		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
+		device->subscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
 	}
 
 	void defaults(){
@@ -611,7 +620,7 @@ public:
 	~_Rhs2116MultiDeviceConfig(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
+		device->unsubscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
 		bThread = false;
 		if(thread.joinable()) thread.join();
 	};
@@ -619,7 +628,7 @@ public:
 	void deviceConfigSetup(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, ProcessorType::POST_PROCESSOR, this);
+		device->subscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
 		//buffer.resize(currentSettings.bufferSize);
 		bThread = true;
 		thread = std::thread(&_Rhs2116MultiDeviceConfig::processBufferThread, this);

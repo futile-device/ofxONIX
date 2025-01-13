@@ -36,10 +36,9 @@ class Rhs2116Interface : public ONI::Interface::BaseInterface{
 
 public:
 
-	~Rhs2116Interface(){
+	~Rhs2116Interface(){};
 
-	};
-
+	void reset(){};
 	inline void process(oni_frame_t* frame){}; // nothing
 	inline void process(ONI::Frame::BaseFrame& frame){}; // nothing
 
@@ -47,7 +46,7 @@ public:
 
 		ONI::Device::Rhs2116Device& rhs = *reinterpret_cast<ONI::Device::Rhs2116Device*>(&processor);
 
-		rhs.subscribeProcessor(processorName, ONI::Processor::ProcessorType::POST_PROCESSOR, this);
+		rhs.subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
 
 		nextSettings = rhs.settings;
 

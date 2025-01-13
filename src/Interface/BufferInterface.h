@@ -22,7 +22,7 @@
 #include <syncstream>
 
 #include "../Interface/BaseInterface.h"
-#include "../Processor/FrameProcessor.h"
+#include "../Processor/BufferProcessor.h"
 #include "../Interface/PlotHelpers.h"
 
 #include "ofxImGui.h"
@@ -34,39 +34,39 @@
 namespace ONI{
 namespace Interface{
 
-class FrameProcessorInterface : public ONI::Interface::BaseInterface{
+class BufferInterface : public ONI::Interface::BaseInterface{
 
 public:
 
-	//FrameProcessorInterface(){}
+	//BufferInterface(){}
 
-	~FrameProcessorInterface(){};
+	~BufferInterface(){};
 
+	void reset(){};
 	inline void process(oni_frame_t* frame){}; // nothing
-
 	inline void process(ONI::Frame::BaseFrame& frame){};
 
 	inline void gui(ONI::Processor::BaseProcessor& processor){
 
-		ONI::Processor::FrameProcessor& fp = *reinterpret_cast<ONI::Processor::FrameProcessor*>(&processor);
+		ONI::Processor::BufferProcessor& bp = *reinterpret_cast<ONI::Processor::BufferProcessor*>(&processor);
 
-		//fp.subscribeProcessor(processorName, ONI::Processor::ProcessorType::POST_PROCESSOR, this);
+		//bp.subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
 
-		//nextSettings = fp.settings;
+		//nextSettings = bp.settings;
 
-		ImGui::PushID(fp.getName().c_str());
-		ImGui::Text(fp.getName().c_str());
+		ImGui::PushID(bp.getName().c_str());
+		ImGui::Text(bp.getName().c_str());
 
 		static bool bBuffersNeedUpdate = false;
 
 		if(bufferSizeTimeMillis == -1 || sparseStepSizeMillis == -1){ // first time
-			bufferSizeTimeMillis = fp.settings.getBufferSizeMillis();
-			sparseStepSizeMillis = fp.settings.getSparseStepMillis();
+			bufferSizeTimeMillis = bp.settings.getBufferSizeMillis();
+			sparseStepSizeMillis = bp.settings.getSparseStepMillis();
 		}
 
-		int step = std::floor(sparseStepSizeMillis * fp.settings.getSampleRateHz() / 1000.0f);
+		int step = std::floor(sparseStepSizeMillis * bp.settings.getSampleRateHz() / 1000.0f);
 		if(step == 0) step = 1;
-		int szfine = std::floor(bufferSizeTimeMillis * fp.settings.getSampleRateHz() / 1000.0f);
+		int szfine = std::floor(bufferSizeTimeMillis * bp.settings.getSampleRateHz() / 1000.0f);
 		int szstep = std::floor((float)szfine / (float)step);
 		
 
@@ -86,12 +86,12 @@ public:
 		if(ImGui::Button("Apply Settings")){
 
 			if(bBuffersNeedUpdate){
-				fp.settings.setBufferSizeMillis(bufferSizeTimeMillis);
-				fp.settings.setSparseStepSizeMillis(sparseStepSizeMillis);
-				fp.resetBuffers();
-				fp.resetProbeData();
-				bufferSizeTimeMillis = fp.settings.getBufferSizeMillis();
-				sparseStepSizeMillis = fp.settings.getSparseStepMillis();
+				bp.settings.setBufferSizeMillis(bufferSizeTimeMillis);
+				bp.settings.setSparseStepSizeMillis(sparseStepSizeMillis);
+				bp.resetBuffers();
+				bp.resetProbeData();
+				bufferSizeTimeMillis = bp.settings.getBufferSizeMillis();
+				sparseStepSizeMillis = bp.settings.getSparseStepMillis();
 				bBuffersNeedUpdate = false;
 			}
 
@@ -101,6 +101,12 @@ public:
 
 		if(!bBuffersNeedUpdate && !bAppliedSettings) ImGui::EndDisabled();
 
+		ImGui::Separator();
+		const volatile uint64_t& processorTimeNs = bp.getProcessorTimeNs();
+		using namespace std::chrono;
+		double processorTimeUs =  (double)duration_cast<milliseconds>(duration<double>(1)).count() / (double)duration_cast<nanoseconds>(duration<double>(1)).count() * processorTimeNs;
+
+		ImGui::Text("Processor Time %0.3f (uS)", processorTimeUs);
 
 		ImGui::Separator();
 		ImGui::InputInt("Probe Plot Height", &probePlotHeight);
@@ -116,12 +122,12 @@ public:
 		if(bLastSelectAll != bSelectAll && bSelectAll) for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = true;
 		if(bLastSelectAll != bSelectAll && !bSelectAll) for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = false;
 
-		if(channelSelect.size() != fp.multi->getNumProbes()){
-			channelSelect.resize(fp.multi->getNumProbes());
-			for(size_t i = 0; i < fp.multi->getNumProbes(); ++i) channelSelect[i] = true;
+		if(channelSelect.size() != bp.getNumProbes()){
+			channelSelect.resize(bp.getNumProbes());
+			for(size_t i = 0; i < bp.getNumProbes(); ++i) channelSelect[i] = true;
 		}
 
-		for(size_t i = 0; i < fp.multi->getNumProbes(); ++i){
+		for(size_t i = 0; i < bp.getNumProbes(); ++i){
 			if(i != 0 && i % 8 != 0) ImGui::SameLine();
 			char buf[16];
 			std::sprintf(buf, "%02i", i);
@@ -132,14 +138,14 @@ public:
 			if(b) ++selectCount;
 		}
 
-		if(selectCount == fp.multi->getNumProbes()) bSelectAll = true;
+		if(selectCount == bp.getNumProbes()) bSelectAll = true;
 		
-		fp.processMutex.lock();
-		ONI::Interface::plotCombinedProbes("AC Combined", fp.sparseProbeData, channelSelect, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotIndividualProbes("AC Probes", fp.sparseProbeData, channelSelect, fp.multi->getInverseChannelMapIDX(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotCombinedProbes("DC Combined", fp.sparseProbeData, channelSelect, ONI::Interface::PLOT_DC_DATA);
-		ONI::Interface::plotIndividualProbes("DC Probes", fp.sparseProbeData, channelSelect, fp.multi->getInverseChannelMapIDX(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
-		fp.processMutex.unlock();
+		bp.processMutex.lock();
+		ONI::Interface::plotCombinedProbes("AC Combined", bp.sparseProbeData, channelSelect, ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotIndividualProbes("AC Probes", bp.sparseProbeData, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotCombinedProbes("DC Combined", bp.sparseProbeData, channelSelect, ONI::Interface::PLOT_DC_DATA);
+		ONI::Interface::plotIndividualProbes("DC Probes", bp.sparseProbeData, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
+		bp.processMutex.unlock();
 
 		ImGui::PopID();
 
@@ -165,7 +171,7 @@ protected:
 	int bufferSizeTimeMillis = -1;
 	int sparseStepSizeMillis = -1;
 
-	//ONI::Settings::FrameProcessorSettings nextSettings; // inherited from base Rhs2116Interface
+	//ONI::Settings::BufferProcessorSettings nextSettings; // inherited from base Rhs2116Interface
 
 	const std::string processorName = "FrameProcessorGui";
 

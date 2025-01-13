@@ -41,6 +41,7 @@ public:
 
 	~FmcInterface(){};
 
+	void reset(){};
 	inline void process(oni_frame_t* frame){}; // nothing
 	inline void process(ONI::Frame::BaseFrame& frame){}; // nothing
 	

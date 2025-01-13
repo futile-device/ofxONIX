@@ -23,7 +23,8 @@
 #include <syncstream>
 
 
-#include "../Device/BaseDevice.h"
+#include "../Processor/BaseProcessor.h"
+#include "../Processor/ChannelMapProcessor.h"
 #include "../Device/Rhs2116Device.h"
 
 #pragma once
@@ -34,75 +35,61 @@ namespace Interface{
 class Rhs2116MultiInterface;
 } // namespace Interface
 
+//namespace Processor{
+//class SpikeProcessor;
+//class BufferProcessor;
+//} // namespace Processor
+
 namespace Processor{
-class SpikeProcessor;
-class FrameProcessor;
-} // namespace Processor
 
-namespace Device{
+//class Rhs2116StimProcessor;
 
-class Rhs2116StimulusDevice;
-
-class Rhs2116MultiDevice : public ONI::Device::ProbeDevice{
+class Rhs2116MultiProcessor : public ONI::Processor::BaseProcessor{
 
 public:
 
 	friend class ONI::Interface::Rhs2116MultiInterface;
-	friend class ONI::Device::Rhs2116StimulusDevice;
+	//friend class ONI::Processor::Rhs2116StimProcessor;
+	//friend class ONI::Processor::SpikeProcessor;
+	//friend class ONI::Processor::BufferProcessor;
 
-	friend class ONI::Processor::SpikeProcessor;
-	friend class ONI::Processor::FrameProcessor;
-
-	Rhs2116MultiDevice(){
-		numProbes = 0;							// default for base ONIProbeDevice
-		sampleFrequencyHz = 30.1932367151e3;	// default for base ONIProbeDevice
-	};
+	Rhs2116MultiProcessor(){};
 	
-	~Rhs2116MultiDevice(){
+	~Rhs2116MultiProcessor(){
 		LOGDEBUG("RHS2116Multi Device DTOR");
 		//const std::lock_guard<std::mutex> lock(mutex);
 	};
 
-	void setup(volatile oni_ctx* context, oni_device_t type, uint64_t acq_clock_khz) = delete; // delete the base class function
-
-	void setup(volatile oni_ctx* context, uint64_t acq_clock_khz){
-		LOGDEBUG("Setting up device RHS2116 MULTI");
-		ctx = context;
-		//deviceType = type;
-		deviceType.idx = 999;
-		deviceType.id = RHS2116MULTI;
-		deviceTypeID = RHS2116MULTI;
-		std::ostringstream os; os << ONI::Device::toString(deviceTypeID) << " (" << deviceType.idx << ")";
-		BaseProcessor::processorName = os.str();
-		this->acq_clock_khz = acq_clock_khz;
-		reset(); // always call device specific setup/reset
-		//deviceSetup(); // always call device specific setup/reset
+	void setup(){
+		LOGDEBUG("Setting up RHS2116MULTI Processor");
+		processorTypeID = ONI::Processor::TypeID::RHS2116_MULTI_PROCESSOR;
+		processorName = toString(processorTypeID);
+		reset();
 	}
 
+	void reset(){}; 
+
 	void addDevice(ONI::Device::Rhs2116Device* device){
-		auto it = devices.find(device->getDeviceTableID());
+		auto& it = devices.find(device->getOnixDeviceTableIDX());
 		if(it == devices.end()){
 			LOGINFO("Adding device %s", device->getName().c_str());
-			devices[device->getDeviceTableID()] = device;
+			devices[device->getOnixDeviceTableIDX()] = device;
 		}else{
 			LOGERROR("Device already added: %s", device->getName().c_str());
 		}
 		std::string processorName = BaseProcessor::processorName + " MULTI PROC";
-		device->subscribeProcessor(processorName, ONI::Processor::ProcessorType::PRE_PROCESSOR, this);
+		device->subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::PRE_PROCESSOR, this);
 		numProbes += device->getNumProbes();
-		expectDevceIDOrdered.push_back(device->getDeviceTableID());
-		std::sort(expectDevceIDOrdered.begin(), expectDevceIDOrdered.end()); // sort so device frames get added in ascending order
+		//expectDevceIDOrdered.push_back(device->getOnixDeviceTableIDX());
+		//std::sort(expectDevceIDOrdered.begin(), expectDevceIDOrdered.end()); // sort so device frames get added in ascending order
 		//expectDevceIDOrdered = {257, 256, 513, 512};
 		multiFrameBuffer.resize(multiFrameBuffer.size() + 1);
 		multiFrameBufferRaw.resize(multiFrameBufferRaw.size() + 1);
-		settings = device->settings; // TODO: this is terrible; the devices could be diferent
-		resetChannelMap(); // do this after the terrible settings copy above
+		settings = device->getSettings(); // TODO: this is terrible; the devices could be diferent
 	}
-
-	void deviceSetup(){}; // nothing
 	
 	bool setEnabled(const bool& b){
-		for(auto it : devices){
+		for(auto& it : devices){
 			bool bOk = it.second->setEnabled(b);
 			if(!bOk) return false;
 		}
@@ -110,14 +97,14 @@ public:
 	}
 
 	bool getEnabled(const bool& bCheckRegisters = true){
-		for(auto it : devices){
+		for(auto& it : devices){
 			bEnabled = getEnabled(bCheckRegisters); // should we check if they are both the same?
 		}
 		return bEnabled;
 	}
 
 	bool setAnalogLowCutoff(ONI::Settings::Rhs2116AnalogLowCutoff lowcut){
-		for(auto it : devices){
+		for(auto& it : devices){
 			bool bOk = it.second->setAnalogLowCutoff(lowcut);
 			if(!bOk) return false;
 		}
@@ -125,14 +112,14 @@ public:
 	}
 
 	ONI::Settings::Rhs2116AnalogLowCutoff getAnalogLowCutoff(const bool& bCheckRegisters = true){
-		for(auto it : devices){
+		for(auto& it : devices){
 			settings.lowCutoff = getAnalogLowCutoff(bCheckRegisters); // should we check if they are both the same?
 		}
 		return settings.lowCutoff;
 	}
 
 	bool setAnalogLowCutoffRecovery(ONI::Settings::Rhs2116AnalogLowCutoff lowcut){
-		for(auto it : devices){
+		for(auto& it : devices){
 			bool bOk = it.second->setAnalogLowCutoffRecovery(lowcut);
 			if(!bOk) return false;
 		}
@@ -140,14 +127,14 @@ public:
 	}
 
 	ONI::Settings::Rhs2116AnalogLowCutoff getAnalogLowCutoffRecovery(const bool& bCheckRegisters = true){
-		for(auto it : devices){
+		for(auto& it : devices){
 			settings.lowCutoffRecovery = getAnalogLowCutoffRecovery(bCheckRegisters); // should we check if they are both the same?
 		}
 		return settings.lowCutoffRecovery;
 	}
 
 	bool setAnalogHighCutoff(ONI::Settings::Rhs2116AnalogHighCutoff hicut){
-		for(auto it : devices){
+		for(auto& it : devices){
 			bool bOk = it.second->setAnalogHighCutoff(hicut);
 			if(!bOk) return false;
 		}
@@ -155,14 +142,14 @@ public:
 	}
 
 	ONI::Settings::Rhs2116AnalogHighCutoff getAnalogHighCutoff(const bool& bCheckRegisters = true){
-		for(auto it : devices){
+		for(auto& it : devices){
 			settings.highCutoff = getAnalogHighCutoff(bCheckRegisters); // should we check if they are both the same?
 		}
 		return settings.highCutoff;
 	}
 
 	bool setFormat(ONI::Settings::Rhs2116Format format){
-		for(auto it : devices){
+		for(auto& it : devices){
 			bool bOk = it.second->setFormat(format);
 			if(!bOk) return false;
 		}
@@ -170,14 +157,14 @@ public:
 	}
 
 	ONI::Settings::Rhs2116Format getFormat(const bool& bCheckRegisters = true){
-		for(auto it : devices){
+		for(auto& it : devices){
 			settings.format = getFormat(bCheckRegisters); // should we check if they are both the same?
 		}
 		return settings.format;
 	}
 
 	bool setDspCutOff(ONI::Settings::Rhs2116DspCutoff cutoff){
-		for(auto it : devices){
+		for(auto& it : devices){
 			bool bOk = it.second->setDspCutOff(cutoff);
 			if(!bOk) return false;
 		}
@@ -190,88 +177,22 @@ public:
 		return settings.dspCutoff;
 	}
 
-	bool setStepSize(ONI::Settings::Rhs2116StimulusStep stepSize){
-		for(auto it : devices){
-			bool bOk = it.second->setStepSize(stepSize);
+	bool setStepSize(ONI::Settings::Rhs2116StimulusStep stepSize, const bool& bSetWithoutCheck){
+		for(auto& it : devices){
+			bool bOk = it.second->setStepSize(stepSize, bSetWithoutCheck);
 			if(!bOk) return false;
 		}
 		return true;
 	}
 
 	ONI::Settings::Rhs2116StimulusStep getStepSize(const bool& bCheckRegisters = true){
-		for(auto it : devices){
+		for(auto& it : devices){
 			settings.stepSize = getStepSize(bCheckRegisters); // should we check if they are both the same?
 		}
 		return settings.stepSize;
 	}
 
-	void resetChannelMap(){
-
-		settings.channelMap.clear();
-		settings.channelMap.resize(numProbes);
-		for(size_t y = 0; y < numProbes; ++y){
-			settings.channelMap[y].resize(numProbes);
-			for(size_t x = 0; x < numProbes; ++x){
-				settings.channelMap[y][x] = 0;
-				if(x == y) settings.channelMap[y][x] = 1;
-			}
-		}
-
-		channelMapToIDX();
-
-	} 
-
-	void setChannelMap(const std::vector<size_t>& map){
-
-		if(map.size() == numProbes){
-
-			channelIDX = map;
-
-			for(size_t y = 0; y < numProbes; ++y){
-				for(size_t x = 0; x < numProbes; ++x){
-					settings.channelMap[y][x] = false;
-				}
-				size_t xx = channelIDX[y];
-				settings.channelMap[y][xx] = true;
-
-				inverseChannelIDX.resize(numProbes); // make an inverse for when we need to map in the other direction eg., for stimulus plots
-				for(size_t i = 0; i < channelIDX.size(); ++i){
-					inverseChannelIDX[channelIDX[i]] = i;
-				}
-
-			}
-		}else{
-			LOGERROR("Channel IDXs size doesn't equal number of probes");
-		}
-	}
-
-	void channelMapToIDX(){
-
-		if(settings.channelMap.size() == 0) return;
-
-		channelIDX.resize(numProbes);
-		for(size_t y = 0; y < numProbes; ++y){
-			size_t idx = 0;
-			for(size_t x = 0; x < numProbes; ++x){
-				if(settings.channelMap[y][x]){
-					idx = x;
-					break;
-				}
-			}
-			channelIDX[y] = idx;
-		}
-
-		inverseChannelIDX.resize(numProbes); // make an inverse for when we need to map in the other direction eg., for stimulus plots
-		for(size_t i = 0; i < channelIDX.size(); ++i){
-			inverseChannelIDX[channelIDX[i]] = i;
-		}
-
-		//ostringstream os;
-		//for(int i = 0; i < channelIDX.size(); i++){
-		//	os << channelIDX[i] << (i == channelIDX.size() - 1 ? "" : ", ");
-		//}
-		//fu::debug << os.str() << fu::endl;
-	}
+	
 
 	inline void process(oni_frame_t* frame) override {
 
@@ -284,7 +205,7 @@ public:
 			ONI::Frame::Rhs2116DataExtended& frameRaw = multiFrameRawMap[frame->dev_idx];
 			std::memcpy(&frameRaw, frame->data, frame->data_sz); // copy the data payload including hub clock
 			frameRaw.acqTime = frame->time;						 // copy the acquisition clock
-			frameRaw.deltaTime = ONI::Device::BaseDevice::getAcqDeltaTimeMicros(frame->time);
+			frameRaw.deltaTime = ONI::Global::model.getAcquireDeltaTimeMicros(frame->time);
 			frameRaw.devIdx = frame->dev_idx;
 
 			if(nextDeviceCounter > 0 && nextDeviceCounter % devices.size() == 0){
@@ -300,12 +221,12 @@ public:
 
 					// order the frames by ascending device idx
 					for(size_t i = 0; i < devices.size(); ++i){
-						multiFrameBufferRaw[i] = std::move(multiFrameRawMap[expectDevceIDOrdered[i]]);
+						multiFrameBufferRaw[i] = std::move(multiFrameRawMap[ONI::Global::model.getRhs2116DeviceOrderIDX()[i]]);
 					}
 
 					// process the multi frame
-					ONI::Frame::Rhs2116MultiFrame processedFrame(multiFrameBufferRaw, channelIDX);
-					for(auto it : postProcessors){
+					ONI::Frame::Rhs2116MultiFrame processedFrame(multiFrameBufferRaw, ONI::Global::model.getChannelMapProcessor()->getChannelMap());
+					for(auto& it : postProcessors){
 						it.second->process(processedFrame);
 					}
 
@@ -345,7 +266,7 @@ public:
 			//	if((nextDeviceCounter + 1) % devices.size() == 0){ // we have chexked off all the expectedIDs in order
 			//		// process the multi frame
 			//		ONI::Frame::Rhs2116MultiFrame processedFrame(multiFrameBufferRaw, channelIDX);
-			//		for(auto it : postProcessors){
+			//		for(auto& it : postProcessors){
 			//			it.second->process(processedFrame);
 			//		}
 
@@ -354,7 +275,7 @@ public:
 			//}
 		}
 
-		//for(auto it : preProcessors){
+		//for(auto& it : preProcessors){
 		//	it.second->process(frame);
 		//}
 		
@@ -366,9 +287,9 @@ public:
 
 		//const std::lock_guard<std::mutex> lock(mutex);
 
-		unsigned int nextDeviceIndex = nextDeviceCounter % devices.size();
+		uint32_t nextDeviceIndex = nextDeviceCounter % devices.size();
 
-		if(frame.getDeviceTableID() != expectDevceIDOrdered[nextDeviceIndex]){
+		if(frame.getOnixDeviceTableIDX() != ONI::Global::model.getRhs2116DeviceOrderIDX()[nextDeviceIndex]){
 			LOGERROR("Unexpected frame order");
 		}else{
 			// push or add the multiframe
@@ -376,9 +297,9 @@ public:
 			//std::swap(multiFrameBuffer[nextDeviceCounter], *reinterpret_cast<Rhs2116Frame*>(&frame));
 			if((nextDeviceCounter + 1) % devices.size() == 0){ // we have chexked off all the expectedIDs in order
 				// process the multi frame
-				ONI::Frame::Rhs2116MultiFrame processedFrame(multiFrameBuffer, channelIDX);
+				ONI::Frame::Rhs2116MultiFrame processedFrame(multiFrameBuffer, ONI::Global::model.getChannelMapProcessor()->getChannelMap());
 
-				for(auto it : postProcessors){
+				for(auto& it : postProcessors){
 					it.second->process(processedFrame);
 				}
 
@@ -388,8 +309,8 @@ public:
 
 	}
 
-	Rhs2116Device* getDevice(const unsigned int& deviceTableIDX){
-		auto it = devices.find(deviceTableIDX);
+	ONI::Device::Rhs2116Device* getDevice(const uint32_t& deviceTableIDX){
+		auto& it = devices.find(deviceTableIDX);
 		if(it == devices.end()){
 			LOGERROR("No device found for IDX: %i", deviceTableIDX);
 			return nullptr;
@@ -398,44 +319,33 @@ public:
 		}
 	}
 
-	std::map<unsigned int, Rhs2116Device*>& getDevices(){
+	std::map<uint32_t, ONI::Device::Rhs2116Device*>& getDevices(){
 		return devices;
 	}
 
-	const std::vector<size_t>& getChannelMapIDX(){
-		return channelIDX;
-	}
 
-	const std::vector<size_t>& getInverseChannelMapIDX(){
-		return inverseChannelIDX;
-	}
 
 protected:
 
 
 private:
 
-	std::map<unsigned int, Rhs2116Device*> devices; 
+	std::map<uint32_t, ONI::Device::Rhs2116Device*> devices;
 
 	std::vector<ONI::Frame::Rhs2116Frame> multiFrameBuffer;
 	std::vector<ONI::Frame::Rhs2116DataExtended> multiFrameBufferRaw;
 
 	ONI::Frame::Rhs2116DataExtended errorFrameRaw;
-	std::map<unsigned int, ONI::Frame::Rhs2116DataExtended> lastMultiFrameRawMap;
-	std::map<unsigned int, ONI::Frame::Rhs2116DataExtended> multiFrameRawMap;
+	std::map<uint32_t, ONI::Frame::Rhs2116DataExtended> lastMultiFrameRawMap;
+	std::map<uint32_t, ONI::Frame::Rhs2116DataExtended> multiFrameRawMap;
 	bool bBadFrame = false; // for tracking out of order frame idx with multiple rhs2116 devices
 
-	std::vector<unsigned int> expectDevceIDOrdered;// = {257,256};
 	uint64_t nextDeviceCounter = 0;
-
-	std::vector<size_t> channelIDX;
-	std::vector<size_t> inverseChannelIDX;
 
 	bool bEnabled = false;
 
 	ONI::Settings::Rhs2116Format format;
 	ONI::Settings::Rhs2116DeviceSettings settings;
-	//Rhs2116MultiDeviceConfig config;
 
 };
 

@@ -35,33 +35,36 @@ class Rhs2116MultiInterface;
 
 namespace Device{
 
-class Rhs2116MultiDevice;
+//class Rhs2116MultiProcessor;
 
 
-class Rhs2116Device : public ONI::Device::ProbeDevice{
+class Rhs2116Device : public ONI::Device::BaseDevice{
 
 public:
 
 	friend class ONI::Interface::Rhs2116Interface;
 	friend class ONI::Interface::Rhs2116MultiInterface;
 
-	friend class ONI::Device::Rhs2116MultiDevice;
+	//friend class ONI::Device::Rhs2116MultiProcessor;
 
-	Rhs2116Device(){
-		numProbes = 16;							// default for base ONIProbeDevice
-		sampleFrequencyHz = 30.1932367151e3;	// default for base ONIProbeDevice
-	};
+	//Rhs2116Device(){};
 	
 	~Rhs2116Device(){
 		LOGDEBUG("RHS2116 Device DTOR");
 	};
 
-	void deviceSetup(){
-		setStepSize(settings.stepSize);
-		setDspCutOff(settings.dspCutoff);
-		setAnalogLowCutoff(settings.lowCutoff);
-		setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
-		setAnalogHighCutoff(settings.highCutoff);
+	void reset(){
+		numProbes = 16;
+		getStepSize(true);
+		getDspCutOff(true);
+		getAnalogLowCutoff(true);
+		getAnalogLowCutoffRecovery(true);
+		getAnalogHighCutoff(true);
+		//setStepSize(settings.stepSize);
+		//setDspCutOff(settings.dspCutoff);
+		//setAnalogLowCutoff(settings.lowCutoff);
+		//setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
+		//setAnalogHighCutoff(settings.highCutoff);
 	}
 
 	bool setEnabled(const bool& b){
@@ -168,11 +171,11 @@ public:
 		return settings.dspCutoff;
 	}
 	
-	bool setStepSize(ONI::Settings::Rhs2116StimulusStep stepSize){
+	bool setStepSize(ONI::Settings::Rhs2116StimulusStep stepSize, const bool& bSetWithoutCheck){
 		const unsigned int * regs = ONI::Settings::Rhs2116StimulusStepRegisters[stepSize];
 		unsigned int reg = regs[2] << 13 | regs[1] << 7 | regs[0];
 		bool bOk = writeRegister(ONI::Register::Rhs2116::STEPSZ, reg);
-		if(bOk) getStepSize(true);
+		if(bOk) getStepSize(!bSetWithoutCheck);
 		return bOk;
 	}
 
@@ -187,10 +190,10 @@ public:
 	inline void process(oni_frame_t* frame){
 		//const std::lock_guard<std::mutex> lock(mutex);
 		if(postProcessors.size() > 0){
-			ONI::Frame::Rhs2116Frame processedFrame(frame, (uint64_t)BaseDevice::getAcqDeltaTimeMicros(frame->time));
+			ONI::Frame::Rhs2116Frame processedFrame(frame, (uint64_t)ONI::Global::model.getAcquireDeltaTimeMicros(frame->time));
 			process(processedFrame);
 		}
-		for(auto it : preProcessors){
+		for(auto& it : preProcessors){
 			it.second->process(frame);
 		}
 
@@ -198,7 +201,7 @@ public:
 
 	inline void process(ONI::Frame::BaseFrame& frame){
 		//const std::lock_guard<std::mutex> lock(mutex);
-		for(auto it : postProcessors){
+		for(auto& it : postProcessors){
 			it.second->process(frame);
 		}
 	}
@@ -211,8 +214,8 @@ public:
 		return ONI::Device::BaseDevice::writeRegister(reg, value, bSetWithoutCheck);
 	}
 
-	inline void forceGuiUpdate(){
-		bForceGuiUpdate = true;
+	const ONI::Settings::Rhs2116DeviceSettings& getSettings(){
+		return settings;
 	}
 
 protected:
@@ -257,11 +260,8 @@ protected:
 		}
 	}
 
-
-
 protected:
 
-	bool bForceGuiUpdate = false;
 
 	bool bEnabled = false;
 

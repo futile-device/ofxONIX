@@ -44,7 +44,7 @@ public:
 
 	virtual inline void convert(oni_frame_t* frame, const uint64_t& deltaTime = 0) = 0;
 
-	inline const unsigned int& getDeviceTableID(){ return deviceTableID; };
+	inline const uint32_t& getOnixDeviceTableIDX(){ return deviceTableID; };
 	inline const size_t& getNumProbes() const { return numProbes; };
 	inline const uint64_t& getDeltaTime() const { return deltaTime; };
 	inline const uint64_t& getAcquisitionTime() const { return acqTime; };

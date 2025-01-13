@@ -57,8 +57,6 @@ public:
 
     }
 
-    void reset(){};
-
 	inline void process(oni_frame_t* frame){};
 	inline void process(ONI::Frame::BaseFrame& frame){
 		

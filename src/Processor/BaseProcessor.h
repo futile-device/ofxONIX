@@ -26,7 +26,7 @@
 #include "../Type/RegisterTypes.h"
 #include "../Type/SettingTypes.h"
 #include "../Type/FrameTypes.h"
-#include "../Type/DeviceTypes.h"
+#include "../Type/GlobalTypes.h"
 
 #pragma once
 
@@ -39,10 +39,12 @@ public:
 
 	virtual ~BaseProcessor(){};
 
+	virtual void reset() = 0; // processor specific for setup/reset
+
 	virtual inline void process(oni_frame_t* frame) = 0;
 	virtual inline void process(ONI::Frame::BaseFrame& frame) = 0;
 
-	inline void subscribeProcessor(const std::string& processorName, const ProcessorType& type, BaseProcessor * processor){
+	inline void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, BaseProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
 		std::map<std::string, BaseProcessor*>& processors = (type == PRE_PROCESSOR ? preProcessors : postProcessors);
 		auto it = processors.find(processorName);
@@ -54,7 +56,7 @@ public:
 		}
 	}
 
-	inline void unsubscribeProcessor(const std::string& processorName, const ProcessorType& type, BaseProcessor * processor){
+	inline void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, BaseProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
 		std::map<std::string, BaseProcessor*>& processors = (type == PRE_PROCESSOR ? preProcessors : postProcessors);
 		auto it = processors.find(processorName);
@@ -66,8 +68,16 @@ public:
 		}
 	}
 
+	inline const ONI::Processor::TypeID& getProcessorTypeID(){
+		return processorTypeID;
+	}
+
 	inline const std::string& getName(){
 		return processorName;
+	}
+
+	inline const uint32_t& getNumProbes(){
+		return numProbes;
 	}
 
 protected:
@@ -75,7 +85,10 @@ protected:
 	std::map<std::string, BaseProcessor*> preProcessors;
 	std::map<std::string, BaseProcessor*> postProcessors;
 
+	ONI::Processor::TypeID processorTypeID = ONI::Processor::TypeID::UNDEFINED;
 	std::string processorName = "UNDEFINED";
+
+	uint32_t numProbes = 0;
 
 private:
 

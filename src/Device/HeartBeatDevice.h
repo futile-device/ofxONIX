@@ -49,29 +49,24 @@ public:
 		LOGDEBUG("HeartBeat Device DTOR");
 	};
 
-	void deviceSetup(){
-		getFrequencyHz(true);
-	}
-
 	void reset(){
-		BaseDevice::reset();
 		getFrequencyHz(true);
 	}
 
 	inline void process(oni_frame_t* frame){
 		//const std::lock_guard<std::mutex> lock(mutex);
 		if(postProcessors.size() > 0){
-			ONI::Frame::HeartBeatFrame processedFrame(frame, (uint64_t)ONI::Device::BaseDevice::getAcqDeltaTimeMicros(frame->time));
+			ONI::Frame::HeartBeatFrame processedFrame(frame, (uint64_t)ONI::Global::model.getAcquireDeltaTimeMicros(frame->time));
 			process(processedFrame);
 		}
-		for(auto it : preProcessors){
+		for(auto& it : preProcessors){
 			it.second->process(frame);
 		}
 	}
 
 	inline void process(ONI::Frame::BaseFrame& frame){
 		//const std::lock_guard<std::mutex> lock(mutex);
-		for(auto it : postProcessors){
+		for(auto& it : postProcessors){
 			it.second->process(frame);
 		}
 	}

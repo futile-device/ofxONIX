@@ -43,6 +43,7 @@ public:
 	
 	};
 
+	void reset(){};
 	inline void process(oni_frame_t* frame){}; // nothing
 
 	inline void process(ONI::Frame::BaseFrame& frame){
@@ -54,7 +55,7 @@ public:
 
 		ONI::Device::HeartBeatDevice& hbd = *reinterpret_cast<ONI::Device::HeartBeatDevice*>(&processor);
 
-		hbd.subscribeProcessor(processorName, ONI::Processor::ProcessorType::POST_PROCESSOR, this);
+		hbd.subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
 
 		ImGui::PushID(hbd.getName().c_str());
 		ImGui::Text(hbd.getName().c_str());

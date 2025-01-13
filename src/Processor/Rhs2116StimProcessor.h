@@ -23,8 +23,8 @@
 #include <syncstream>
 
 
-#include "../Device/BaseDevice.h"
-#include "../Device/Rhs2116MultiDevice.h"
+#include "../Processor/BaseProcessor.h"
+#include "../Processor/Rhs2116MultiProcessor.h"
 
 #pragma once
 
@@ -34,12 +34,12 @@ namespace Interface{
 class Rhs2116StimulusInterface;
 } // namespace Interface
 
-namespace Device{
+namespace Processor{
 
 
 
 
-class Rhs2116StimulusDevice : public ONI::Device::ProbeDevice {
+class Rhs2116StimProcessor : public ONI::Processor::BaseProcessor {
 
 public:
 
@@ -50,65 +50,90 @@ public:
 
 	friend class ONI::Interface::Rhs2116StimulusInterface;
 
-	Rhs2116StimulusDevice(){
-        ONI::Device::ProbeDevice::numProbes = 0;							// default for base ONIProbeDevice
-        ONI::Device::ProbeDevice::sampleFrequencyHz = 30.1932367151e3;	// default for base ONIProbeDevice
-	};
+	//Rhs2116StimProcessor(){};
 	
-	~Rhs2116StimulusDevice(){
-		LOGDEBUG("RHS2116Stimulus Device DTOR");
+	~Rhs2116StimProcessor(){
+		LOGDEBUG("RHS2116Stim Processor DTOR");
 		//const std::lock_guard<std::mutex> lock(mutex);
 	};
 
-    void setup(volatile oni_ctx* context, oni_device_t type, uint64_t acq_clock_khz) = delete;
-
-    void setup(ONI::Device::Rhs2116MultiDevice* multi){
-
-        LOGDEBUG("Setting up device RHS2116 STIM");
-
-        if(multi->devices.size() == 0){
-            LOGERROR("Add devices to Rhs2116MultiDevice before setting up stimulus");
-            assert(false);
-            return;
-        }
-
-        this->multi = multi;
-        numProbes = multi->numProbes;
-        sampleFrequencyHz = multi->sampleFrequencyHz;
-        acq_clock_khz = multi->acq_clock_khz;
-
-        lastAppliedChannelMap = multi->getChannelMapIDX();
-
-        ctx = multi->ctx;
-
-        deviceType.idx = 1000;
-        deviceType.id = RHS2116STIM;
-        deviceTypeID = RHS2116STIM;
-
-        std::ostringstream os; os << ONI::Device::toString(deviceTypeID) << " (" << deviceType.idx << ")";
-        BaseProcessor::processorName = os.str();
-
-        BaseDevice::reset(); // always call device specific setup/reset
-        deviceSetup(); // always call device specific setup/reset
-
-        deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
-        //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
-        if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
-            LOGERROR("Error writing to TRIGGERSOURCE!!");
-        }
-
-        deviceType.idx = 514; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
-        //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
-        if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
-            LOGERROR("Error writing to TRIGGERSOURCE!!");
-        }
-
-        deviceType.idx = 667;
 
 
+    //void setup(volatile oni_ctx* context, oni_device_t type, uint64_t acq_clock_khz) = delete;
+
+    //void setup(ONI::Device::Rhs2116MultiProcesor* multi){
+
+    //    LOGDEBUG("Setting up device RHS2116 STIM");
+
+    //    if(multi->devices.size() == 0){
+    //        LOGERROR("Add devices to Rhs2116MultiProcessor before setting up stimulus");
+    //        assert(false);
+    //        return;
+    //    }
+
+    //    this->multi = multi;
+
+    //    lastAppliedChannelMap = multi->getChannelMap();
+
+    //    onixDeviceType.idx = 1000;
+    //    onixDeviceType.id = RHS2116STIM;
+    //    deviceTypeID = RHS2116STIM;
+
+    //    std::ostringstream os; os << ONI::Device::toString(deviceTypeID) << " (" << onixDeviceType.idx << ")";
+    //    BaseProcessor::processorName = os.str();
+
+    //    BaseDevice::reset(); // always call device specific setup/reset
+    //    deviceSetup(); // always call device specific setup/reset
+
+    //    onixDeviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
+        ////BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
+        //if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
+        //    LOGERROR("Error writing to TRIGGERSOURCE!!");
+        //}
+
+    //    onixDeviceType.idx = 514; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
+    //    //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
+    //    if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
+    //        LOGERROR("Error writing to TRIGGERSOURCE!!");
+    //    }
+
+    //    onixDeviceType.idx = 667;
+
+
+    //}
+
+    void setup(){
+        LOGDEBUG("Setting up device RHS2116STIM Processor");
+        processorTypeID = ONI::Processor::TypeID::RHS2116_STIM_PROCESSOR;
+        processorName = toString(processorTypeID);
+        reset();
     }
 
-    void deviceSetup(){
+    void addDevice(ONI::Device::Rhs2116Device* device){
+        auto it = rhs2116Devices.find(device->getOnixDeviceTableIDX());
+        if(it == rhs2116Devices.end()){
+            LOGINFO("Adding device %s", device->getName().c_str());
+            rhs2116Devices[device->getOnixDeviceTableIDX()] = device;
+        }else{
+            LOGERROR("Device already added: %s", device->getName().c_str());
+        }
+        numProbes += device->getNumProbes();
+        reset();
+    }
+
+    void addStimDevice(ONI::Device::Rhs2116StimDevice* device){
+        auto it = rhs2116StimDevices.find(device->getOnixDeviceTableIDX());
+        if(it == rhs2116StimDevices.end()){
+            LOGINFO("Adding stim device %s", device->getName().c_str());
+            rhs2116StimDevices[device->getOnixDeviceTableIDX()] = device;
+        }else{
+            LOGERROR("Stim device already added: %s", device->getName().c_str());
+        }
+        //numProbes += device->getNumProbes();
+        reset();
+    }
+
+    void reset(){
         defaultStimuli.resize(numProbes);
         stagedSettings.stimuli = defaultStimuli;
         stagedSettings.stepSize = ONI::Settings::Step10nA;
@@ -209,7 +234,7 @@ public:
         }
 
         for(size_t i = 0; i < stagedSettings.stimuli.size(); ++i){
-            size_t probeIDX = multi->getChannelMapIDX()[i];
+            size_t probeIDX = getChannelMap()[i];
             if(deviceSettings.stimuli[probeIDX] != stagedSettings.stimuli[i]){
                 //LOGDEBUG("Device Stimulus != Staged Stimulus Size (%i != %i)", probeIDX, i);
                 return false;
@@ -221,13 +246,21 @@ public:
     }
 
     bool isDeviceChannelMapSynced(){
-        return (lastAppliedChannelMap == multi->getChannelMapIDX());
+        return (lastAppliedChannelMap == getChannelMap());
+    }
+
+    const std::vector<size_t>& getChannelMap(){
+        return ONI::Global::model.getChannelMapProcessor()->getChannelMap();
+    }
+
+    const std::vector<size_t>& getInverseChannelMap(){
+        return ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap();
     }
 
     bool updateStimuliOnDevice(){
         ONI::Settings::Rhs2116StimulusSettings tempStagedSettings = stagedSettings; // make a back up, so we can restore
-        const std::vector<size_t>& currentChannelMap = multi->getChannelMapIDX();
-        const std::vector<size_t>& currentInverseChannelMap = multi->getInverseChannelMapIDX();
+        const std::vector<size_t>& currentChannelMap = getChannelMap();
+        const std::vector<size_t>& currentInverseChannelMap = getInverseChannelMap();
         for(size_t i = 0; i < deviceSettings.stimuli.size(); ++i){
             size_t a = currentChannelMap[i];
             size_t b = currentInverseChannelMap[i];
@@ -241,9 +274,7 @@ public:
         return bOK;
     }
 
-    bool applyStagedStimuliToDevice(){
-
-
+    bool applyStagedStimuliToDevice(const bool& bSetWithoutCheck = true){
 
         // conform stepsize just in case
         ONI::Settings::Rhs2116StimulusStep ss = stagedSettings.stepSize;
@@ -256,21 +287,21 @@ public:
         conformStepSize(SettingType::STAGED); 
 
         for(size_t i = 0; i < stagedSettings.stimuli.size(); ++i){
-            size_t probeIDX = multi->getInverseChannelMapIDX()[i];
+            size_t probeIDX = getInverseChannelMap()[i];
             deviceSettings.stimuli[probeIDX] = stagedSettings.stimuli[i]; // SO WE ONLY DO THE ACTUAL MAPPING WHEN SENDING THE STIMULI TO DEVICE (use a different function for plotting in the interface)
         }
 
-        lastAppliedChannelMap = multi->getChannelMapIDX();
-        lastAppliedInverseChannelMap = multi->getInverseChannelMapIDX();
+        lastAppliedChannelMap = getChannelMap();
+        lastAppliedInverseChannelMap = getInverseChannelMap();
 
         deviceSettings.stepSize = stagedSettings.stepSize; // conformStepSize(SettingType::DEVICE);
         
-        for(size_t deviceCount = 0; deviceCount < multi->devices.size(); ++deviceCount){
+        for(size_t deviceIDX = 0; deviceIDX < rhs2116Devices.size(); ++deviceIDX){
 
-            size_t deviceIDX = multi->expectDevceIDOrdered[deviceCount];
-            Rhs2116Device* device = multi->getDevice(deviceIDX);
+            size_t onixDeviceTableIDX = ONI::Global::model.getRhs2116DeviceOrderIDX()[deviceIDX];
+            ONI::Device::Rhs2116Device * device = getRhs2116Device(onixDeviceTableIDX);
 
-            if(!device->setStepSize(deviceSettings.stepSize)){
+            if(!device->setStepSize(deviceSettings.stepSize, bSetWithoutCheck)){
                 LOGERROR("Error setting device STEPSZ!!");
                 deviceSettings.stimuli = defaultStimuli; // hard reset device settings
                 deviceSettings.stepSize = ONI::Settings::Step10nA;
@@ -280,14 +311,14 @@ public:
             const unsigned int * regs = ONI::Settings::Rhs2116StimulusBiasRegisters[deviceSettings.stepSize];
             unsigned int rbias = regs[1] << 4 | regs[0];
 
-            if(!device->writeRegister(ONI::Register::Rhs2116::STIMBIAS, rbias)){ // ask Jon about whether this is necessary
+            if(!device->writeRegister(ONI::Register::Rhs2116::STIMBIAS, rbias, bSetWithoutCheck)){ // ask Jon about whether this is necessary
                 LOGERROR("Error writing to STIMBIAS!!");
                 deviceSettings.stimuli = defaultStimuli; // hard reset device settings
                 deviceSettings.stepSize = ONI::Settings::Step10nA;
                 return false;
             }
 
-            size_t startIDX = deviceCount * 16;
+            size_t startIDX = deviceIDX * 16;
             size_t endIDX = startIDX + 16;
 
             std::vector<ONI::Rhs2116StimulusData> tDeviceStimuli;
@@ -296,16 +327,16 @@ public:
 
                 tDeviceStimuli.push_back(deviceSettings.stimuli[probeIDX]);
 
-                LOGDEBUG("Set -ve probe stimulus: %i (%i)", probeIDX, multi->getInverseChannelMapIDX()[probeIDX]);
-                if(!device->writeRegister(ONI::Register::Rhs2116::NEG[probeIDX % 16], deviceSettings.stimuli[probeIDX].anodicAmplitudeSteps)){
+                LOGDEBUG("Set -ve probe stimulus: %i (%i)", probeIDX, getInverseChannelMap()[probeIDX]);
+                if(!device->writeRegister(ONI::Register::Rhs2116::NEG[probeIDX % 16], deviceSettings.stimuli[probeIDX].anodicAmplitudeSteps, bSetWithoutCheck)){
                     LOGERROR("Error writing to NEG!!");
                     deviceSettings.stimuli = defaultStimuli; // hard reset device settings
                     deviceSettings.stepSize = ONI::Settings::Step10nA;
                     return false;
                 }
 
-                LOGDEBUG("Set +ve probe stimulus: %i (%i)", probeIDX, multi->getInverseChannelMapIDX()[probeIDX]);
-                if(!device->writeRegister(ONI::Register::Rhs2116::POS[probeIDX % 16], deviceSettings.stimuli[probeIDX].cathodicAmplitudeSteps)){
+                LOGDEBUG("Set +ve probe stimulus: %i (%i)", probeIDX, getInverseChannelMap()[probeIDX]);
+                if(!device->writeRegister(ONI::Register::Rhs2116::POS[probeIDX % 16], deviceSettings.stimuli[probeIDX].cathodicAmplitudeSteps, bSetWithoutCheck)){
                     LOGERROR("Error writing to POS!!");
                     deviceSettings.stimuli = defaultStimuli; // hard reset device settings
                     deviceSettings.stepSize = ONI::Settings::Step10nA;
@@ -316,7 +347,7 @@ public:
 
             auto result = getDeltaTable(tDeviceStimuli);
 
-            if(!device->writeRegister(ONI::Register::Rhs2116::NUMDELTAS, result.size())){
+            if(!device->writeRegister(ONI::Register::Rhs2116::NUMDELTAS, result.size(), bSetWithoutCheck)){
                 LOGERROR("Too many stimuli deltas!!");
                 deviceSettings.stimuli = defaultStimuli; // hard reset device settings
                 deviceSettings.stepSize = ONI::Settings::Step10nA;
@@ -331,14 +362,14 @@ public:
                 //p.time = entry.first;
                 //LOGDEBUG("3277X %i", *(unsigned int*)&p);
                 unsigned int idxTime = j++ << 22 | (entry.first & 0x003FFFFF);
-                if(!device->writeRegister(ONI::Register::Rhs2116::DELTAIDXTIME, idxTime)){
+                if(!device->writeRegister(ONI::Register::Rhs2116::DELTAIDXTIME, idxTime, bSetWithoutCheck)){
                     LOGERROR("Error writing to DELTAIDXTIME!!");
                     deviceSettings.stimuli = defaultStimuli; // hard reset device settings
                     deviceSettings.stepSize = ONI::Settings::Step10nA;
                     return false;
                 }
 
-                if(!device->writeRegister(ONI::Register::Rhs2116::DELTAPOLEN, entry.second)){
+                if(!device->writeRegister(ONI::Register::Rhs2116::DELTAPOLEN, entry.second, bSetWithoutCheck)){
                     LOGERROR("Error writing to DELTAPOLEN!!");
                     deviceSettings.stimuli = defaultStimuli; // hard reset device settings
                     deviceSettings.stepSize = ONI::Settings::Step10nA;
@@ -358,6 +389,8 @@ public:
                 return false;
             }
 
+            device->getContexteNeedsReset(); // forces context to not restart
+
         }
 
     }
@@ -365,17 +398,23 @@ public:
 
     inline void triggerStimulusSequence(){ // maybe proved a bAutoApply func?
 
+        for(auto& it : rhs2116StimDevices){
+            ONI::Device::Rhs2116StimDevice* device = it.second;
+            device->triggerStimulus();
+            device->getContexteNeedsReset(); // force no context resetting (cos this sets it to false)
+        }
+
         //if(deviceSettings != stagedSettings){ // ACTUALLY LETS CHECK WITH CHANNEL MAP!!
         //    LOGALERT("Staged settings are different to current device settings");
         //}
 
-        deviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
-        ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGER, 1);
+        //onixDeviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
+        //ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGER, 1);
 
-        deviceType.idx = 514; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 512/513]
-        ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGER, 1);
+        //onixDeviceType.idx = 514; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 512/513]
+        //ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGER, 1);
 
-        deviceType.idx = 667;
+        //onixDeviceType.idx = 667;
 
     }
 
@@ -610,6 +649,16 @@ private:
         return result;
     }
 
+    ONI::Device::Rhs2116Device* getRhs2116Device(const uint32_t& deviceTableIDX){
+        auto it = rhs2116Devices.find(deviceTableIDX);
+        if(it == rhs2116Devices.end()){
+            LOGERROR("No device found for IDX: %i", deviceTableIDX);
+            return nullptr;
+        }else{
+            return it->second;
+        }
+    }
+
     //unsigned int readRegister(const Rhs2116StimulusRegister& reg){
     //    return BaseDevice::readRegister(reg);
     //}
@@ -620,7 +669,10 @@ private:
 
 protected:
 
-    Rhs2116MultiDevice* multi;
+    //Rhs2116MultiProcessor* multi;
+
+    std::map<uint32_t, ONI::Device::Rhs2116Device*> rhs2116Devices;
+    std::map<uint32_t, ONI::Device::Rhs2116StimDevice*> rhs2116StimDevices;
 
     ONI::Rhs2116StimulusData defaultStimulus;
     std::vector<ONI::Rhs2116StimulusData> defaultStimuli;
