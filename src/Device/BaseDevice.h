@@ -104,7 +104,7 @@ protected:
 		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
 
 		assert(ctx != nullptr && processorTypeID != ONI::Processor::TypeID::UNDEFINED, "ONIContext and ONIDevice must be setup");
-		LOGDEBUG("%s write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", BaseProcessor::processorName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
+		if(!bSetWithoutCheck) LOGDEBUG("%s write register: %s == dec(%05i) bin(%016llX) hex(%#06x)", BaseProcessor::processorName.c_str(), reg.getName().c_str(), value, uint16_to_bin16(value), value);
 
 		int rc = ONI_ESUCCESS;
 

@@ -416,7 +416,7 @@ public:
 				// NUMBER OF STIMULI WON'T FIT INTO RAM!!
 				std::ostringstream os; 
 				os << "Stimulus does not fit into memory " << currentStimulus.numberOfStimuli << " + " << stepCount - currentStimulus.numberOfStimuli << " >= 255 ==> " << stepCount << std::endl;
-				os << "Try reducing number of stimuli to: " << 255 - stepCount - currentStimulus.numberOfStimuli;
+				//os << "Try reducing number of stimuli to: " << 255 - stepCount - currentStimulus.numberOfStimuli;
 				sequenceMessage = os.str();
 				ImGui::OpenPopup("Error Sequence");
 				bApplyStimulus = false;
@@ -453,6 +453,7 @@ public:
 			if (ImGui::Button("OK", ImVec2(120, 0))){ 
 				ImGui::CloseCurrentPopup();
 			} 
+			ImGui::EndPopup();
 		}
 
 		/////////////////////////////////////////////////////////////////////

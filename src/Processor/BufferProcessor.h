@@ -167,6 +167,7 @@ private:
                     probeData.probeTimeStamps[probe][frame] =  uint64_t((frameBuffer[frame].getDeltaTime() - frameBuffer[0].getDeltaTime()) / 1000);
                     probeData.acProbeVoltages[probe][frame] = frameBuffer[frame].ac_uV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
                     probeData.dcProbeVoltages[probe][frame] = frameBuffer[frame].dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
+                    probeData.stimProbeData[probe][frame] = (float)frameBuffer[frame].stim; //frameBuffer[frame].stim ? 8.0f : 0.0f;
 
                     probeData.acProbeStats[probe].sum += probeData.acProbeVoltages[probe][frame];
                     probeData.dcProbeStats[probe].sum += probeData.dcProbeVoltages[probe][frame];

@@ -54,6 +54,34 @@ static inline void Sparkline(const char* id, const float* values, int count, flo
 	ImPlot::PopStyleVar();
 }
 
+static std::vector<float> frameTv;
+
+static inline void Sparkline2(const char* id, const float* values, const float* values2, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size, bool bLabelYAxis = false) {
+
+	ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0));
+	if(frameTv.size() != count){ // TODO: make this better
+		frameTv.resize(count);
+		for(size_t i = 0; i < count; ++i) frameTv[i] = i;
+	}
+	if (ImPlot::BeginPlot(id, size, ImPlotFlags_CanvasOnly)){
+
+		bLabelYAxis ? ImPlot::SetupAxes(nullptr, nullptr) : ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
+
+		ImPlot::SetupAxesLimits(0, count, min_v, max_v, ImGuiCond_Always);
+
+		ImPlot::SetNextLineStyle(col);
+		ImPlot::PlotLine("##prob", values, count, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+		
+		ImPlot::SetNextLineStyle(col, 0.0);
+		ImPlot::SetNextFillStyle(col, 0.6);
+
+		ImPlot::PlotDigital("##stim", &frameTv[0], values2, count, ImPlotLineFlags_None, offset);
+
+		ImPlot::EndPlot();
+	}
+	ImPlot::PopStyleVar();
+}
+
 static inline void SparklineTimes(const char* id, const float* values, const float* timeStamps, int count, float min_v, float max_v, int offset, const ImVec4& col, const ImVec2& size, bool bLabelYAxis = false) {
 
 	ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0));
@@ -106,7 +134,7 @@ static inline void plotIndividualStimulus(const size_t& maxStimulusLength,
 		ImGui::TableSetupColumn("AC Signal (uA)");
 
 		ImGui::TableHeadersRow();
-		ImPlot::PushColormap(ImPlotColormap_Cool);
+		//ImPlot::PushColormap(ImPlotColormap_Cool);
 
 		for(size_t i = 0; i < allStimulusAmplitudes.size(); ++i){
 
@@ -145,7 +173,7 @@ static inline void plotIndividualStimulus(const size_t& maxStimulusLength,
 
 		}
 
-		ImPlot::PopColormap();
+		//ImPlot::PopColormap();
 		ImGui::EndTable();
 	}
 
@@ -175,7 +203,11 @@ static std::string toString(const ONI::Interface::PlotType& plotType){
 };
 
 // Plot Combined AC or DC probe data
-static inline void plotCombinedProbes(const std::string plotName, const ONI::Frame::Rhs2116ProbeData& p, const std::vector<bool>& channelSelect, const ONI::Interface::PlotType& plotType){
+static inline void plotCombinedProbes(const std::string plotName, 
+									  const ONI::Frame::Rhs2116ProbeData& p, 
+									  const std::vector<bool>& channelSelect,
+									  //const bool& bIstStimulusPlaying,
+									  const ONI::Interface::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -209,6 +241,10 @@ static inline void plotCombinedProbes(const std::string plotName, const ONI::Fra
 
 	if(frameCount == 0) return;
 
+	ONI::Processor::Rhs2116StimProcessor* stim = ONI::Global::model.getRhs2116StimProcessor();
+	//std::vector<ONI::Rhs2116StimulusData> stimData = stim->getStimuli();
+	//ONI::Rhs2116StimulusData defaultStimulus;
+
 	ImGui::Begin(plotName.c_str());
 	ImGui::PushID("##CombinedProbePlot");
 
@@ -221,14 +257,26 @@ static inline void plotCombinedProbes(const std::string plotName, const ONI::Fra
 			if(!channelSelect[probe]) continue; // only show selected probes
 
 			ImGui::PushID(probe);
-			ImPlot::SetNextLineStyle(ImPlot::GetColormapColor(probe));
+			ImVec4 col = ImPlot::GetColormapColor(probe);
+			
 
 			int offset = 0;
 
 			//ImPlot::SetupAxesLimits(time[0], time[frameCount - 1] - 1, -5.0f, 5.0f, ImGuiCond_Always);
 			ImPlot::SetupAxesLimits(0, p.probeTimeStamps[probe][frameCount - 1] - 1, -voltageRange, voltageRange, ImGuiCond_Always);
-			ImPlot::PlotLine("##probe", &p.probeTimeStamps[probe][0], &(*voltages)[probe][0], frameCount, ImPlotLineFlags_None, offset);
 
+			ImPlot::SetNextLineStyle(col);
+			ImPlot::PlotLine("##probe", &p.probeTimeStamps[probe][0], &(*voltages)[probe][0], frameCount, ImPlotLineFlags_None, offset);
+			
+			if(stim->isStimulusOnDevice(probe)){
+
+				ImPlot::SetNextLineStyle(col, 0.0);
+				ImPlot::SetNextFillStyle(col, 0.6);
+
+				ImPlot::PlotDigital("##stim", &p.probeTimeStamps[probe][0], &p.stimProbeData[probe][0], frameCount, ImPlotLineFlags_None, offset);
+			}
+			//if(stimData[probe] != defaultStimulus) 
+			
 			//ImPlot::SetupAxesLimits(0, frameCount - 1, -6.0f, 6.0f, ImGuiCond_Always);
 			//ImPlot::PlotLine("###probe", data, frameCount, 1, 0, ImPlotLineFlags_None, offset);
 
@@ -252,6 +300,7 @@ static inline void plotIndividualProbes(const std::string plotName,
 										const std::vector<bool>& channelSelect, 
 										const std::vector<size_t>& inverseChannelIDX, 
 										const int& probePlotHeight,
+										//const bool& bIstStimulusPlaying,
 										const ONI::Interface::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
@@ -289,6 +338,10 @@ static inline void plotIndividualProbes(const std::string plotName,
 
 	if(frameCount == 0) return;
 
+	ONI::Processor::Rhs2116StimProcessor* stim = ONI::Global::model.getRhs2116StimProcessor();
+	//std::vector<ONI::Rhs2116StimulusData> stimData = stim->getStimuli();
+	//ONI::Rhs2116StimulusData defaultStimulus;
+
 	ImGui::Begin(plotName.c_str());
 	ImGui::PushID("##AllProbePlot");
 	static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg;
@@ -304,10 +357,11 @@ static inline void plotIndividualProbes(const std::string plotName,
 		ImGui::TableSetupColumn(voltageStr.c_str());
 
 		ImGui::TableHeadersRow();
-		ImPlot::PushColormap(ImPlotColormap_Cool);
+		//ImPlot::PushColormap(ImPlotColormap_Cool);
 
 		for (int probe = 0; probe < numProbes; probe++){
 
+			ImVec4 col = ImPlot::GetColormapColor(probe);
 
 			if(!channelSelect[probe]) continue; // only show selected probes
 
@@ -321,13 +375,17 @@ static inline void plotIndividualProbes(const std::string plotName,
 
 			ImGui::PushID(probe);
 
-			ONI::Interface::Sparkline("##spark", &(*voltages)[probe][0], frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, probePlotHeight));
+			if(stim->isStimulusOnDevice(probe)){
+				ONI::Interface::Sparkline2("##spark", &(*voltages)[probe][0], &p.stimProbeData[probe][0], frameCount, -voltageRange, voltageRange, offset, col, ImVec2(-1, probePlotHeight));
+			}else{
+				ONI::Interface::Sparkline("##spark", &(*voltages)[probe][0], frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, probePlotHeight));
+			}
 
 			ImGui::PopID();
 
 		}
 
-		ImPlot::PopColormap();
+		//ImPlot::PopColormap();
 		ImGui::EndTable();
 	}
 

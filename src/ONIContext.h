@@ -49,13 +49,16 @@
 
 
 
-// Refactor ONIContext to Context and ofxOnix.h
-// Refactor Processor and Device base classes
-// Implement global/model for ctx, clocks, sample rates, channel map etc
-// Implement re-usable global device and processor factory/model
-// Implment audio output of frame buffers
-// Implement recorder interface: time, play, pause, load, save, export
-// Implement spike detector/classifier
+// TODO:: Refactor ONIContext to Context and ofxOnix.h
+// TODO:: Add BurstFrequency type to the stimulus settings
+// DONISH:: Visualise/and functionilise suppressing spike detection during stimulation
+// DONE:: Refactor Processor and Device base classes
+// DONE:: Implement global/model for ctx, clocks, sample rates, channel map etc
+// NEARLY:: Implement re-usable global device and processor factory/model
+// TODO:: Heatmap Plots for AC and DC channel mapped probes
+// TODO:: Implment audio output of frame buffers
+// TODO:: Finish off recorder interface: time, play, pause, load, save, export
+// TODO:: Implement spike detector/classifier
 
 
 #pragma once

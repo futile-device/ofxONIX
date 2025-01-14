@@ -57,55 +57,11 @@ public:
 		//const std::lock_guard<std::mutex> lock(mutex);
 	};
 
-
-
-    //void setup(volatile oni_ctx* context, oni_device_t type, uint64_t acq_clock_khz) = delete;
-
-    //void setup(ONI::Device::Rhs2116MultiProcesor* multi){
-
-    //    LOGDEBUG("Setting up device RHS2116 STIM");
-
-    //    if(multi->devices.size() == 0){
-    //        LOGERROR("Add devices to Rhs2116MultiProcessor before setting up stimulus");
-    //        assert(false);
-    //        return;
-    //    }
-
-    //    this->multi = multi;
-
-    //    lastAppliedChannelMap = multi->getChannelMap();
-
-    //    onixDeviceType.idx = 1000;
-    //    onixDeviceType.id = RHS2116STIM;
-    //    deviceTypeID = RHS2116STIM;
-
-    //    std::ostringstream os; os << ONI::Device::toString(deviceTypeID) << " (" << onixDeviceType.idx << ")";
-    //    BaseProcessor::processorName = os.str();
-
-    //    BaseDevice::reset(); // always call device specific setup/reset
-    //    deviceSetup(); // always call device specific setup/reset
-
-    //    onixDeviceType.idx = 258; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
-        ////BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
-        //if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
-        //    LOGERROR("Error writing to TRIGGERSOURCE!!");
-        //}
-
-    //    onixDeviceType.idx = 514; // TODO: this needs a lot more work to make it general for more rhs2116 devices [but this is the trig device for 256/257]
-    //    //BaseDevice::writeRegister(RHS2116STIM_REG::ENABLE, 1); // do we need this?
-    //    if(!ONI::Device::BaseDevice::writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE, 0)){
-    //        LOGERROR("Error writing to TRIGGERSOURCE!!");
-    //    }
-
-    //    onixDeviceType.idx = 667;
-
-
-    //}
-
     void setup(){
         LOGDEBUG("Setting up device RHS2116STIM Processor");
         processorTypeID = ONI::Processor::TypeID::RHS2116_STIM_PROCESSOR;
         processorName = toString(processorTypeID);
+        ONI::Global::model.getRhs2116MultiProcessor()->subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
         reset();
     }
 
@@ -142,7 +98,15 @@ public:
     }
 
     inline void process(oni_frame_t* frame){};
-    inline void process(ONI::Frame::BaseFrame& frame){};
+    inline void process(ONI::Frame::BaseFrame& frame){
+        if(stimulusSampleCountRemaining > 0) {
+            reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)->stim = true;
+            --stimulusSampleCountRemaining;
+        }
+        for(auto& it : postProcessors){
+            it.second->process(frame);
+        }
+    };
 
 
     ONI::Rhs2116StimulusData& getStimulus(const unsigned int& probeIDX, const SettingType& type = SettingType::DEVICE){
@@ -155,6 +119,10 @@ public:
         std::vector<ONI::Rhs2116StimulusData>& deviceStimuli = getStimuli(type);
         return deviceStimuli[probeIDX];
 
+    }
+
+    bool isStimulusOnDevice(const size_t& probeIDX){
+        return (deviceSettings.stimuli[getInverseChannelMap()[probeIDX]] != defaultStimulus);
     }
 
     std::vector<ONI::Rhs2116StimulusData>& getStimuli(const SettingType& type = SettingType::DEVICE){
@@ -327,7 +295,7 @@ public:
 
                 tDeviceStimuli.push_back(deviceSettings.stimuli[probeIDX]);
 
-                LOGDEBUG("Set -ve probe stimulus: %i (%i)", probeIDX, getInverseChannelMap()[probeIDX]);
+                if(!bSetWithoutCheck) LOGDEBUG("Set -ve probe stimulus: %i (%i)", probeIDX, getInverseChannelMap()[probeIDX]);
                 if(!device->writeRegister(ONI::Register::Rhs2116::NEG[probeIDX % 16], deviceSettings.stimuli[probeIDX].anodicAmplitudeSteps, bSetWithoutCheck)){
                     LOGERROR("Error writing to NEG!!");
                     deviceSettings.stimuli = defaultStimuli; // hard reset device settings
@@ -335,7 +303,7 @@ public:
                     return false;
                 }
 
-                LOGDEBUG("Set +ve probe stimulus: %i (%i)", probeIDX, getInverseChannelMap()[probeIDX]);
+                if(!bSetWithoutCheck) LOGDEBUG("Set +ve probe stimulus: %i (%i)", probeIDX, getInverseChannelMap()[probeIDX]);
                 if(!device->writeRegister(ONI::Register::Rhs2116::POS[probeIDX % 16], deviceSettings.stimuli[probeIDX].cathodicAmplitudeSteps, bSetWithoutCheck)){
                     LOGERROR("Error writing to POS!!");
                     deviceSettings.stimuli = defaultStimuli; // hard reset device settings
@@ -382,7 +350,7 @@ public:
 
             //device->writeRegister(RHS2116_REG::RESPECTSTIMACTIVE, 1); // hmmm? not done in bonsai code
 
-            if(device->readRegister(ONI::Register::Rhs2116::SEQERROR)){
+            if(!bSetWithoutCheck && device->readRegister(ONI::Register::Rhs2116::SEQERROR)){
                 LOGERROR("Stimulus sequence error!!");
                 deviceSettings.stimuli = defaultStimuli; // hard reset device settings
                 deviceSettings.stepSize = ONI::Settings::Step10nA;
@@ -393,16 +361,26 @@ public:
 
         }
 
+        return true;
+
     }
 
+    inline bool isStimulousPlaying(){
+        return stimulusSampleCountRemaining > 0;
+    }
 
     inline void triggerStimulusSequence(){ // maybe proved a bAutoApply func?
+
+        
 
         for(auto& it : rhs2116StimDevices){
             ONI::Device::Rhs2116StimDevice* device = it.second;
             device->triggerStimulus();
+            stimulusSampleCountRemaining = stimulusSampleCountTotal = getMaxLengthSamples();
             device->getContexteNeedsReset(); // force no context resetting (cos this sets it to false)
         }
+
+        
 
         //if(deviceSettings != stagedSettings){ // ACTUALLY LETS CHECK WITH CHANNEL MAP!!
         //    LOGALERT("Staged settings are different to current device settings");
@@ -418,14 +396,14 @@ public:
 
     }
 
-    unsigned int getTotalLengthSamples(const ONI::Rhs2116StimulusData& stimulus){
-        unsigned int totalSamples = stimulus.anodicWidthSamples + stimulus.dwellSamples + stimulus.cathodicWidthSamples + stimulus.interStimulusIntervalSamples;
+    size_t getTotalLengthSamples(const ONI::Rhs2116StimulusData& stimulus){
+        size_t totalSamples = stimulus.anodicWidthSamples + stimulus.dwellSamples + stimulus.cathodicWidthSamples + stimulus.interStimulusIntervalSamples;
         totalSamples *= stimulus.numberOfStimuli;
         totalSamples += stimulus.delaySamples;
         return totalSamples;
     }
 
-    unsigned int getMaxLengthSamples(const SettingType& type = SettingType::DEVICE){
+    size_t getMaxLengthSamples(const SettingType& type = SettingType::DEVICE){
         std::vector<ONI::Rhs2116StimulusData>& deviceStimuli = getStimuli(type);
         return getMaxLengthSamples(deviceStimuli);
     }
@@ -465,8 +443,8 @@ public:
                 stimulus.actualCathodicAmplitudeMicroAmps = std::clamp(stimulus.cathodicAmplitudeSteps * ONI::Settings::Rhs2116StimulusStepMicroAmps[maxStep], 0.0, 2550.0);
             }
 
-            LOGDEBUG("Requested Anodic uA (%0.2f) || Actual Anodic uA (%0.2f) || Min Step (M) (%f) || Steps %i", stimulus.requestedAnodicAmplitudeMicroAmps, stimulus.actualAnodicAmplitudeMicroAmps, ONI::Settings::Rhs2116StimulusStepMicroAmps[maxStep], stimulus.anodicAmplitudeSteps);
-            LOGDEBUG("Requested Cathod uA (%0.2f) || Actual Cathod uA (%0.2f) || Min Step (M) (%f) || Steps %i", stimulus.requestedCathodicAmplitudeMicroAmps, stimulus.actualCathodicAmplitudeMicroAmps, ONI::Settings::Rhs2116StimulusStepMicroAmps[maxStep], stimulus.cathodicAmplitudeSteps);
+            //LOGDEBUG("Requested Anodic uA (%0.2f) || Actual Anodic uA (%0.2f) || Min Step (M) (%f) || Steps %i", stimulus.requestedAnodicAmplitudeMicroAmps, stimulus.actualAnodicAmplitudeMicroAmps, ONI::Settings::Rhs2116StimulusStepMicroAmps[maxStep], stimulus.anodicAmplitudeSteps);
+            //LOGDEBUG("Requested Cathod uA (%0.2f) || Actual Cathod uA (%0.2f) || Min Step (M) (%f) || Steps %i", stimulus.requestedCathodicAmplitudeMicroAmps, stimulus.actualCathodicAmplitudeMicroAmps, ONI::Settings::Rhs2116StimulusStepMicroAmps[maxStep], stimulus.cathodicAmplitudeSteps);
 
         }
 
@@ -531,10 +509,10 @@ private:
 
 
 
-    unsigned int getMaxLengthSamples(const std::vector<ONI::Rhs2116StimulusData>& deviceStimuli){
-        unsigned int totalSamples = 0;
+    size_t getMaxLengthSamples(const std::vector<ONI::Rhs2116StimulusData>& deviceStimuli){
+        size_t totalSamples = 0;
         for(auto& s : deviceStimuli){
-            unsigned int t = getTotalLengthSamples(s);
+            size_t t = getTotalLengthSamples(s);
             if(t >= totalSamples) totalSamples = t;
         }
         return totalSamples;
@@ -670,6 +648,10 @@ private:
 protected:
 
     //Rhs2116MultiProcessor* multi;
+
+    volatile bool bIsStimulusActive = false;
+    volatile size_t stimulusSampleCountRemaining = 0;
+    volatile size_t stimulusSampleCountTotal = 0;
 
     std::map<uint32_t, ONI::Device::Rhs2116Device*> rhs2116Devices;
     std::map<uint32_t, ONI::Device::Rhs2116StimDevice*> rhs2116StimDevices;

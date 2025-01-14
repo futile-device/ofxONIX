@@ -53,7 +53,6 @@ public:
 		numProbes = 0;
 		getEnabled(true);
 		getTriggerSource(true);
-
 	}
 
 	inline void process(oni_frame_t* frame){}
@@ -77,12 +76,12 @@ public:
 	}
 
 	bool getTriggerSource(const bool& bCheckRegisters = true){
-		if(bCheckRegisters) bTriggerDevice = !(bool)readRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE);
-		return bTriggerDevice;
+		if(bCheckRegisters) settings.bTriggerDevice = !(bool)readRegister(ONI::Register::Rhs2116Stimulus::TRIGGERSOURCE);
+		return settings.bTriggerDevice;
 	}
 
 	inline bool triggerStimulus(){
-		if(bTriggerDevice) return writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGER, 1);
+		if(settings.bTriggerDevice) return writeRegister(ONI::Register::Rhs2116Stimulus::TRIGGER, 1);
 		return false;
 	}
 
@@ -96,10 +95,9 @@ public:
 
 protected:
 
-	bool bTriggerDevice = false;
 	bool bEnabled = false;
 
-	//ONI::Settings::Rhs2116StimDeviceSettings settings;
+	ONI::Settings::Rhs2116StimDeviceSettings settings;
 
 };
 

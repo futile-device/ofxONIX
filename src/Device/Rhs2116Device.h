@@ -174,7 +174,7 @@ public:
 	bool setStepSize(ONI::Settings::Rhs2116StimulusStep stepSize, const bool& bSetWithoutCheck){
 		const unsigned int * regs = ONI::Settings::Rhs2116StimulusStepRegisters[stepSize];
 		unsigned int reg = regs[2] << 13 | regs[1] << 7 | regs[0];
-		bool bOk = writeRegister(ONI::Register::Rhs2116::STEPSZ, reg);
+		bool bOk = writeRegister(ONI::Register::Rhs2116::STEPSZ, reg, bSetWithoutCheck);
 		if(bOk) getStepSize(!bSetWithoutCheck);
 		return bOk;
 	}

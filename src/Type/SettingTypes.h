@@ -503,6 +503,26 @@ struct ChannelMapProcessorSettings{
 inline bool operator==(ChannelMapProcessorSettings& lhs, ChannelMapProcessorSettings& rhs){ return (lhs.channelMap == rhs.channelMap); }
 inline bool operator!=(ChannelMapProcessorSettings& lhs, ChannelMapProcessorSettings& rhs) { return !(lhs == rhs); }
 
+
+
+
+struct Rhs2116StimDeviceSettings{
+
+	bool bTriggerDevice = true;
+
+	// copy assignment (copy-and-swap idiom)
+	Rhs2116StimDeviceSettings& Rhs2116StimDeviceSettings::operator=(Rhs2116StimDeviceSettings other) noexcept{
+		std::swap(bTriggerDevice, other.bTriggerDevice);
+		return *this;
+	}
+
+};
+
+inline bool operator==(Rhs2116StimDeviceSettings& lhs, Rhs2116StimDeviceSettings& rhs){ return (lhs.bTriggerDevice == rhs.bTriggerDevice); }
+inline bool operator!=(Rhs2116StimDeviceSettings& lhs, Rhs2116StimDeviceSettings& rhs) { return !(lhs == rhs); }
+
+
+
 } // namespace Settings
 } // namespace ONI
 

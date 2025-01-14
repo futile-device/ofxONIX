@@ -56,7 +56,7 @@ protected:
 	uint64_t deltaTime = 0;
 	uint64_t acqTime = 0;
 	size_t numProbes = 0;
-
+	
 };
 
 struct acquisition_clock_compare {
@@ -112,11 +112,13 @@ struct Rhs2116ProbeData{
 		acProbeStats.resize(numProbes);
 		dcProbeStats.resize(numProbes);
 		probeTimeStamps.resize(numProbes);
+		stimProbeData.resize(numProbes);
 
 		for(size_t probe = 0; probe < numProbes; ++probe){
 			acProbeVoltages[probe].resize(numFrames);
 			dcProbeVoltages[probe].resize(numFrames);
 			probeTimeStamps[probe].resize(numFrames);
+			stimProbeData[probe].resize(numFrames);
 		}
 
 	}
@@ -131,6 +133,7 @@ struct Rhs2116ProbeData{
 
 	std::vector< std::vector<float> > acProbeVoltages;
 	std::vector< std::vector<float> > dcProbeVoltages;
+	std::vector< std::vector<float> > stimProbeData;
 	std::vector< std::vector<float> > probeTimeStamps;
 	std::vector<ProbeStatistics> acProbeStats;
 	std::vector<ProbeStatistics> dcProbeStats;
@@ -196,6 +199,7 @@ public:
 
 	float ac_mV[16];
 	float dc_mV[16];
+	bool stim = false;
 
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116Frame& Rhs2116Frame::operator=(Rhs2116Frame other) noexcept{
@@ -205,6 +209,7 @@ public:
 		std::swap(numProbes, other.numProbes);
 		std::swap(ac_mV, other.ac_mV);
 		std::swap(dc_mV, other.dc_mV);
+		std::swap(stim, other.stim);
 		std::swap(rawFrame, other.rawFrame);
 		return *this;
 	}
@@ -215,7 +220,7 @@ public:
 				return false;
 			}
 		}
-		return (numProbes == other.numProbes && deltaTime == other.deltaTime);
+		return (numProbes == other.numProbes && deltaTime == other.deltaTime && stim == other.stim);
 	}
 	inline bool operator!=(const Rhs2116Frame& other) { return !(this == &other); }
 
@@ -290,6 +295,7 @@ public:
 
 	float ac_uV[MAX_NUM_MULTIPROBES];
 	float dc_mV[MAX_NUM_MULTIPROBES];
+	bool stim = false;
 
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116MultiFrame& Rhs2116MultiFrame::operator=(Rhs2116MultiFrame other) noexcept{
@@ -299,16 +305,17 @@ public:
 		std::swap(numProbes, other.numProbes);
 		std::swap(ac_uV, other.ac_uV);
 		std::swap(dc_mV, other.dc_mV);
+		std::swap(stim, other.stim);
 		return *this;
 	}
 
 	inline bool operator==(const ONI::Frame::Rhs2116MultiFrame& other){ 
-		for(size_t probe = 0; probe < getNumProbes(); ++probe){
+		for(size_t probe = 0; probe < numProbes; ++probe){
 			if(ac_uV[probe] != other.ac_uV[probe] || dc_mV[probe] != other.ac_uV[probe]){
 				return false;
 			}
 		}
-		return (getNumProbes() == other.getNumProbes() && getDeltaTime() == other.getDeltaTime());
+		return (numProbes == other.numProbes && deltaTime == other.deltaTime && stim == other.stim);
 	}
 	inline bool operator!=(const ONI::Frame::Rhs2116MultiFrame& other) { return !(this == &other); }
 
