@@ -68,6 +68,7 @@ void ofApp::setup(){
     multi->setAnalogLowCutoffRecovery(ONI::Settings::Rhs2116AnalogLowCutoff::Low250Hz);
     multi->setAnalogHighCutoff(ONI::Settings::Rhs2116AnalogHighCutoff::High10000Hz);
 
+
     ONI::Processor::ChannelMapProcessor* channelProcessor = oni.createChannelMapProcessor();
     channelProcessor->setup(multi);
 

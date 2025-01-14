@@ -80,11 +80,11 @@ public:
 			if (ImGui::BeginTable("Probe_Map_Table", numProbes + 1, table_flags, ImVec2(0.0f, TEXT_BASE_HEIGHT * 12))){
 
 				// Setup angled column headers
-				ImGui::TableSetupColumn("RHS/MEA", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_NoReorder);
+				ImGui::TableSetupColumn("MEA/RHS", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_NoReorder);
 
 				for(int column = 1; column < numProbes + 1; ++column){
 					char buf[16];
-					std::sprintf(buf, "Electrode %i", column - 1);
+					std::sprintf(buf, "RHS Probe %i", column - 1);
 					ImGui::TableSetupColumn(buf, column_flags);
 				}
 
@@ -98,7 +98,7 @@ public:
 					ImGui::TableSetColumnIndex(0);
 					ImGui::AlignTextToFramePadding();
 
-					ImGui::Text("Probe %d", row);
+					ImGui::Text("MEA Electrode %d", row);
 
 					for(size_t column = 1; column < numProbes + 1; column++){
 

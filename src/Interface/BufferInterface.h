@@ -140,33 +140,13 @@ public:
 
 		if(selectCount == bp.getNumProbes()) bSelectAll = true;
 		
-		//ONI::Processor::Rhs2116StimProcessor* stim = ONI::Global::model.getRhs2116StimProcessor();
-		//bool bIstStimulusPlaying = stim->isStimulousPlaying();
-
-		//std::vector<std::vector<float>> stimProbeData = bp.sparseProbeData.acProbeVoltages;
-
-		//if(bIstStimulusPlaying){
-		//	std::vector<ONI::Rhs2116StimulusData> stimData = stim->getStimuli();
-		//	Rhs2116StimulusData defaultStimulus;
-		//	assert(stimData.size() == stimProbeData.size(), "Are the stim probes set up yet?");
-		//	for(size_t probeIDX = 0; probeIDX < stimProbeData.size(); ++probeIDX){
-		//		for(size_t frame = 0; frame < stimProbeData[probeIDX].size(); ++frame){
-		//			if(stimData[probeIDX] != defaultStimulus){
-		//				stimProbeData[probeIDX][frame] = 8.0f;
-		//			}
-		//			else{
-		//				stimProbeData[probeIDX][frame] = 0.0f;
-		//			}
-		//		}
-
-		//	}
-		//}
 
 		bp.processMutex.lock();
-		ONI::Interface::plotCombinedProbes("AC Combined", bp.sparseProbeData, channelSelect, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotIndividualProbes("AC Probes", bp.sparseProbeData, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotCombinedProbes("DC Combined", bp.sparseProbeData, channelSelect, ONI::Interface::PLOT_DC_DATA);
-		ONI::Interface::plotIndividualProbes("DC Probes", bp.sparseProbeData, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
+		ONI::Interface::plotCombinedHeatMap("Electrode HeatMap", bp.sparseProbeData);
+		ONI::Interface::plotCombinedLinePlot("AC Combined", bp.sparseProbeData, channelSelect, ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotIndividualLinePlot("AC Probes", bp.sparseProbeData, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotCombinedLinePlot("DC Combined", bp.sparseProbeData, channelSelect, ONI::Interface::PLOT_DC_DATA);
+		ONI::Interface::plotIndividualLinePlot("DC Probes", bp.sparseProbeData, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
 		bp.processMutex.unlock();
 
 		ImGui::PopID();

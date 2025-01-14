@@ -67,7 +67,19 @@ public:
 		reset();
 	}
 
-	void reset(){}; 
+	void reset(){
+		for(auto& it : devices) numProbes += it.second->getNumProbes();
+		getStepSize(true);
+		getDspCutOff(true);
+		getAnalogLowCutoff(true);
+		getAnalogLowCutoffRecovery(true);
+		getAnalogHighCutoff(true);
+		//setStepSize(settings.stepSize);
+		//setDspCutOff(settings.dspCutoff);
+		//setAnalogLowCutoff(settings.lowCutoff);
+		//setAnalogLowCutoffRecovery(settings.lowCutoffRecovery);
+		//setAnalogHighCutoff(settings.highCutoff);
+	}; 
 
 	void addDevice(ONI::Device::Rhs2116Device* device){
 		auto& it = devices.find(device->getOnixDeviceTableIDX());
@@ -113,7 +125,7 @@ public:
 
 	ONI::Settings::Rhs2116AnalogLowCutoff getAnalogLowCutoff(const bool& bCheckRegisters = true){
 		for(auto& it : devices){
-			settings.lowCutoff = getAnalogLowCutoff(bCheckRegisters); // should we check if they are both the same?
+			settings.lowCutoff = it.second->getAnalogLowCutoff(bCheckRegisters); // should we check if they are both the same?
 		}
 		return settings.lowCutoff;
 	}
@@ -128,7 +140,7 @@ public:
 
 	ONI::Settings::Rhs2116AnalogLowCutoff getAnalogLowCutoffRecovery(const bool& bCheckRegisters = true){
 		for(auto& it : devices){
-			settings.lowCutoffRecovery = getAnalogLowCutoffRecovery(bCheckRegisters); // should we check if they are both the same?
+			settings.lowCutoffRecovery = it.second->getAnalogLowCutoffRecovery(bCheckRegisters); // should we check if they are both the same?
 		}
 		return settings.lowCutoffRecovery;
 	}
@@ -143,7 +155,7 @@ public:
 
 	ONI::Settings::Rhs2116AnalogHighCutoff getAnalogHighCutoff(const bool& bCheckRegisters = true){
 		for(auto& it : devices){
-			settings.highCutoff = getAnalogHighCutoff(bCheckRegisters); // should we check if they are both the same?
+			settings.highCutoff = it.second->getAnalogHighCutoff(bCheckRegisters); // should we check if they are both the same?
 		}
 		return settings.highCutoff;
 	}
@@ -158,7 +170,12 @@ public:
 
 	ONI::Settings::Rhs2116Format getFormat(const bool& bCheckRegisters = true){
 		for(auto& it : devices){
-			settings.format = getFormat(bCheckRegisters); // should we check if they are both the same?
+			settings.format = it.second->getFormat(bCheckRegisters); // should we check if they are both the same?
+		}
+		if(settings.format.dspEnable == 0){
+			settings.dspCutoff = ONI::Settings::Rhs2116DspCutoff::Off; // is this a bug? that seems to be default status
+		}else{
+			settings.dspCutoff = (ONI::Settings::Rhs2116DspCutoff)settings.format.dspCutoff;
 		}
 		return settings.format;
 	}
@@ -166,6 +183,7 @@ public:
 	bool setDspCutOff(ONI::Settings::Rhs2116DspCutoff cutoff){
 		for(auto& it : devices){
 			bool bOk = it.second->setDspCutOff(cutoff);
+			if(bOk) getDspCutOff(true);
 			if(!bOk) return false;
 		}
 		return true;
@@ -187,12 +205,10 @@ public:
 
 	ONI::Settings::Rhs2116StimulusStep getStepSize(const bool& bCheckRegisters = true){
 		for(auto& it : devices){
-			settings.stepSize = getStepSize(bCheckRegisters); // should we check if they are both the same?
+			settings.stepSize = it.second->getStepSize(bCheckRegisters); // should we check if they are both the same?
 		}
 		return settings.stepSize;
 	}
-
-	
 
 	inline void process(oni_frame_t* frame) override {
 

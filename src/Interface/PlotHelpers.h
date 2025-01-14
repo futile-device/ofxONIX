@@ -202,12 +202,101 @@ static std::string toString(const ONI::Interface::PlotType& plotType){
 	}
 };
 
+
 // Plot Combined AC or DC probe data
-static inline void plotCombinedProbes(const std::string plotName, 
-									  const ONI::Frame::Rhs2116ProbeData& p, 
-									  const std::vector<bool>& channelSelect,
-									  //const bool& bIstStimulusPlaying,
-									  const ONI::Interface::PlotType& plotType){
+static inline void plotCombinedHeatMap(const std::string plotName, 
+									   const ONI::Frame::Rhs2116ProbeData& p){
+
+	//const std::lock_guard<std::mutex> lock(mutex);
+
+	size_t numProbes = p.acProbeVoltages.size();
+	size_t frameCount = p.acProbeVoltages[0].size();
+
+
+	if(frameCount == 0) return;
+
+	ONI::Processor::Rhs2116StimProcessor* stim = ONI::Global::model.getRhs2116StimProcessor();
+	
+
+
+	ImGui::Begin(plotName.c_str());
+	ImGui::PushID("##HeatMapProbePlot");
+
+	static ImPlotColormap map = ImPlotColormap_Cool; //ImPlotColormap_Plasma
+	if (ImPlot::ColormapButton(ImPlot::GetColormapName(map),ImVec2(225,0),map)) {
+		map = (map + 1) % ImPlot::GetColormapCount();
+		// We bust the color cache of our plots so that item colors will
+		// resample the new colormap in the event that they have already
+		// been created. See documentation in implot.h.
+		//BustColorCache("AC Electrodes");
+		//BustColorCache("DC Electrodes");
+	}
+
+	static ImPlotAxisFlags axes_flags = ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickMarks;
+
+	ImPlot::PushColormap(map);
+
+	float scW = ImGui::GetWindowWidth() > ImGui::GetWindowHeight() ? 120 : 60;
+	//float divW = ImGui::GetWindowWidth() > ImGui::GetWindowHeight() ? 2 : 1;
+	float dimW = ImGui::GetWindowWidth() > ImGui::GetWindowHeight() ? ImGui::GetWindowWidth() : ImGui::GetWindowHeight();
+	float width = (dimW - scW) / 2; //std::min(ImGui::GetWindowWidth(), ImGui::GetWindowHeight())
+
+	static float hm[8][8]; // TODO: this should be calculated or passed in depending on actual num probes
+
+	static const char* ylabels[] = {"8","7","6","5","4","3","2","1"};
+	static const char* xlabels[] = {"A","B","C","D","E","F","G","H"};
+
+	for(size_t i = 0; i < numProbes; ++i){
+		size_t col = i % 8;
+		size_t row = std::floor(i / 8);
+		hm[row][col] = (p.acProbeVoltages)[i][(p.acProbeVoltages)[i].size() - 1];
+	}
+
+	float voltageRange = 2.0f;
+
+	if (ImPlot::BeginPlot("AC Electrodes",ImVec2(width, width),ImPlotFlags_NoLegend|ImPlotFlags_NoMouseText)) {
+		ImPlot::SetupAxes(nullptr, nullptr, axes_flags, axes_flags);
+		ImPlot::SetupAxisTicks(ImAxis_X1,0 + 1.0/16.0, 1 - 1.0/16.0, 8, xlabels);
+		ImPlot::SetupAxisTicks(ImAxis_Y1,1 - 1.0/16.0, 0 + 1.0/16.0, 8, ylabels);
+		ImPlot::PlotHeatmap("AC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_ColMajor);
+		ImPlot::EndPlot();
+	}
+
+	ImGui::SameLine();
+	ImPlot::ColormapScale("mV", -voltageRange, voltageRange, ImVec2(60, width));
+
+	if(ImGui::GetWindowWidth() > ImGui::GetWindowHeight()) ImGui::SameLine();
+	
+	for(size_t i = 0; i < numProbes; ++i){
+		size_t col = i % 8;
+		size_t row = std::floor(i / 8);
+		hm[row][col] = (p.dcProbeVoltages)[i][(p.dcProbeVoltages)[i].size() - 1];
+	}
+
+	voltageRange = 5.0f;
+	
+	if (ImPlot::BeginPlot("DC Electrodes",ImVec2(width, width),ImPlotFlags_NoLegend|ImPlotFlags_NoMouseText)) {
+		ImPlot::SetupAxes(nullptr, nullptr, axes_flags, axes_flags);
+		ImPlot::SetupAxisTicks(ImAxis_X1,0 + 1.0/16.0, 1 - 1.0/16.0, 8, xlabels);
+		ImPlot::SetupAxisTicks(ImAxis_Y1,1 - 1.0/16.0, 0 + 1.0/16.0, 8, ylabels);
+		ImPlot::PlotHeatmap("DC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_ColMajor);
+		ImPlot::EndPlot();
+	}
+
+	ImGui::SameLine();
+	ImPlot::ColormapScale("V", -voltageRange, voltageRange, ImVec2(60, width));
+
+	ImPlot::PopColormap();
+
+	ImGui::PopID();
+	ImGui::End();
+
+}
+// Plot Combined AC or DC probe data
+static inline void plotCombinedLinePlot(const std::string plotName, 
+										const ONI::Frame::Rhs2116ProbeData& p, 
+										const std::vector<bool>& channelSelect,
+										const ONI::Interface::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -262,7 +351,7 @@ static inline void plotCombinedProbes(const std::string plotName,
 
 			int offset = 0;
 
-			//ImPlot::SetupAxesLimits(time[0], time[frameCount - 1] - 1, -5.0f, 5.0f, ImGuiCond_Always);
+
 			ImPlot::SetupAxesLimits(0, p.probeTimeStamps[probe][frameCount - 1] - 1, -voltageRange, voltageRange, ImGuiCond_Always);
 
 			ImPlot::SetNextLineStyle(col);
@@ -272,13 +361,9 @@ static inline void plotCombinedProbes(const std::string plotName,
 
 				ImPlot::SetNextLineStyle(col, 0.0);
 				ImPlot::SetNextFillStyle(col, 0.6);
-
+				//ImPlot::PlotShaded("##pshaded", &p.probeTimeStamps[probe][0], &p.stimProbeData[probe][0], frameCount, -INFINITY, ImPlotLineFlags_None, offset);
 				ImPlot::PlotDigital("##stim", &p.probeTimeStamps[probe][0], &p.stimProbeData[probe][0], frameCount, ImPlotLineFlags_None, offset);
 			}
-			//if(stimData[probe] != defaultStimulus) 
-			
-			//ImPlot::SetupAxesLimits(0, frameCount - 1, -6.0f, 6.0f, ImGuiCond_Always);
-			//ImPlot::PlotLine("###probe", data, frameCount, 1, 0, ImPlotLineFlags_None, offset);
 
 
 			ImGui::PopID();
@@ -295,13 +380,12 @@ static inline void plotCombinedProbes(const std::string plotName,
 
 
 // Plot Individual AC or DC probe data
-static inline void plotIndividualProbes(const std::string plotName, 
-										const ONI::Frame::Rhs2116ProbeData& p, 
-										const std::vector<bool>& channelSelect, 
-										const std::vector<size_t>& inverseChannelIDX, 
-										const int& probePlotHeight,
-										//const bool& bIstStimulusPlaying,
-										const ONI::Interface::PlotType& plotType){
+static inline void plotIndividualLinePlot(const std::string plotName,
+										  const ONI::Frame::Rhs2116ProbeData& p,
+										  const std::vector<bool>& channelSelect,
+										  const std::vector<size_t>& inverseChannelIDX,
+										  const int& probePlotHeight,
+										  const ONI::Interface::PlotType& plotType){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
