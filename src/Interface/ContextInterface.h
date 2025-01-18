@@ -411,13 +411,13 @@ public:
 	~_HeartBeatDeviceConfig(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
+		device->unsubscribeProcessor(processorName, SubscriptionType::POST_PROCESSOR, this);
 	};
 
 	void deviceConfigSetup(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
+		device->subscribeProcessor(processorName, SubscriptionType::POST_PROCESSOR, this);
 	}
 
 	inline void process(oni_frame_t* frame){}; // nothing
@@ -491,14 +491,14 @@ public:
 		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		//std::string processorName = device->getName() + " GUI PROC";
-		//device->unsubscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
+		//device->unsubscribeProcessor(processorName, SubscriptionType::POST_PROCESSOR, this);
 	};
 
 	void deviceConfigSetup(){
 		//if(device == nullptr) return;
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
+		device->subscribeProcessor(processorName, SubscriptionType::POST_PROCESSOR, this);
 	}
 
 	void defaults(){
@@ -620,7 +620,7 @@ public:
 	~_Rhs2116MultiDeviceConfig(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->unsubscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
+		device->unsubscribeProcessor(processorName, SubscriptionType::POST_PROCESSOR, this);
 		bThread = false;
 		if(thread.joinable()) thread.join();
 	};
@@ -628,7 +628,7 @@ public:
 	void deviceConfigSetup(){
 		//ONIProbeDevice* probeDevice = reinterpret_cast<ONIProbeDevice*>(device);
 		std::string processorName = device->getName() + " GUI PROC";
-		device->subscribeProcessor(processorName, FrameProcessorType::POST_PROCESSOR, this);
+		device->subscribeProcessor(processorName, SubscriptionType::POST_PROCESSOR, this);
 		//buffer.resize(currentSettings.bufferSize);
 		bThread = true;
 		thread = std::thread(&_Rhs2116MultiDeviceConfig::processBufferThread, this);

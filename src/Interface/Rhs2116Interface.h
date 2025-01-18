@@ -46,7 +46,7 @@ public:
 
 		ONI::Device::Rhs2116Device& rhs = *reinterpret_cast<ONI::Device::Rhs2116Device*>(&processor);
 
-		rhs.subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
+		rhs.subscribeProcessor(processorName, ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
 
 		nextSettings = rhs.settings;
 

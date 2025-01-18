@@ -36,6 +36,7 @@
 
 #include "../Processor/BufferProcessor.h"
 #include "../Processor/ChannelMapProcessor.h"
+#include "../Processor/RecordProcessor.h"
 #include "../Processor/SpikeProcessor.h"
 #include "../Processor/Rhs2116MultiProcessor.h"
 #include "../Processor/Rhs2116StimProcessor.h"
@@ -52,13 +53,14 @@
 // TODO:: Refactor ONIContext to Context and ofxOnix.h
 // TODO:: Add BurstFrequency type to the stimulus settings
 // DONE:: Visualise/and functionilise suppressing spike detection during stimulation
-// DONE:: Refactor Processor and Device base classes
-// DONE:: Implement global/model for ctx, clocks, sample rates, channel map etc
-// DONE:: Implement re-usable global device and processor factory/model
-// TODO:: Heatmap Plots for AC and DC channel mapped probes
 // TODO:: Implment audio output of frame buffers
 // TODO:: Finish off recorder interface: time, play, pause, load, save, export
 // TODO:: Implement spike detector/classifier
+
+// DONE:: Refactor Processor and Device base classes
+// DONE:: Implement global/model for ctx, clocks, sample rates, channel map etc
+// DONE:: Implement re-usable global device and processor factory/model
+// DONE:: Heatmap P lots for AC and DC channel mapped probes
 
 
 #pragma once
@@ -153,7 +155,7 @@ public:
 			//deviceRequestedChange->reset();
 		}
 
-		if(bStopPlaybackThread) stopPlaying();
+		//if(bStopPlaybackThread) stopPlaying();
 
 	}
 
@@ -253,125 +255,56 @@ public:
 		LOGINFO("...ONIX Context closed");
 	}
 
-	void startRecording(){
-		if(bIsPlaying) stopPlaying();
-		if(bIsRecording) stopRecording();
-		if(bIsAcquiring) stopAcquisition();
-		contextDataStream = std::fstream(ofToDataPath("data_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
-		contextTimeStream = std::fstream(ofToDataPath("time_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
 
-		using namespace std::chrono;
-		uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-		contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
-		if(contextTimeStream.bad()) LOGERROR("Bad init time frame write");
 
-		bIsRecording = true;
-		startAcquisition();
-	}
 
-	void stopRecording(){
-		stopAcquisition();
-		contextDataStream.close();
-		contextTimeStream.close();
-		bIsRecording = false;
-	}
+	// TODO: this is a fairly weak factory style -> currently it only handles single instances of a processor type
+	// and relies on "proxy" style single pointers for each type ==> we should probably make it more generic to
+	// account for multiple instances of types etc, but for now, handle with care!!
 
-	void startPlayng(){
-		if(bIsPlaying) stopPlaying();
-		if(bIsRecording) stopRecording();
-		if(bIsAcquiring) stopAcquisition();
-		contextDataStream = std::fstream(ofToDataPath("data_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
-		contextTimeStream = std::fstream(ofToDataPath("time_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
-		contextDataStream.seekg(0, ::std::ios::beg);
-		contextTimeStream.seekg(0, ::std::ios::beg);
-		contextTimeStream.read(reinterpret_cast<char*>(&lastAcquireTimeStamp),  sizeof(uint64_t));
-		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
-		for(auto& device : ONI::Global::model.getDevices()) device.second->reset();
-		bThread = true;
-		bIsPlaying = true;
-		thread = std::thread(&Context::playFrames, this);
-
-		//startAcquisition();
-	}
-
-	void stopPlaying(){
-		if(!bThread) return;
-		bThread = false;
-		if(thread.joinable()) thread.join();
-		contextDataStream.close();
-		contextTimeStream.close();
-		bIsPlaying = false;
-		bStopPlaybackThread = false;
+	template<class ProcessorType>
+	ProcessorType* createProcessor(){
+		ProcessorType* processor = new ProcessorType;
+		std::map<ONI::Processor::TypeID, ONI::Processor::BaseProcessor*>& processors = ONI::Global::model.getProcessors();
+		const ONI::Processor::TypeID& typeID = reinterpret_cast<ONI::Processor::BaseProcessor*>(processor)->getProcessorTypeID();
+		const std::string& name = reinterpret_cast<ONI::Processor::BaseProcessor*>(processor)->getName();
+		auto it = processors.find(typeID);
+		if(it != processors.end()){
+			LOGINFO("Deleting old %s", name.c_str());
+			delete processors[typeID];
+		}
+		LOGINFO("Created new %s", name.c_str());
+		processors[typeID] = std::move(processor);
+		return reinterpret_cast<ProcessorType*>(processors[typeID]);
 	}
 
 	ONI::Processor::BufferProcessor* createBufferProcessor(){
-		//std::map<ONI::Processor::TypeID, ONI::Processor::BaseProcessor*>& processors = ONI::Global::model.getProcessors();
-		if(ONI::Global::model.bufferProcessor != nullptr){
-			LOGINFO("Deleting old BufferProcessor");
-			delete ONI::Global::model.bufferProcessor;
-			ONI::Global::model.bufferProcessor = nullptr;
-		}
-		if(ONI::Global::model.bufferProcessor == nullptr){
-			LOGINFO("Creating new BufferProcessor");
-			ONI::Global::model.bufferProcessor = new ONI::Processor::BufferProcessor;
-		}
+		ONI::Global::model.bufferProcessor = createProcessor<ONI::Processor::BufferProcessor>();
 		return ONI::Global::model.bufferProcessor;
 	}
 
 	ONI::Processor::ChannelMapProcessor* createChannelMapProcessor(){
-		//ONI::Processor::ChannelMapProcessor * channelMapProcessor = ONI::Global::model.channelMapProcessor;
-		if(ONI::Global::model.channelMapProcessor != nullptr){
-			LOGINFO("Deleting old ChannelMapProcessor");
-			delete ONI::Global::model.channelMapProcessor;
-			ONI::Global::model.channelMapProcessor = nullptr;
-		}
-		if(ONI::Global::model.channelMapProcessor == nullptr){
-			LOGINFO("Creating new ChannelMapProcessor");
-			ONI::Global::model.channelMapProcessor = new ONI::Processor::ChannelMapProcessor;
-			//ONI::Global::model.setChannelMapProcessor(channelMapProcessor);
-		}
+		ONI::Global::model.channelMapProcessor = createProcessor<ONI::Processor::ChannelMapProcessor>();
 		return ONI::Global::model.channelMapProcessor;
 	}
 
+	ONI::Processor::RecordProcessor* createRecordProcessor(){
+		ONI::Global::model.recordProcessor = createProcessor<ONI::Processor::RecordProcessor>();
+		return ONI::Global::model.recordProcessor;
+	}
+
 	ONI::Processor::SpikeProcessor* createSpikeProcessor(){
-		//ONI::Processor::SpikeProcessor * spikeProcessor = ONI::Global::model.spikeProcessor;
-		if(ONI::Global::model.spikeProcessor != nullptr){
-			LOGINFO("Deleting old SpikeProcessor");
-			delete ONI::Global::model.spikeProcessor;
-			ONI::Global::model.spikeProcessor = nullptr;
-		}
-		if(ONI::Global::model.spikeProcessor == nullptr){
-			LOGINFO("Creating new SpikeProcessor");
-			ONI::Global::model.spikeProcessor = new ONI::Processor::SpikeProcessor;
-		}
+		ONI::Global::model.spikeProcessor = createProcessor<ONI::Processor::SpikeProcessor>();
 		return ONI::Global::model.spikeProcessor;
 	}
 
 	ONI::Processor::Rhs2116MultiProcessor* createRhs2116MultiProcessor(){
-		//ONI::Processor::Rhs2116MultiProcessor * rhs2116MultiProcessor = ONI::Global::model.rhs2116MultiProcessor;
-		if(ONI::Global::model.rhs2116MultiProcessor != nullptr){
-			LOGINFO("Deleting old Rhs2116MultiProcessor");
-			delete ONI::Global::model.rhs2116MultiProcessor;
-			ONI::Global::model.rhs2116MultiProcessor = nullptr;
-		}
-		if(ONI::Global::model.rhs2116MultiProcessor == nullptr){
-			LOGINFO("Creating new Rhs2116MultiProcessor");
-			ONI::Global::model.rhs2116MultiProcessor = new ONI::Processor::Rhs2116MultiProcessor;
-		}
+		ONI::Global::model.rhs2116MultiProcessor = createProcessor<ONI::Processor::Rhs2116MultiProcessor>();
 		return ONI::Global::model.rhs2116MultiProcessor;
 	}
 
 	ONI::Processor::Rhs2116StimProcessor* createRhs2116StimProcessor(){
-		ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = ONI::Global::model.rhs2116StimProcessor;
-		if(ONI::Global::model.rhs2116StimProcessor != nullptr){
-			LOGINFO("Deleting old Rhs2116StimProcessor");
-			delete ONI::Global::model.rhs2116StimProcessor;
-			ONI::Global::model.rhs2116StimProcessor = nullptr;
-		}
-		if(ONI::Global::model.rhs2116StimProcessor == nullptr){
-			LOGINFO("Creating new Rhs2116StimProcessor");
-			ONI::Global::model.rhs2116StimProcessor = new ONI::Processor::Rhs2116StimProcessor;
-		}
+		ONI::Global::model.rhs2116StimProcessor = createProcessor<ONI::Processor::Rhs2116StimProcessor>();
 		return ONI::Global::model.rhs2116StimProcessor;
 	}
 
@@ -383,6 +316,11 @@ public:
 	ONI::Processor::ChannelMapProcessor* getChannelMapProcessor(){
 		assert(ONI::Global::model.getChannelMapProcessor() != nullptr, "User must create the ChannelMapProcessor first!");
 		return ONI::Global::model.getChannelMapProcessor();
+	}
+
+	ONI::Processor::RecordProcessor* getRecordProcessor(){
+		assert(ONI::Global::model.getRecordProcessor() != nullptr, "User must create the RecordProcessor first!");
+		return ONI::Global::model.getRecordProcessor();
 	}
 
 	ONI::Processor::SpikeProcessor* getSpikeProcessor(){
@@ -636,95 +574,7 @@ private:
 
 	}
 
-	void recordFrame(oni_frame_t* frame){
-
-		if(!bIsRecording) return;
-
-		if(frame->dev_idx == 256 || frame->dev_idx == 257){
-
-			using namespace std::chrono;
-			uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-
-			ONI::Frame::Rhs2116DataRaw * frame_out = new ONI::Frame::Rhs2116DataRaw;
-
-			frame_out->time = frame->time;
-			frame_out->dev_idx = frame->dev_idx;
-			frame_out->data_sz = frame->data_sz;
-
-			std::memcpy(frame_out->data, frame->data, frame->data_sz);
-
-			contextDataStream.write(reinterpret_cast<char*>(frame_out), sizeof(ONI::Frame::Rhs2116DataRaw));
-			if(contextDataStream.bad()) LOGERROR("Bad data frame write");
-
-			contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
-			if(contextTimeStream.bad()) LOGERROR("Bad time frame write");
-
-			delete frame_out;
-
-		}
-
-	}
-
-	void playFrames(){
-
-		while(bThread){
-
-			uint64_t systemAcquisitionTimeStamp = 0;
-
-			contextTimeStream.read(reinterpret_cast<char*>(&systemAcquisitionTimeStamp),  sizeof(uint64_t));
-			if(contextTimeStream.bad()) LOGERROR("Bad time frame read");
-
-			ONI::Frame::Rhs2116DataRaw * frame_in = new ONI::Frame::Rhs2116DataRaw;
-
-			contextDataStream.read(reinterpret_cast<char*>(frame_in),  sizeof(ONI::Frame::Rhs2116DataRaw));
-			if(contextDataStream.bad()) LOGERROR("Bad data frame read");
-
-			if(contextDataStream.eof()) break;
-
-			oni_frame_t * frame = reinterpret_cast<oni_frame_t*>(frame_in); // this is kinda nasty ==> will it always work
-
-			frame->data = new char[74];
-			memcpy(frame->data, frame_in->data, 74);
-
-			std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
-
-			auto it = devices.find((uint32_t)frame->dev_idx);
-
-			if(it == devices.end()){
-				LOGERROR("ONI Device doesn't exist with idx: %i", frame->dev_idx);
-			}else{
-
-				auto device = it->second;
-				device->process(frame);	
-
-			}
-
-			delete [] frame->data;
-			delete frame_in;
-
-			uint64_t deltaTimeStamp = systemAcquisitionTimeStamp - lastAcquireTimeStamp;
-
-			using namespace std::chrono;
-			uint64_t elapsed = 0;
-			uint64_t start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-
-			while(elapsed < deltaTimeStamp){
-				elapsed = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - start;
-				std::this_thread::yield();
-			}
-
-			//LOGDEBUG("delta: %i || actual: %i", deltaTimeStamp, elapsed);
-
-			lastAcquireTimeStamp = systemAcquisitionTimeStamp;
-
-
-
-		}
-
-		LOGINFO("Playback EOF");
-		bStopPlaybackThread = true;
-
-	}
+	
 
 	void readFrames(){
 
@@ -750,7 +600,7 @@ private:
 
 					auto device = it->second;
 
-					recordFrame(frame);
+					ONI::Global::model.getRecordProcessor()->recordFrame(frame);
 					device->process(frame);	
 
 				}
@@ -803,15 +653,6 @@ private:
 	std::atomic_bool bIsContextSetup = false;
 	std::atomic_bool bIsAcquiring = false;
 
-	std::fstream contextDataStream;
-	std::fstream contextTimeStream;
-
-	uint64_t lastAcquireTimeStamp = 0;
-
-	std::atomic_bool bIsRecording = false;
-	std::atomic_bool bIsPlaying = false;
-
-	std::atomic_bool bStopPlaybackThread = false;
 	std::atomic_bool bThread = false;
 
 	std::thread thread;

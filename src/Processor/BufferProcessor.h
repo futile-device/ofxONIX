@@ -46,6 +46,11 @@ public:
 
     friend class ONI::Interface::BufferInterface;
 
+    BufferProcessor(){
+        BaseProcessor::processorTypeID = ONI::Processor::TypeID::BUFFER_PROCESSOR;
+        BaseProcessor::processorName = toString(processorTypeID);
+    }
+
 	~BufferProcessor(){
         close();
     };
@@ -64,7 +69,7 @@ public:
         //}
 
         this->source = source;
-        this->source->subscribeProcessor("BufferProcessor", ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
+        this->source->subscribeProcessor("BufferProcessor", ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
 
         BaseProcessor::numProbes = source->getNumProbes();
 
@@ -149,7 +154,7 @@ private:
             std::vector<ONI::Frame::Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
             dataMutex.unlock();
 
-            //std::this_thread::yield(); //??
+            std::this_thread::yield(); //??
             std::sort(frameBuffer.begin(), frameBuffer.end(), ONI::Frame::acquisition_clock_compare());
 
             processMutex.lock();

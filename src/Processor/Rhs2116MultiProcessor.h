@@ -53,7 +53,10 @@ public:
 	//friend class ONI::Processor::SpikeProcessor;
 	//friend class ONI::Processor::BufferProcessor;
 
-	Rhs2116MultiProcessor(){};
+	Rhs2116MultiProcessor(){
+		BaseProcessor::processorTypeID = ONI::Processor::TypeID::RHS2116_MULTI_PROCESSOR;
+		BaseProcessor::processorName = toString(processorTypeID);
+	};
 	
 	~Rhs2116MultiProcessor(){
 		LOGDEBUG("RHS2116Multi Device DTOR");
@@ -62,8 +65,7 @@ public:
 
 	void setup(){
 		LOGDEBUG("Setting up RHS2116MULTI Processor");
-		processorTypeID = ONI::Processor::TypeID::RHS2116_MULTI_PROCESSOR;
-		processorName = toString(processorTypeID);
+
 		reset();
 	}
 
@@ -90,7 +92,7 @@ public:
 			LOGERROR("Device already added: %s", device->getName().c_str());
 		}
 		std::string processorName = BaseProcessor::processorName + " MULTI PROC";
-		device->subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::PRE_PROCESSOR, this);
+		device->subscribeProcessor(processorName, ONI::Processor::SubscriptionType::PRE_PROCESSOR, this);
 		numProbes += device->getNumProbes();
 		//expectDevceIDOrdered.push_back(device->getOnixDeviceTableIDX());
 		//std::sort(expectDevceIDOrdered.begin(), expectDevceIDOrdered.end()); // sort so device frames get added in ascending order

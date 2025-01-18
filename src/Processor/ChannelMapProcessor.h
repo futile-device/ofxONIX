@@ -46,12 +46,15 @@ public:
 
 	friend class ChannelMapInterface;
 
+	ChannelMapProcessor(){
+		BaseProcessor::processorTypeID = ONI::Processor::TypeID::CHANNEL_PROCESSOR;
+		BaseProcessor::processorName = toString(processorTypeID);
+	}
+
 	~ChannelMapProcessor(){};
 
     void setup(ONI::Processor::BaseProcessor* source){
         LOGDEBUG("Setting up ChannelMap Processor");
-		processorTypeID = ONI::Processor::TypeID::BUFFER_PROCESSOR;
-		processorName = toString(processorTypeID);
 		ONI::Processor::BaseProcessor::numProbes = source->getNumProbes();
 		reset();
     }

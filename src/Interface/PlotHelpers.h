@@ -258,7 +258,7 @@ static inline void plotCombinedHeatMap(const std::string plotName,
 		ImPlot::SetupAxes(nullptr, nullptr, axes_flags, axes_flags);
 		ImPlot::SetupAxisTicks(ImAxis_X1,0 + 1.0/16.0, 1 - 1.0/16.0, 8, xlabels);
 		ImPlot::SetupAxisTicks(ImAxis_Y1,1 - 1.0/16.0, 0 + 1.0/16.0, 8, ylabels);
-		ImPlot::PlotHeatmap("AC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_ColMajor);
+		ImPlot::PlotHeatmap("AC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_None);
 		ImPlot::EndPlot();
 	}
 
@@ -279,7 +279,7 @@ static inline void plotCombinedHeatMap(const std::string plotName,
 		ImPlot::SetupAxes(nullptr, nullptr, axes_flags, axes_flags);
 		ImPlot::SetupAxisTicks(ImAxis_X1,0 + 1.0/16.0, 1 - 1.0/16.0, 8, xlabels);
 		ImPlot::SetupAxisTicks(ImAxis_Y1,1 - 1.0/16.0, 0 + 1.0/16.0, 8, ylabels);
-		ImPlot::PlotHeatmap("DC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_ColMajor);
+		ImPlot::PlotHeatmap("DC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_None);
 		ImPlot::EndPlot();
 	}
 

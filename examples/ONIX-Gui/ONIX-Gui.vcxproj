@@ -182,6 +182,7 @@
     <ClInclude Include="..\..\src\Processor\BaseProcessor.h" />
     <ClInclude Include="..\..\src\Processor\BufferProcessor.h" />
     <ClInclude Include="..\..\src\Processor\ChannelMapProcessor.h" />
+    <ClInclude Include="..\..\src\Processor\RecordProcessor.h" />
     <ClInclude Include="..\..\src\Processor\Rhs2116MultiProcessor.h" />
     <ClInclude Include="..\..\src\Processor\Rhs2116StimProcessor.h" />
     <ClInclude Include="..\..\src\Processor\SpikeProcessor.h" />

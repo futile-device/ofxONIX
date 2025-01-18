@@ -40,6 +40,11 @@ class SpikeProcessor : public BaseProcessor{
 
 public:
 
+    SpikeProcessor(){
+        BaseProcessor::processorTypeID = ONI::Processor::TypeID::SPIKE_PROCESSOR;
+        BaseProcessor::processorName = toString(processorTypeID);
+    }
+
 	~SpikeProcessor(){};
 
     void setup(){ //ONI::Processor::Rhs2116MultiProcessor* multi
@@ -53,7 +58,7 @@ public:
         //}
 
         //this->multi = multi;
-        //this->multi->subscribeProcessor("SpikeProcessor", ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
+        //this->multi->subscribeProcessor("SpikeProcessor", ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
 
     }
 

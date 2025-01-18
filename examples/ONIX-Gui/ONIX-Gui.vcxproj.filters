@@ -2975,6 +2975,9 @@
     <ClInclude Include="..\..\src\Interface\ChannelMapInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Processor\RecordProcessor.h">
+      <Filter>addons\ofxONIX\src\Processor</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc" />

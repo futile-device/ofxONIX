@@ -50,7 +50,10 @@ public:
 
 	friend class ONI::Interface::Rhs2116StimulusInterface;
 
-	//Rhs2116StimProcessor(){};
+	Rhs2116StimProcessor(){
+        BaseProcessor::processorTypeID = ONI::Processor::TypeID::RHS2116_STIM_PROCESSOR;
+        BaseProcessor::processorName = toString(processorTypeID);
+    };
 	
 	~Rhs2116StimProcessor(){
 		LOGDEBUG("RHS2116Stim Processor DTOR");
@@ -59,9 +62,7 @@ public:
 
     void setup(){
         LOGDEBUG("Setting up device RHS2116STIM Processor");
-        processorTypeID = ONI::Processor::TypeID::RHS2116_STIM_PROCESSOR;
-        processorName = toString(processorTypeID);
-        ONI::Global::model.getRhs2116MultiProcessor()->subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
+        ONI::Global::model.getRhs2116MultiProcessor()->subscribeProcessor(processorName, ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
         reset();
     }
 

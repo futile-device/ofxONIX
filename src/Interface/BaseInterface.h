@@ -39,8 +39,8 @@ public:
 	// inherited from BufferProcessor
 	//virtual inline void process(ONI::Frame::BaseFrame& frame) = 0;
 	//virtual inline void process(oni_frame_t* frame) = 0;
-	//void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, BufferProcessor * processor){...}
-	//void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, BufferProcessor * processor){...}
+	//void subscribeProcessor(const std::string& processorName, const SubscriptionType& type, BufferProcessor * processor){...}
+	//void unsubscribeProcessor(const std::string& processorName, const SubscriptionType& type, BufferProcessor * processor){...}
 	//std::mutex& getMutex(){...}
 
 	virtual inline void gui(ONI::Processor::BaseProcessor& processor) = 0;

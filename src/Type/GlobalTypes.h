@@ -32,6 +32,7 @@ namespace Processor{
 class BaseProcessor; // predeclare for pointer storage in model
 class BufferProcessor;
 class ChannelMapProcessor;
+class RecordProcessor;
 class SpikeProcessor;
 class Rhs2116MultiProcessor;
 class Rhs2116StimProcessor;
@@ -44,7 +45,9 @@ enum TypeID{
 	RHS2116_DEVICE			= 31,
 	RHS2116STIM_DEVICE		= 32,
 	BUFFER_PROCESSOR		= 600,
-	SPIKE_PROCESSOR			= 601,
+	CHANNEL_PROCESSOR		= 601,
+	RECORD_PROCESSOR		= 602,
+	SPIKE_PROCESSOR			= 603,
 	RHS2116_MULTI_PROCESSOR	= 666,
 	RHS2116_STIM_PROCESSOR	= 667,
 };
@@ -57,18 +60,21 @@ static std::string toString(const ONI::Processor::TypeID& typeID){
 	case RHS2116_DEVICE: {return "RHS2116 Device"; break;}
 	case RHS2116STIM_DEVICE: {return "RHS2116STIM Device"; break;}
 	case BUFFER_PROCESSOR: {return "BUFFER Processor"; break;}
+	case CHANNEL_PROCESSOR: {return "CHANNEL Processor"; break;}
+	case RECORD_PROCESSOR: {return "RECORD Processor"; break;}
 	case SPIKE_PROCESSOR: {return "SPIKE Processor"; break;}
 	case RHS2116_MULTI_PROCESSOR: {return "RHS2116MULTI Processor"; break;}
 	case RHS2116_STIM_PROCESSOR: {return "RHS2116STIM Processor"; break;}
+	default: {assert(false, "UNKNOWN TYPE"); return "UNKNOWN Processor"; break; }
 	}
 };
 
-enum FrameProcessorType{
+enum SubscriptionType{
 	PRE_PROCESSOR = 0,
 	POST_PROCESSOR
 };
 
-static std::string toString(const ONI::Processor::FrameProcessorType& typeID){
+static std::string toString(const ONI::Processor::SubscriptionType& typeID){
 	switch(typeID){
 	case PRE_PROCESSOR: {return "PRE_PROCESSOR"; break;}
 	case POST_PROCESSOR: {return "POST_PROCESSOR"; break;}
@@ -171,6 +177,10 @@ public:
 		return channelMapProcessor;
 	}
 
+	ONI::Processor::RecordProcessor* getRecordProcessor(){
+		return recordProcessor;
+	}
+
 	ONI::Processor::SpikeProcessor* getSpikeProcessor(){
 		return spikeProcessor;
 	}
@@ -203,6 +213,7 @@ private:
 
 	ONI::Processor::BufferProcessor * bufferProcessor = nullptr;
 	ONI::Processor::ChannelMapProcessor * channelMapProcessor = nullptr;
+	ONI::Processor::RecordProcessor * recordProcessor = nullptr;
 	ONI::Processor::SpikeProcessor * spikeProcessor = nullptr;
 	ONI::Processor::Rhs2116MultiProcessor * rhs2116MultiProcessor = nullptr;
 	ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = nullptr;

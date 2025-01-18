@@ -57,9 +57,13 @@ public:
 		ImGui::PushID(cm.getName().c_str());
 		ImGui::Text(cm.getName().c_str());
 
+		ImGui::NewLine();
+
 		if(ImGui::Button("Edit Channel Map")){
 			ImGui::OpenPopup("Channel Map");
 		}
+
+		ImGui::NewLine();
 
 		bool unused = true;
 		bool bChannelMapNeedsUpdate = false;

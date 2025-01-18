@@ -50,11 +50,8 @@ public:
 
 		ONI::Processor::Rhs2116MultiProcessor& rhsm = *reinterpret_cast<ONI::Processor::Rhs2116MultiProcessor*>(&processor);
 
-		//rhsm.subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
-		if(bFirstLoad){
-			rhsm.reset();
-			bFirstLoad = false;
-		}
+		//rhsm.subscribeProcessor(processorName, ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
+
 		nextSettings = rhsm.settings;
 
 		ImGui::PushID(rhsm.getName().c_str());
@@ -86,7 +83,7 @@ public:
 protected:
 
 	//Rhs2116DeviceSettings nextSettings; // inherited from base Rhs2116Interface
-	bool bFirstLoad = true;
+
 	const std::string processorName = "Rhs2116MultiGui";
 
 };

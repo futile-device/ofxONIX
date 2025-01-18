@@ -44,7 +44,7 @@ public:
 	virtual inline void process(oni_frame_t* frame) = 0;
 	virtual inline void process(ONI::Frame::BaseFrame& frame) = 0;
 
-	inline void subscribeProcessor(const std::string& processorName, const FrameProcessorType& type, BaseProcessor * processor){
+	inline void subscribeProcessor(const std::string& processorName, const SubscriptionType& type, BaseProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
 		std::map<std::string, BaseProcessor*>& processors = (type == PRE_PROCESSOR ? preProcessors : postProcessors);
 		auto it = processors.find(processorName);
@@ -56,7 +56,7 @@ public:
 		}
 	}
 
-	inline void unsubscribeProcessor(const std::string& processorName, const FrameProcessorType& type, BaseProcessor * processor){
+	inline void unsubscribeProcessor(const std::string& processorName, const SubscriptionType& type, BaseProcessor * processor){
 		const std::lock_guard<std::mutex> lock(mutex);
 		std::map<std::string, BaseProcessor*>& processors = (type == PRE_PROCESSOR ? preProcessors : postProcessors);
 		auto it = processors.find(processorName);

@@ -55,7 +55,7 @@ public:
 
 		ONI::Device::HeartBeatDevice& hbd = *reinterpret_cast<ONI::Device::HeartBeatDevice*>(&processor);
 
-		hbd.subscribeProcessor(processorName, ONI::Processor::FrameProcessorType::POST_PROCESSOR, this);
+		hbd.subscribeProcessor(processorName, ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
 
 		ImGui::PushID(hbd.getName().c_str());
 		ImGui::Text(hbd.getName().c_str());

@@ -148,6 +148,9 @@ void ofApp::setup(){
     ONI::Processor::BufferProcessor* bufferProcessor = oni.createBufferProcessor();
     bufferProcessor->setup(rhs2116StimProcessor);
 
+    ONI::Processor::RecordProcessor* recordProcessor = oni.createRecordProcessor();
+    recordProcessor->setup();
+
     ONI::Processor::SpikeProcessor* spikeProcessor = oni.createSpikeProcessor();
     spikeProcessor->setup();
     
@@ -218,13 +221,13 @@ void ofApp::keyPressed(int key){
         oni.startAcquisition();
     }
 
-    if(key == 'r'){
-        oni.startRecording();
-    }
+    //if(key == 'r'){
+    //    oni.startRecording();
+    //}
 
-    if(key == 'p'){
-        oni.startPlayng();
-    }
+    //if(key == 'p'){
+    //    oni.startPlayng();
+    //}
 
     if(key == 't'){
         ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = oni.getRhs2116StimProcessor();
