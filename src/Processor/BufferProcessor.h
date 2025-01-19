@@ -107,15 +107,16 @@ public:
         sparseBuffer.resize(settings.getBufferSizeMillis(), settings.getSparseStepMillis(), settings.getSampleRateHz());
         dataMutex.unlock();
 
-        processMutex.lock();
-        sparseProbeData.resize(BaseProcessor::numProbes, sparseBuffer.size(), true);
-        processMutex.unlock();
+        resetProbeData();
+
     }
 
     void resetProbeData(){
 
         processMutex.lock();
-        sparseProbeData.resize(BaseProcessor::numProbes, sparseBuffer.size());
+        sparseProbeData[0].resize(BaseProcessor::numProbes, sparseBuffer.size());
+        sparseProbeData[1].resize(BaseProcessor::numProbes, sparseBuffer.size());
+        frameBuffer.resize(sparseBuffer.size());
         processMutex.unlock();
         //denseProbeData.resize(source->getNumProbes(), denseBuffer.size());
 
@@ -131,7 +132,9 @@ public:
         sparseBuffer.clear();
 
         //denseProbeData.clear();
-        sparseProbeData.clear();
+        sparseProbeData[0].clear();
+        sparseProbeData[1].clear();
+        frameBuffer.clear();
 
     }
 
@@ -142,23 +145,26 @@ public:
 private:
 
     volatile uint64_t processorTimeNs = 0;
+    std::vector<ONI::Frame::Rhs2116MultiFrame> frameBuffer;
 
     inline void processProbeData(ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame>& buffer, ONI::Frame::Rhs2116ProbeData& probeData){
 
         if(buffer.isFrameNew()){ // is this helping at all? Or just locking up threads?!
 
             using namespace std::chrono;
-            volatile uint64_t startTime = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+            
 
             dataMutex.lock();
-            std::vector<ONI::Frame::Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
+            //std::vector<ONI::Frame::Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
+            
+            buffer.copySortedBuffer(frameBuffer);
             dataMutex.unlock();
 
-            std::this_thread::yield(); //??
-            std::sort(frameBuffer.begin(), frameBuffer.end(), ONI::Frame::acquisition_clock_compare());
-
-            processMutex.lock();
-
+            //std::this_thread::yield(); //??
+            //std::sort(frameBuffer.begin(), frameBuffer.end(), ONI::Frame::acquisition_clock_compare());
+            volatile uint64_t startTime = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+            //processMutex.lock();
+            
             size_t numProbes = probeData.acProbeVoltages.size();
             size_t frameCount = std::min(probeData.acProbeVoltages[0].size(), frameBuffer.size()); // make sure we don't overflow during a buffer resize
 
@@ -200,9 +206,9 @@ private:
 
             }
 
-            processMutex.unlock();
-
+            //processMutex.unlock();
             processorTimeNs = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - startTime;
+            
 
         }else{
             std::this_thread::yield(); // if we don't yield then the thread spins too fast while waiting for a buffer.isFrameNew()
@@ -215,8 +221,11 @@ private:
         while(bThread){
 
             //processProbeData(denseBuffer, denseProbeData);
-            processProbeData(sparseBuffer, sparseProbeData);
+            processProbeData(sparseBuffer, sparseProbeData[1]);
             //std::this_thread::yield(); // if we don't yield then the thread spins too fast while waiting for a buffer.isFrameNew()
+            processMutex.lock();
+            std::swap(sparseProbeData[0], sparseProbeData[1]);
+            processMutex.unlock();
 
         }
 
@@ -225,7 +234,7 @@ private:
 protected:
 
     //ONI::Frame::Rhs2116ProbeData denseProbeData; // TODO: Generalise this for other frame types
-    ONI::Frame::Rhs2116ProbeData sparseProbeData;
+    ONI::Frame::Rhs2116ProbeData sparseProbeData[2];
 
     ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame> denseBuffer;   // contains all frames at full sample rate
     ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame> sparseBuffer; // contains a sparse buffer sampled every N samples

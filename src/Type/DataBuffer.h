@@ -51,12 +51,13 @@ public:
 	size_t resize(const size_t& size, const size_t& step){
 		//const std::lock_guard<std::mutex> lock(mutex);
 		buffer.clear();
-		buffer.resize(size);
+		bufferSize = size;
+		buffer.resize(bufferSize * 3);
 		this->bufferSampleRateStep = step;
 		currentBufferIndex = 0;
 		bufferSampleCount = 0;
 		bIsFrameNew = false;
-		return buffer.size();
+		return bufferSize;
 	}
 
 	size_t resize(const int& bufferSizeMillis, const int& bufferStepMillis, const size_t& sampleFrequencyHz){
@@ -75,7 +76,9 @@ public:
 		//const std::lock_guard<std::mutex> lock(mutex);
 		if(bufferSampleCount % bufferSampleRateStep == 0){
 			buffer[currentBufferIndex] = data;
-			currentBufferIndex = (currentBufferIndex + 1) % buffer.size();
+			buffer[currentBufferIndex + bufferSize] = data;
+			buffer[currentBufferIndex + bufferSize * 2] = data;
+			currentBufferIndex = (currentBufferIndex + 1) % bufferSize;
 			bIsFrameNew = true;
 		}
 		++bufferSampleCount;
@@ -123,7 +126,17 @@ public:
 		return (currentBufferIndex + offset) % buffer.size();
 	}*/
 
-	inline std::vector<DataType>& getBuffer(){
+	inline void copySortedBuffer(std::vector<DataType>& to){
+		//to.resize(bufferSize); // is this better than if(to.size() != bufferSize) ?
+		size_t fromIDX = currentBufferIndex; //((currentBufferIndex - 1) % bufferSize) + bufferSize;
+		size_t toIDX = fromIDX + bufferSize;
+		to.assign(buffer.begin() + fromIDX, buffer.begin() + toIDX);
+		//std::reverse(to.begin(), to.end());
+		//size_t size = sizeof(DataType) * bufferSize;
+		//std::memcpy(&to[0], &buffer[index], size);
+	}
+
+	inline std::vector<DataType>& getUnderlyingBuffer(){ // this actually returns the whole buffer which is 3 times larger than needed
 		//const std::lock_guard<std::mutex> lock(mutex);
 		return buffer;
 	}
@@ -140,7 +153,7 @@ public:
 
 	const inline size_t& size(){
 		//const std::lock_guard<std::mutex> lock(mutex);
-		return buffer.size();
+		return bufferSize;//buffer.size();
 	}
 
 protected:
@@ -154,6 +167,8 @@ protected:
 	size_t currentBufferIndex = 0;
 	size_t bufferSampleCount = 0;
 	size_t bufferSampleRateStep = 0;
+
+	size_t bufferSize = 0;
 
 	bool bIsFrameNew = false;
 

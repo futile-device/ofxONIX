@@ -142,8 +142,8 @@ public:
 		
 
 		bp.processMutex.lock();
-		ONI::Frame::Rhs2116ProbeData sparseProbeDataCopy = bp.sparseProbeData;
-		bp.processMutex.unlock();
+		ONI::Frame::Rhs2116ProbeData& sparseProbeDataCopy = bp.sparseProbeData[0];
+		
 
 		ONI::Interface::plotCombinedHeatMap("Electrode HeatMap", sparseProbeDataCopy);
 		ONI::Interface::plotCombinedLinePlot("AC Combined", sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_AC_DATA);
@@ -151,6 +151,7 @@ public:
 		ONI::Interface::plotCombinedLinePlot("DC Combined", sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_DC_DATA);
 		ONI::Interface::plotIndividualLinePlot("DC Probes", sparseProbeDataCopy, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
 		
+		bp.processMutex.unlock();
 
 		ImGui::PopID();
 
