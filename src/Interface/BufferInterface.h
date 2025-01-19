@@ -102,11 +102,14 @@ public:
 		if(!bBuffersNeedUpdate && !bAppliedSettings) ImGui::EndDisabled();
 
 		ImGui::Separator();
-		const volatile uint64_t& processorTimeNs = bp.getProcessorTimeNs();
+		
 		using namespace std::chrono;
-		double processorTimeUs =  (double)duration_cast<milliseconds>(duration<double>(1)).count() / (double)duration_cast<nanoseconds>(duration<double>(1)).count() * processorTimeNs;
 
-		ImGui::Text("Processor Time %0.3f (uS)", processorTimeUs);
+		double processorTimeUs =  (double)duration_cast<milliseconds>(duration<double>(1)).count() / (double)duration_cast<nanoseconds>(duration<double>(1)).count() * bp.processorTimeNs;
+		double interfaceTimeMs =  (double)duration_cast<milliseconds>(duration<double>(1)).count() / (double)duration_cast<nanoseconds>(duration<double>(1)).count() * interfaceTimeNs;
+
+		ImGui::Text("Processor Time %0.3f (mS)", processorTimeUs); ImGui::SameLine();
+		ImGui::Text("Interface Time %0.3f (mS)", interfaceTimeMs);
 
 		ImGui::Separator();
 		ImGui::InputInt("Probe Plot Height", &probePlotHeight);
@@ -140,11 +143,13 @@ public:
 
 		if(selectCount == bp.getNumProbes()) bSelectAll = true;
 		
+		
+		volatile uint64_t startTime = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
 
 		bp.processMutex.lock();
-		ONI::Frame::Rhs2116ProbeData& sparseProbeDataCopy = bp.sparseProbeData[0];
-		
 
+		ONI::Frame::Rhs2116ProbeData& sparseProbeDataCopy = bp.sparseProbeData[FRONT_BUFFER]; // lets use 0 as the front buffer; depending on the machine a copy here might be more efficient
+		
 		ONI::Interface::plotCombinedHeatMap("Electrode HeatMap", sparseProbeDataCopy);
 		ONI::Interface::plotCombinedLinePlot("AC Combined", sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_AC_DATA);
 		ONI::Interface::plotIndividualLinePlot("AC Probes", sparseProbeDataCopy, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
@@ -152,6 +157,8 @@ public:
 		ONI::Interface::plotIndividualLinePlot("DC Probes", sparseProbeDataCopy, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
 		
 		bp.processMutex.unlock();
+
+		interfaceTimeNs = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - startTime;
 
 		ImGui::PopID();
 
@@ -167,6 +174,8 @@ public:
 	}
 
 protected:
+
+	std::atomic_uint64_t interfaceTimeNs = 0;
 
 	std::vector<bool> channelSelect;
 

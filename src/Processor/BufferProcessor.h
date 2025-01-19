@@ -32,6 +32,9 @@
 
 #pragma once
 
+#define FRONT_BUFFER 0
+#define BACK_BUFFER 1
+
 namespace ONI{
 
 namespace Interface{
@@ -62,12 +65,6 @@ public:
         processorTypeID = ONI::Processor::TypeID::BUFFER_PROCESSOR;
         processorName = toString(processorTypeID);
 
-        //if(multi->devices.size() == 0){
-        //    LOGERROR("Add devices to Rhs2116MultiProcessor before setting up frame processing");
-        //    assert(false);
-        //    return;
-        //}
-
         this->source = source;
         this->source->subscribeProcessor("BufferProcessor", ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
 
@@ -92,7 +89,7 @@ public:
 	inline void process(oni_frame_t* frame){}; // nothing
 
 	inline void process(ONI::Frame::BaseFrame& frame){
-        //const std::lock_guard<std::mutex> lock(mutex);
+
         dataMutex.lock();
         denseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)); // TODO:: right now I am assuming a Rhs2116MultiProcessor/multiframe but I shouldn't be!!!
         sparseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame));
@@ -114,8 +111,8 @@ public:
     void resetProbeData(){
 
         processMutex.lock();
-        sparseProbeData[0].resize(BaseProcessor::numProbes, sparseBuffer.size());
-        sparseProbeData[1].resize(BaseProcessor::numProbes, sparseBuffer.size());
+        sparseProbeData[FRONT_BUFFER].resize(BaseProcessor::numProbes, sparseBuffer.size());
+        sparseProbeData[BACK_BUFFER].resize(BaseProcessor::numProbes, sparseBuffer.size());
         frameBuffer.resize(sparseBuffer.size());
         processMutex.unlock();
         //denseProbeData.resize(source->getNumProbes(), denseBuffer.size());
@@ -132,41 +129,31 @@ public:
         sparseBuffer.clear();
 
         //denseProbeData.clear();
-        sparseProbeData[0].clear();
-        sparseProbeData[1].clear();
+        sparseProbeData[FRONT_BUFFER].clear();
+        sparseProbeData[BACK_BUFFER].clear();
         frameBuffer.clear();
 
     }
 
-    const volatile uint64_t getProcessorTimeNs(){
-        return processorTimeNs;
-    }
 
+    
 private:
 
-    volatile uint64_t processorTimeNs = 0;
+    
     std::vector<ONI::Frame::Rhs2116MultiFrame> frameBuffer;
 
     inline void processProbeData(ONI::DataBuffer<ONI::Frame::Rhs2116MultiFrame>& buffer, ONI::Frame::Rhs2116ProbeData& probeData){
 
         if(buffer.isFrameNew()){ // is this helping at all? Or just locking up threads?!
 
-            using namespace std::chrono;
-            
-
             dataMutex.lock();
-            //std::vector<ONI::Frame::Rhs2116MultiFrame> frameBuffer = buffer.getBuffer();
-            
             buffer.copySortedBuffer(frameBuffer);
             dataMutex.unlock();
 
-            //std::this_thread::yield(); //??
-            //std::sort(frameBuffer.begin(), frameBuffer.end(), ONI::Frame::acquisition_clock_compare());
-            volatile uint64_t startTime = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-            //processMutex.lock();
-            
-            size_t numProbes = probeData.acProbeVoltages.size();
-            size_t frameCount = std::min(probeData.acProbeVoltages[0].size(), frameBuffer.size()); // make sure we don't overflow during a buffer resize
+            //using namespace std::chrono;
+            //volatile uint64_t startTime = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+
+            size_t frameCount = frameBuffer.size(); //std::min(probeData.acProbeVoltages[0].size(), frameBuffer.size()); // make sure we don't overflow during a buffer resize
 
             for(size_t probe = 0; probe < numProbes; ++probe){
 
@@ -206,8 +193,7 @@ private:
 
             }
 
-            //processMutex.unlock();
-            processorTimeNs = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - startTime;
+            //processorTimeNs = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - startTime;
             
 
         }else{
@@ -220,12 +206,17 @@ private:
 
         while(bThread){
 
+            using namespace std::chrono;
+            volatile uint64_t startTime = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+
             //processProbeData(denseBuffer, denseProbeData);
-            processProbeData(sparseBuffer, sparseProbeData[1]);
-            //std::this_thread::yield(); // if we don't yield then the thread spins too fast while waiting for a buffer.isFrameNew()
+            processProbeData(sparseBuffer, sparseProbeData[BACK_BUFFER]); // let's use 1 as the back buffer
+
             processMutex.lock();
-            std::swap(sparseProbeData[0], sparseProbeData[1]);
+            std::swap(sparseProbeData[FRONT_BUFFER], sparseProbeData[BACK_BUFFER]); // swap buffers
             processMutex.unlock();
+
+            processorTimeNs = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - startTime;
 
         }
 
@@ -244,6 +235,7 @@ protected:
 
     ONI::Settings::BufferProcessorSettings settings;
 
+    std::atomic_uint64_t processorTimeNs = 0;
     std::atomic_bool bThread = false;
 
     std::thread thread;

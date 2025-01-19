@@ -127,13 +127,12 @@ public:
 	}*/
 
 	inline void copySortedBuffer(std::vector<DataType>& to){
-		//to.resize(bufferSize); // is this better than if(to.size() != bufferSize) ?
-		size_t fromIDX = currentBufferIndex; //((currentBufferIndex - 1) % bufferSize) + bufferSize;
-		size_t toIDX = fromIDX + bufferSize;
-		to.assign(buffer.begin() + fromIDX, buffer.begin() + toIDX);
-		//std::reverse(to.begin(), to.end());
-		//size_t size = sizeof(DataType) * bufferSize;
-		//std::memcpy(&to[0], &buffer[index], size);
+		//to.resize(bufferSize); // lets assume the user resizes appropriately
+		//size_t fromIDX = currentBufferIndex; //((currentBufferIndex - 1) % bufferSize) + bufferSize;
+		//size_t toIDX = fromIDX + bufferSize;
+		std::memcpy(&to[0], &buffer[currentBufferIndex], bufferSize * sizeof(DataType));
+		//to.assign(buffer.begin() + fromIDX, buffer.begin() + toIDX);
+
 	}
 
 	inline std::vector<DataType>& getUnderlyingBuffer(){ // this actually returns the whole buffer which is 3 times larger than needed
