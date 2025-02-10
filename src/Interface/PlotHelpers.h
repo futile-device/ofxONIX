@@ -216,14 +216,14 @@ static inline void plotCombinedHeatMap(const std::string plotName,
 	if(frameCount == 0) return;
 
 	ONI::Processor::Rhs2116StimProcessor* stim = ONI::Global::model.getRhs2116StimProcessor();
-	
+
 
 
 	ImGui::Begin(plotName.c_str());
 	ImGui::PushID("##HeatMapProbePlot");
 
 	static ImPlotColormap map = ImPlotColormap_Cool; //ImPlotColormap_Plasma
-	if (ImPlot::ColormapButton(ImPlot::GetColormapName(map),ImVec2(225,0),map)) {
+	if (ImPlot::ColormapButton(ImPlot::GetColormapName(map), ImVec2(225, 0), map)) {
 		map = (map + 1) % ImPlot::GetColormapCount();
 		// We bust the color cache of our plots so that item colors will
 		// resample the new colormap in the event that they have already
@@ -243,21 +243,21 @@ static inline void plotCombinedHeatMap(const std::string plotName,
 
 	static float hm[8][8]; // TODO: this should be calculated or passed in depending on actual num probes
 
-	static const char* ylabels[] = {"8","7","6","5","4","3","2","1"};
-	static const char* xlabels[] = {"A","B","C","D","E","F","G","H"};
+	static const char* ylabels[] = { "8","7","6","5","4","3","2","1" };
+	static const char* xlabels[] = { "A","B","C","D","E","F","G","H" };
 
-	for(size_t i = 0; i < numProbes; ++i){
+	for (size_t i = 0; i < numProbes; ++i) {
 		size_t col = i % 8;
 		size_t row = std::floor(i / 8);
 		hm[row][col] = (p.acProbeVoltages)[i][(p.acProbeVoltages)[i].size() - 1];
 	}
 
-	float voltageRange = 2.0f;
+	float voltageRange = 5.0f;
 
-	if (ImPlot::BeginPlot("AC Electrodes",ImVec2(width, width),ImPlotFlags_NoLegend|ImPlotFlags_NoMouseText)) {
+	if (ImPlot::BeginPlot("AC Electrodes", ImVec2(width, width), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
 		ImPlot::SetupAxes(nullptr, nullptr, axes_flags, axes_flags);
-		ImPlot::SetupAxisTicks(ImAxis_X1,0 + 1.0/16.0, 1 - 1.0/16.0, 8, xlabels);
-		ImPlot::SetupAxisTicks(ImAxis_Y1,1 - 1.0/16.0, 0 + 1.0/16.0, 8, ylabels);
+		ImPlot::SetupAxisTicks(ImAxis_X1, 0 + 1.0 / 16.0, 1 - 1.0 / 16.0, 8, xlabels);
+		ImPlot::SetupAxisTicks(ImAxis_Y1, 1 - 1.0 / 16.0, 0 + 1.0 / 16.0, 8, ylabels);
 		ImPlot::PlotHeatmap("AC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_None);
 		ImPlot::EndPlot();
 	}
@@ -265,20 +265,20 @@ static inline void plotCombinedHeatMap(const std::string plotName,
 	ImGui::SameLine();
 	ImPlot::ColormapScale("mV", -voltageRange, voltageRange, ImVec2(60, width));
 
-	if(ImGui::GetWindowWidth() > ImGui::GetWindowHeight()) ImGui::SameLine();
-	
-	for(size_t i = 0; i < numProbes; ++i){
+	if (ImGui::GetWindowWidth() > ImGui::GetWindowHeight()) ImGui::SameLine();
+
+	for (size_t i = 0; i < numProbes; ++i) {
 		size_t col = i % 8;
 		size_t row = std::floor(i / 8);
 		hm[row][col] = (p.dcProbeVoltages)[i][(p.dcProbeVoltages)[i].size() - 1];
 	}
 
 	voltageRange = 5.0f;
-	
-	if (ImPlot::BeginPlot("DC Electrodes",ImVec2(width, width),ImPlotFlags_NoLegend|ImPlotFlags_NoMouseText)) {
+
+	if (ImPlot::BeginPlot("DC Electrodes", ImVec2(width, width), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
 		ImPlot::SetupAxes(nullptr, nullptr, axes_flags, axes_flags);
-		ImPlot::SetupAxisTicks(ImAxis_X1,0 + 1.0/16.0, 1 - 1.0/16.0, 8, xlabels);
-		ImPlot::SetupAxisTicks(ImAxis_Y1,1 - 1.0/16.0, 0 + 1.0/16.0, 8, ylabels);
+		ImPlot::SetupAxisTicks(ImAxis_X1, 0 + 1.0 / 16.0, 1 - 1.0 / 16.0, 8, xlabels);
+		ImPlot::SetupAxisTicks(ImAxis_Y1, 1 - 1.0 / 16.0, 0 + 1.0 / 16.0, 8, ylabels);
 		ImPlot::PlotHeatmap("DC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_None);
 		ImPlot::EndPlot();
 	}
@@ -292,11 +292,14 @@ static inline void plotCombinedHeatMap(const std::string plotName,
 	ImGui::End();
 
 }
+
+static std::vector<float> timeStamps;
+
 // Plot Combined AC or DC probe data
-static inline void plotCombinedLinePlot(const std::string plotName, 
-										const ONI::Frame::Rhs2116ProbeData& p, 
-										const std::vector<bool>& channelSelect,
-										const ONI::Interface::PlotType& plotType){
+static inline void plotCombinedLinePlot(const std::string plotName,
+	const ONI::Frame::Rhs2116ProbeData& p,
+	const std::vector<bool>& channelSelect,
+	const ONI::Interface::PlotType& plotType) {
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -306,13 +309,19 @@ static inline void plotCombinedLinePlot(const std::string plotName,
 	std::string unitStr = "";
 	float voltageRange = 0;
 
-	switch(plotType){
+	switch (plotType) {
 
 	case PLOT_AC_DATA: {
 		numProbes = p.acProbeStats.size();
 		frameCount = p.acProbeVoltages[0].size();
 		voltages = &p.acProbeVoltages;
-		voltageRange = 5.0f;
+#ifdef USE_FRAMEBUFFER
+		//if (timeStamps.size() != frameCount){
+			timeStamps.resize(frameCount);
+			for(size_t frame = 0; frame < frameCount; ++frame) timeStamps[frame] = frame * p.millisPerStep;
+		//}
+#endif
+		voltageRange = 6.0f;
 		unitStr = "mV";
 		break;
 	}
@@ -351,19 +360,30 @@ static inline void plotCombinedLinePlot(const std::string plotName,
 
 			int offset = 0;
 
-
+#ifdef USE_FRAMEBUFFER
+			ImPlot::SetupAxesLimits(0, timeStamps[frameCount - 1] - 1, -voltageRange, voltageRange, ImGuiCond_Always);
+			ImPlot::SetNextLineStyle(col);
+			ImPlot::PlotLine("##probe", &timeStamps[0], &(*voltages)[probe][0], frameCount, ImPlotLineFlags_None, offset);
+			if (stim->isStimulusOnDevice(probe)) {
+				ImPlot::SetNextLineStyle(col, 0.0);
+				ImPlot::SetNextFillStyle(col, 0.6);
+				//ImPlot::PlotShaded("##pshaded", &p.probeTimeStamps[probe][0], &p.stimProbeData[probe][0], frameCount, -INFINITY, ImPlotLineFlags_None, offset);
+				ImPlot::PlotDigital("##stim", &timeStamps[0], &p.stimProbeData[probe][0], frameCount, ImPlotLineFlags_None, offset);
+			}
+#else
 			ImPlot::SetupAxesLimits(0, p.probeTimeStamps[probe][frameCount - 1] - 1, -voltageRange, voltageRange, ImGuiCond_Always);
-
 			ImPlot::SetNextLineStyle(col);
 			ImPlot::PlotLine("##probe", &p.probeTimeStamps[probe][0], &(*voltages)[probe][0], frameCount, ImPlotLineFlags_None, offset);
-			
-			if(stim->isStimulusOnDevice(probe)){
-
+			if (stim->isStimulusOnDevice(probe)) {
 				ImPlot::SetNextLineStyle(col, 0.0);
 				ImPlot::SetNextFillStyle(col, 0.6);
 				//ImPlot::PlotShaded("##pshaded", &p.probeTimeStamps[probe][0], &p.stimProbeData[probe][0], frameCount, -INFINITY, ImPlotLineFlags_None, offset);
 				ImPlot::PlotDigital("##stim", &p.probeTimeStamps[probe][0], &p.stimProbeData[probe][0], frameCount, ImPlotLineFlags_None, offset);
 			}
+#endif
+			
+			
+
 
 
 			ImGui::PopID();
@@ -403,7 +423,7 @@ static inline void plotIndividualLinePlot(const std::string plotName,
 		frameCount = p.acProbeVoltages[0].size();
 		voltages = &p.acProbeVoltages;
 		statistics = &p.acProbeStats;
-		voltageRange = 5.0f;
+		voltageRange = 6.0f;
 		voltageStr = "AC Voltages (mV)";
 		unitStr = "mV";
 		break;

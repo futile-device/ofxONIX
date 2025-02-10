@@ -141,6 +141,11 @@ public:
 
 		}
 
+		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+		bool bDisableOnPlayback = recordProcessor->isPlaying() || recordProcessor->isPaused();
+
+		if(bDisableOnPlayback) ImGui::BeginDisabled();
+
 		for(auto& device : ONI::Global::model.getDevices()){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(false);
 			if(ImGui::CollapsingHeader(device.second->getName().c_str(), true)){
@@ -199,7 +204,8 @@ public:
 		//	//rhs2116MultiDevice->saveConfig("default");
 		//	//startAcquisition();
 		//}
-
+		
+		
 		if(ONI::Global::model.getRhs2116MultiProcessor() != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*ONI::Global::model.getRhs2116MultiProcessor());
@@ -209,6 +215,8 @@ public:
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if(ImGui::CollapsingHeader("Rhs2116Stimulus", true)) stimInterface.gui(*ONI::Global::model.getRhs2116StimProcessor());
 		}
+
+		if(bDisableOnPlayback) ImGui::EndDisabled();
 
 		if(ONI::Global::model.getChannelMapProcessor() != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);

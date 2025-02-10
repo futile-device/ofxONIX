@@ -53,13 +53,12 @@ public:
 		//rhsm.subscribeProcessor(processorName, ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
 
 		nextSettings = rhsm.settings;
-
+		
+		
 		ImGui::PushID(rhsm.getName().c_str());
 		ImGui::Text(rhsm.getName().c_str());
 
-
 		Rhs2116Interface::deviceGui(rhsm.settings); // draw the common device gui settings
-		
 
 		if(nextSettings.dspCutoff != rhsm.settings.dspCutoff) rhsm.setDspCutOff(nextSettings.dspCutoff);
 		if(nextSettings.lowCutoff != rhsm.settings.lowCutoff) rhsm.setAnalogLowCutoff(nextSettings.lowCutoff);
@@ -69,6 +68,7 @@ public:
 		if(rhsm.settings != nextSettings) rhsm.settings = nextSettings;
 
 		ImGui::PopID();
+		
 
 	}
 

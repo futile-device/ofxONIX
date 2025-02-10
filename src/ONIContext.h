@@ -48,15 +48,21 @@
 #include "../Interface/Rhs2116MultiInterface.h"
 #include "../Interface/Rhs2116StimInterface.h"
 
+// TODO:: Finish off recorder interface: time, play, pause, load, save, export, meta data, auto name with datetime
+
+// TODO:: add freeze/pause/zoom/scroll for waveforms
+// TODO:: add options for windowed std dev calculations
+// TODO:: Implement spike detector using basic std dev
+// TODO:: Implmenet simple spike classifier view
 
 
 // TODO:: Refactor ONIContext to Context and ofxOnix.h
-// TODO:: Add BurstFrequency type to the stimulus settings
-// DONE:: Visualise/and functionilise suppressing spike detection during stimulation
+// TODO:: Finesse Add BurstFrequency type to the stimulus settings
 // TODO:: Implment audio output of frame buffers
-// TODO:: Finish off recorder interface: time, play, pause, load, save, export
-// TODO:: Implement spike detector/classifier
 
+
+
+// DONE:: Visualise/and functionilise suppressing spike detection during stimulation
 // DONE:: Refactor Processor and Device base classes
 // DONE:: Implement global/model for ctx, clocks, sample rates, channel map etc
 // DONE:: Implement re-usable global device and processor factory/model
@@ -110,6 +116,24 @@ public:
 
 	inline void update(){
 
+		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+		bool bIsPlaying = false;
+		bool bIsRecording = false;
+		if(recordProcessor != nullptr){
+			bIsPlaying = recordProcessor->isPlaying() || recordProcessor->isPaused();
+			bIsRecording = recordProcessor->isRecording();
+		}
+
+		if(bIsPlaying){
+			//if(bIsAcquiring) stopAcquisition(); // this isn't elegant but necessary if we don't create proxy functions on the oni Context for starting playback
+			//return; // can't change settings? or just let it happen?
+			if(recordProcessor->isPlaybackLoopRequired()) recordProcessor->play();
+		}
+
+		//if(bIsRecording && !bIsAcquiring){
+		//	startAcquisition(); // this isn't elegant but necessary if we don't create proxy functions on the oni Context for starting a recording
+		//}
+
 		if(!bIsContextSetup) return;
 
 		bool bContextNeedsRestart = false;
@@ -121,10 +145,18 @@ public:
 		for(auto& it : devices){
 			ONI::Device::BaseDevice* device = it.second;
 			if(device->getContexteNeedsRestart()){ // for now let's auto reset these
+				if(bIsPlaying){
+					LOGERROR("Ignoring changes requiring a context RESTART as they have no influence during playback of files");
+					return;
+				}
 				LOGDEBUG("Device requires context restart: %s", device->getName().c_str());
 				bContextNeedsRestart = true;
 			}
 			if(device->getContexteNeedsReset()){ // for now let's auto reset these
+				if(bIsPlaying){
+					LOGERROR("Ignoring changes requiring a context RESET as they have no influence during playback of files");
+					return;
+				}
 				LOGDEBUG("Device requires context reset: %s", device->getName().c_str());
 				bContextNeedsReset = true;
 			}
@@ -147,7 +179,6 @@ public:
 		}
 
 		if(bContextNeedsReset){
-			
 			bool bResetAcquire = bIsAcquiring;
 			if(bResetAcquire) stopAcquisition();
 			setContextOption(ONI::ContextOption::RESET, 1);
@@ -232,22 +263,31 @@ public:
 	//}
 
 	void startAcquisition(){
+		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+		if(recordProcessor != nullptr) recordProcessor->stop();
+		ONI::Global::model.getBufferProcessor()->reset();
 		startFrameRead();
 		startContext();
+		//ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+		//if(recordProcessor->isRecording()) recordProcessor->reset(); // redundant except we need to reset the recording starttime
 		bIsAcquiring = true;
 	}
 
 	void stopAcquisition(){
+		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+		if(recordProcessor != nullptr) recordProcessor->stop();
 		stopFrameRead();
 		stopContext();
-		bIsAcquiring = false;
+		//bIsAcquiring = false;
 	}
 
 	void closeContext(){
 		LOGDEBUG("Closing ONIX Context...");
+		//ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+		//if(recordProcessor != nullptr) recordProcessor->stop();
 		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
 		if(ctx == nullptr) return; // nothing to do
-		bIsAcquiring = false;
+		//bIsAcquiring = false;
 		stopFrameRead();
 		onixDeviceTypes.clear();
 		stopContext();
@@ -256,7 +296,18 @@ public:
 	}
 
 
+	void record(){
+		if(!bIsAcquiring) startAcquisition();
+		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+		recordProcessor->record();
+		
+	}
 
+	void play(){
+		if(bIsAcquiring) stopFrameRead();
+		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+		recordProcessor->play();
+	}
 
 	// TODO: this is a fairly weak factory style -> currently it only handles single instances of a processor type
 	// and relies on "proxy" style single pointers for each type ==> we should probably make it more generic to
@@ -374,9 +425,12 @@ private:
 
 	void stopFrameRead(){
 		LOGDEBUG("Stopping frame read thread");
+		//ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+		//if(recordProcessor != nullptr) recordProcessor->stop();
 		if(!bThread) return;
 		bThread = false;
 		if(thread.joinable()) thread.join();
+		bIsAcquiring = false;
 		//contextPlayStream.close();
 	}
 
@@ -579,6 +633,14 @@ private:
 	void readFrames(){
 
 		while(bThread){
+
+			ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+			if(recordProcessor != nullptr){
+				if(recordProcessor->isPlaying()){
+					break; // fuck you thread
+				}
+			}
+
 
 			int rc = ONI_ESUCCESS;
 

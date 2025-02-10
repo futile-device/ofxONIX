@@ -24,6 +24,7 @@
 #include <mutex>
 #include <syncstream>
 
+#include "../Type/GlobalTypes.h"
 #include "../Type/Log.h"
 
 
@@ -421,23 +422,23 @@ public:
 
 	inline void setBufferSizeMillis(const size_t& millis){ // handle 0ms case?
 		bufferSizeMillis = millis;
-		bufferSizeSamples =  std::floor(millis * sampleFrequencyHz / 1000.0f);
+		bufferSizeSamples =  std::floor(millis * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
 	}
 
 	inline void setSparseStepSizeMillis(const size_t& millis){
 		sparseStepMillis = millis;
-		sparseStepSamples = std::floor(millis * sampleFrequencyHz  / 1000.0f);
+		sparseStepSamples = std::floor(millis * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
 		if(sparseStepSamples == 0) sparseStepSamples = 1;
 	}
 
 	inline void setBufferSizeSamples(const size_t& samples){
 		bufferSizeSamples = samples;
-		bufferSizeMillis = samples / sampleFrequencyHz * 1000.0f;
+		bufferSizeMillis = samples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
 	}
 
 	inline void setSparseStepSizeSamples(const size_t& samples){
 		sparseStepSamples = samples;
-		sparseStepMillis =  samples / sampleFrequencyHz * 1000.0f;
+		sparseStepMillis =  samples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
 	}
 
 	const inline float& getBufferSizeMillis(){
@@ -456,10 +457,6 @@ public:
 		return sparseStepSamples;
 	}
 
-	const inline long double& getSampleRateHz(){
-		return sampleFrequencyHz;
-	}
-
 	// copy assignment (copy-and-swap idiom)
 	BufferProcessorSettings& BufferProcessorSettings::operator=(BufferProcessorSettings other) noexcept{
 		std::swap(bufferSizeMillis, other.bufferSizeMillis);
@@ -474,10 +471,9 @@ protected:
 	float bufferSizeMillis = 5000.0f;
 	float sparseStepMillis = 10.0f;
 
-	size_t bufferSizeSamples = 5000.0f * sampleFrequencyHz;
-	size_t sparseStepSamples = 10.0f * sampleFrequencyHz;
+	size_t bufferSizeSamples = 5000.0f * RHS2116_SAMPLE_FREQUENCY_HZ;
+	size_t sparseStepSamples = 10.0f * RHS2116_SAMPLE_FREQUENCY_HZ;
 
-	const long double sampleFrequencyHz = 30.1932367151e3; //30000;
 
 };
 

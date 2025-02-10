@@ -64,9 +64,9 @@ public:
 			sparseStepSizeMillis = bp.settings.getSparseStepMillis();
 		}
 
-		int step = std::floor(sparseStepSizeMillis * bp.settings.getSampleRateHz() / 1000.0f);
+		int step = std::floor(sparseStepSizeMillis * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
 		if(step == 0) step = 1;
-		int szfine = std::floor(bufferSizeTimeMillis * bp.settings.getSampleRateHz() / 1000.0f);
+		int szfine = std::floor(bufferSizeTimeMillis * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
 		int szstep = std::floor((float)szfine / (float)step);
 		
 
@@ -127,7 +127,11 @@ public:
 
 		if(channelSelect.size() != bp.getNumProbes()){
 			channelSelect.resize(bp.getNumProbes());
-			for(size_t i = 0; i < bp.getNumProbes(); ++i) channelSelect[i] = true;
+			allSelect.resize(bp.getNumProbes());
+			for (size_t i = 0; i < bp.getNumProbes(); ++i) {
+				channelSelect[i] = true;
+				allSelect[i] = true;
+			}
 		}
 
 		for(size_t i = 0; i < bp.getNumProbes(); ++i){
@@ -146,24 +150,47 @@ public:
 		
 		volatile uint64_t startTime = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
 
-		bp.processMutex.lock();
+		//bp.processMutex[0].lock();
+		//ONI::Frame::Rhs2116ProbeData& denseProbeDataCopy = bp.denseProbeData[FRONT_BUFFER];
+		////ONI::Interface::plotCombinedHeatMap("Electrode HeatMap", denseProbeDataCopy);
+		//ONI::Interface::plotCombinedLinePlot("AC Combined", denseProbeDataCopy, channelSelect, ONI::Interface::PLOT_AC_DATA);
+		////ONI::Interface::plotIndividualLinePlot("AC Probes", denseProbeDataCopy, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
+		//ONI::Interface::plotCombinedLinePlot("DC Combined", denseProbeDataCopy, channelSelect, ONI::Interface::PLOT_DC_DATA);
+		////ONI::Interface::plotIndividualLinePlot("DC Probes", denseProbeDataCopy, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
 
-		ONI::Frame::Rhs2116ProbeData& sparseProbeDataCopy = bp.sparseProbeData[FRONT_BUFFER]; // lets use 0 as the front buffer; depending on the machine a copy here might be more efficient
+		//bp.processMutex[0].unlock();
+
 		
+
+#ifdef USE_FRAMEBUFFER
+		bp.processMutex[1].lock();
+		ONI::Frame::Rhs2116ProbeData& sparseProbeDataCopy = bp.sparseProbeData[FRONT_BUFFER];
+#else
+		bp.processMutex.lock();
+		ONI::Frame::Rhs2116ProbeData& sparseProbeDataCopy = bp.sparseProbeData[BACK_BUFFER];
+#endif
+
+
 		ONI::Interface::plotCombinedHeatMap("Electrode HeatMap", sparseProbeDataCopy);
 		ONI::Interface::plotCombinedLinePlot("AC Combined", sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotIndividualLinePlot("AC Probes", sparseProbeDataCopy, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotIndividualLinePlot("AC Probes", sparseProbeDataCopy, allSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
 		ONI::Interface::plotCombinedLinePlot("DC Combined", sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_DC_DATA);
-		ONI::Interface::plotIndividualLinePlot("DC Probes", sparseProbeDataCopy, channelSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
-		
+		ONI::Interface::plotIndividualLinePlot("DC Probes", sparseProbeDataCopy, allSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
+#ifdef USE_FRAMEBUFFER
+		bp.processMutex[1].unlock();
+#else
 		bp.processMutex.unlock();
+#endif
+
+		
 
 		interfaceTimeNs = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - startTime;
+		
 
 		ImGui::PopID();
 
 	}
-
+	
 
 	bool save(std::string presetName){
 		return false;
@@ -178,6 +205,7 @@ protected:
 	std::atomic_uint64_t interfaceTimeNs = 0;
 
 	std::vector<bool> channelSelect;
+	std::vector<bool> allSelect;
 
 	bool bSelectAll = true;
 	

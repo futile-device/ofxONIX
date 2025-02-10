@@ -424,6 +424,9 @@ public:
 			}
 
 		}
+		static bool bSilentUpdate = true;
+		ImGui::SameLine();
+		ImGui::Checkbox("Use Silent Registers", &bSilentUpdate);
 		if(!std.isDeviceChannelMapSynced()) ImGui::EndDisabled();
 
 		if(!std.isDeviceChannelMapSynced()){
@@ -487,7 +490,7 @@ public:
 			//stimuli = editedStimuli;
 			std.stageStimuli(editedStimuli);
 			std.conformStepSize(ONI::Processor::Rhs2116StimProcessor::SettingType::STAGED);
-			std.applyStagedStimuliToDevice();
+			std.applyStagedStimuliToDevice(bSilentUpdate);
 			refreshStimuliData(std);
 		}
 

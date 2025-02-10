@@ -62,9 +62,9 @@ public:
 
 	size_t resize(const int& bufferSizeMillis, const int& bufferStepMillis, const size_t& sampleFrequencyHz){
 		long double framesPerMillis = 1.0 / sampleFrequencyHz * 1000.0;
-		size_t bufferStepFrameSize = std::floor(bufferStepMillis / framesPerMillis);
+		size_t bufferStepFrameSize = bufferStepMillis / framesPerMillis;
 		if(bufferStepMillis == 0) bufferStepFrameSize = 1;
-		size_t bufferFrameSizeRequired = std::floor(bufferSizeMillis / framesPerMillis / bufferStepFrameSize);
+		size_t bufferFrameSizeRequired = bufferSizeMillis / framesPerMillis / bufferStepFrameSize;
 		return resize(bufferFrameSizeRequired, bufferStepFrameSize);
 	}
 

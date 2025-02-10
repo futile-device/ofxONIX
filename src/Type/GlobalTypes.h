@@ -24,6 +24,9 @@
 
 #pragma once
 
+#define RHS2116_SAMPLE_FREQUENCY_HZ 30.1932367151e3
+#define RHS2116_NUM_DEVICE_PROBES 16
+
 namespace ONI{
 
 class Context; // predeclare for friend access
@@ -107,9 +110,6 @@ private:
 	static T* m_pInstance;
 };
 template <class T> T* Singleton<T>::m_pInstance=nullptr;
-
-#define RHS2116_SAMPLE_FREQUENCY_HZ 30.1932367151e3
-#define RHS2116_NUM_DEVICE_PROBES 16
 
 class Model{
 

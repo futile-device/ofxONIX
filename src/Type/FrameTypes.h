@@ -119,6 +119,11 @@ struct Rhs2116ProbeData{
 			dcProbeVoltages[probe].resize(numFrames);
 			probeTimeStamps[probe].resize(numFrames);
 			stimProbeData[probe].resize(numFrames);
+			acProbeStats[probe].deviation = dcProbeStats[probe].deviation = 0;
+			acProbeStats[probe].mean = dcProbeStats[probe].mean = 0;
+			acProbeStats[probe].ss = dcProbeStats[probe].ss = 0;
+			acProbeStats[probe].sum = dcProbeStats[probe].sum = 0;
+			acProbeStats[probe].variance = dcProbeStats[probe].variance = 0;
 		}
 
 	}
@@ -137,6 +142,7 @@ struct Rhs2116ProbeData{
 	std::vector< std::vector<float> > probeTimeStamps;
 	std::vector<ProbeStatistics> acProbeStats;
 	std::vector<ProbeStatistics> dcProbeStats;
+	float millisPerStep = 0;
 };
 
 //// onix.h Frame type
