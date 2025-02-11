@@ -422,12 +422,12 @@ public:
 
 	inline void setBufferSizeMillis(const size_t& millis){ // handle 0ms case?
 		bufferSizeMillis = millis;
-		bufferSizeSamples =  std::floor(millis * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
+		bufferSizeSamples =  std::floor(millis * RHS2116_SAMPLE_FREQUENCY_MS);
 	}
 
 	inline void setSparseStepSizeMillis(const size_t& millis){
 		sparseStepMillis = millis;
-		sparseStepSamples = std::floor(millis * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
+		sparseStepSamples = std::floor(millis * RHS2116_SAMPLE_FREQUENCY_MS);
 		if(sparseStepSamples == 0) sparseStepSamples = 1;
 	}
 

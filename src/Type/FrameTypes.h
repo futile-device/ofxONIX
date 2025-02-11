@@ -68,11 +68,11 @@ struct acquisition_clock_compare {
 
 
 struct ProbeStatistics{
-	float sum;
-	float mean;
-	float ss;
-	float variance;
-	float deviation;
+	float sum = 0;
+	float mean = 0;
+	float ss = 0;
+	float variance = 0;
+	float deviation = 0;
 };
 
 struct Rhs2116ProbeData{
@@ -238,7 +238,13 @@ class Rhs2116MultiFrame : public ONI::Frame::BaseFrame{
 
 public:
 
-	Rhs2116MultiFrame(){ numProbes = 0; };
+	Rhs2116MultiFrame(){ 
+		numProbes = 0;
+		for(size_t i = 0; i < MAX_NUM_MULTIPROBES; ++i){
+			ac_uV[i] = 0;
+			dc_mV[i] = 0;
+		}
+	};
 	Rhs2116MultiFrame(const std::vector<ONI::Frame::Rhs2116DataExtended>& frames, 
 					  const std::vector<size_t>& channelMap){
 		convert(frames, channelMap); 

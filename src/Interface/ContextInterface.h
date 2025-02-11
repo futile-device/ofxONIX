@@ -31,6 +31,8 @@
 #include "../Interface/Rhs2116Interface.h"
 #include "../Interface/Rhs2116MultiInterface.h"
 #include "../Interface/Rhs2116StimInterface.h"
+#include "../Interface/RecordInterface.h"
+#include "../Interface/SpikeInterface.h"
 
 #include "ofxImGui.h"
 #include "ofxImPlot.h"
@@ -142,7 +144,13 @@ public:
 		}
 
 		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
-		bool bDisableOnPlayback = recordProcessor->isPlaying() || recordProcessor->isPaused();
+		bool bDisableOnPlayback = false;
+
+		if (recordProcessor != nullptr) {
+			bDisableOnPlayback = recordProcessor->isPlaying() || recordProcessor->isPaused();
+			if (bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if (ImGui::CollapsingHeader("RecordProcessor", true)) recordProcessorInterface.gui(*recordProcessor);
+		}
 
 		if(bDisableOnPlayback) ImGui::BeginDisabled();
 
@@ -223,10 +231,16 @@ public:
 			if(ImGui::CollapsingHeader("ChannelMapProcessor", true)) channelMapInterface.gui(*ONI::Global::model.getChannelMapProcessor());
 		}
 
+		if (ONI::Global::model.getSpikeProcessor() != nullptr) {
+			if (bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if (ImGui::CollapsingHeader("SpikeProcessor", true)) spikeProcessorInterface.gui(*ONI::Global::model.getSpikeProcessor());
+		}
+
 		if(ONI::Global::model.getBufferProcessor() != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if(ImGui::CollapsingHeader("BufferProcessor", true)) bufferProcessorInterface.gui(*ONI::Global::model.getBufferProcessor());
 		}
+
 
 		ImGui::PopID();
 		ImGui::End();
@@ -252,6 +266,8 @@ protected:
 	ONI::Interface::Rhs2116Interface rhsInterface[4];
 	ONI::Interface::Rhs2116MultiInterface multiInterface;
 	ONI::Interface::Rhs2116StimulusInterface stimInterface;
+	ONI::Interface::RecordInterface recordProcessorInterface;
+	ONI::Interface::SpikeInterface spikeProcessorInterface;
 
 };
 

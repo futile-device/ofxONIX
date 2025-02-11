@@ -143,6 +143,9 @@ public:
 			std::memcpy(&to.acProbeStats[probe], &probeData.acProbeStats[probe], sizeof(ONI::Frame::ProbeStatistics));
 			std::memcpy(&to.dcProbeStats[probe], &probeData.dcProbeStats[probe], sizeof(ONI::Frame::ProbeStatistics));
 
+			probeData.acProbeStats[probe].ss = 0;
+			probeData.dcProbeStats[probe].ss = 0;
+
 			for (size_t frame = 0; frame < bufferSize; ++frame) {
 				float acdiff = to.acProbeVoltages[probe][frame] - to.acProbeStats[probe].mean;
 				float dcdiff = to.dcProbeVoltages[probe][frame] - to.dcProbeStats[probe].mean;
@@ -161,6 +164,7 @@ public:
 	}
 
 	inline void copySortedBuffer(std::vector<ONI::Frame::Rhs2116MultiFrame>& to){
+		if (to.size() != bufferSize) to.resize(bufferSize);
 		std::memcpy(&to[0], &rawFrameBuffer[currentBufferIndex], sizeof(ONI::Frame::Rhs2116MultiFrame) * bufferSize);
 	}
 
@@ -169,9 +173,40 @@ public:
 		return rawFrameBuffer;
 	}
 
+	inline float* getAcuVFloatRaw(const size_t& probe, const size_t& from){
+		return &probeData.acProbeVoltages[probe][from];
+	}
+
+	inline ONI::Frame::Rhs2116MultiFrame& getFrameAt(const size_t& idx){
+		assert(idx > 0 && idx < bufferSize);
+		return rawFrameBuffer[idx];
+	}
+
+	inline ONI::Frame::Rhs2116MultiFrame& getCentralFrame(){
+		return getFrameAt(std::floor(bufferSize / 2.0));
+	}
+
+	inline ONI::Frame::Rhs2116MultiFrame getCentralFrames(){
+		return getFrameAt(std::floor(bufferSize / 2.0));
+	}
+
+	inline ONI::Frame::Rhs2116MultiFrame& getLastMultiFrame() {
+		return rawFrameBuffer[getLastIndex()];
+	}
+
+	const inline size_t getLastIndex(){
+	//const std::lock_guard<std::mutex> lock(mutex);
+		return (currentBufferIndex - 1) % bufferSize;
+	}
+
 	const inline size_t& getCurrentIndex(){
 		//const std::lock_guard<std::mutex> lock(mutex);
 		return currentBufferIndex;
+	}
+
+	const inline size_t& getStep(){
+	//const std::lock_guard<std::mutex> lock(mutex);
+		return bufferSampleRateStep;
 	}
 
 	const inline size_t& getBufferCount(){

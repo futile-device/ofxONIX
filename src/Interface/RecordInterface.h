@@ -68,8 +68,6 @@ public:
 
 protected:
 
-	ONI::Settings::FmcDeviceSettings nextSettings;
-	bool bIsApplying = false;
 
 };
 

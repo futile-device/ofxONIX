@@ -2984,6 +2984,9 @@
     <ClInclude Include="..\..\src\Type\FrameBuffer.h">
       <Filter>addons\ofxONIX\src\Type</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\src\Interface\SpikeInterface.h">
+      <Filter>addons\ofxONIX\src\Interface</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc" />

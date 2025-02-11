@@ -205,6 +205,7 @@ static std::string toString(const ONI::Interface::PlotType& plotType){
 
 // Plot Combined AC or DC probe data
 static inline void plotCombinedHeatMap(const std::string plotName, 
+									   const float& acVoltageRange,
 									   const ONI::Frame::Rhs2116ProbeData& p){
 
 	//const std::lock_guard<std::mutex> lock(mutex);
@@ -252,7 +253,7 @@ static inline void plotCombinedHeatMap(const std::string plotName,
 		hm[row][col] = (p.acProbeVoltages)[i][(p.acProbeVoltages)[i].size() - 1];
 	}
 
-	float voltageRange = 5.0f;
+	float voltageRange = acVoltageRange;
 
 	if (ImPlot::BeginPlot("AC Electrodes", ImVec2(width, width), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
 		ImPlot::SetupAxes(nullptr, nullptr, axes_flags, axes_flags);
@@ -297,9 +298,10 @@ static std::vector<float> timeStamps;
 
 // Plot Combined AC or DC probe data
 static inline void plotCombinedLinePlot(const std::string plotName,
-	const ONI::Frame::Rhs2116ProbeData& p,
-	const std::vector<bool>& channelSelect,
-	const ONI::Interface::PlotType& plotType) {
+										const float& acVoltageRange,
+										const ONI::Frame::Rhs2116ProbeData& p,
+										const std::vector<bool>& channelSelect,
+										const ONI::Interface::PlotType& plotType) {
 
 	//const std::lock_guard<std::mutex> lock(mutex);
 
@@ -308,6 +310,9 @@ static inline void plotCombinedLinePlot(const std::string plotName,
 	const std::vector<std::vector<float>>* voltages = nullptr;
 	std::string unitStr = "";
 	float voltageRange = 0;
+	static std::vector< std::vector<float>> devP;
+	static std::vector< std::vector<float>> devN;
+
 
 	switch (plotType) {
 
@@ -321,8 +326,20 @@ static inline void plotCombinedLinePlot(const std::string plotName,
 			for(size_t frame = 0; frame < frameCount; ++frame) timeStamps[frame] = frame * p.millisPerStep;
 		//}
 #endif
-		voltageRange = 6.0f;
+		voltageRange = acVoltageRange;//6.0f;
 		unitStr = "mV";
+
+		if(devP.size() != numProbes) devP.resize(numProbes);
+		if(devN.size() != numProbes) devN.resize(numProbes);
+		if(devP[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devP[i].resize(frameCount);
+		if(devN[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devN[i].resize(frameCount);
+		for(size_t probe = 0; probe < numProbes; ++probe) {
+			for(size_t frame = 0; frame < frameCount; ++frame){
+				devP[probe][frame] = ONI::Global::model.getSpikeProcessor()->getStDev(probe) * 3;
+				devN[probe][frame] = -devP[probe][frame];
+			}
+		}
+
 		break;
 	}
 
@@ -364,6 +381,10 @@ static inline void plotCombinedLinePlot(const std::string plotName,
 			ImPlot::SetupAxesLimits(0, timeStamps[frameCount - 1] - 1, -voltageRange, voltageRange, ImGuiCond_Always);
 			ImPlot::SetNextLineStyle(col);
 			ImPlot::PlotLine("##probe", &timeStamps[0], &(*voltages)[probe][0], frameCount, ImPlotLineFlags_None, offset);
+			ImPlot::SetNextLineStyle(ImVec4(1, 0, 0, 0.5));
+			ImPlot::PlotLine("##devP", &timeStamps[0], &devP[probe][0], frameCount, ImPlotLineFlags_None, offset);
+			ImPlot::SetNextLineStyle(ImVec4(0, 1, 0, 0.5));
+			ImPlot::PlotLine("##devN", &timeStamps[0], &devN[probe][0], frameCount, ImPlotLineFlags_None, offset);
 			if (stim->isStimulusOnDevice(probe)) {
 				ImPlot::SetNextLineStyle(col, 0.0);
 				ImPlot::SetNextFillStyle(col, 0.6);
@@ -401,6 +422,7 @@ static inline void plotCombinedLinePlot(const std::string plotName,
 
 // Plot Individual AC or DC probe data
 static inline void plotIndividualLinePlot(const std::string plotName,
+										  const float& acVoltageRange,
 										  const ONI::Frame::Rhs2116ProbeData& p,
 										  const std::vector<bool>& channelSelect,
 										  const std::vector<size_t>& inverseChannelIDX,
@@ -423,7 +445,7 @@ static inline void plotIndividualLinePlot(const std::string plotName,
 		frameCount = p.acProbeVoltages[0].size();
 		voltages = &p.acProbeVoltages;
 		statistics = &p.acProbeStats;
-		voltageRange = 6.0f;
+		voltageRange = acVoltageRange;//6.0f;
 		voltageStr = "AC Voltages (mV)";
 		unitStr = "mV";
 		break;
@@ -485,6 +507,8 @@ static inline void plotIndividualLinePlot(const std::string plotName,
 				ONI::Interface::Sparkline("##spark", &(*voltages)[probe][0], frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, probePlotHeight));
 			}
 
+
+			
 			ImGui::PopID();
 
 		}

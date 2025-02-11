@@ -64,9 +64,9 @@ public:
 			sparseStepSizeMillis = bp.settings.getSparseStepMillis();
 		}
 
-		int step = std::floor(sparseStepSizeMillis * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
+		int step = std::floor(sparseStepSizeMillis * RHS2116_SAMPLE_FREQUENCY_MS);
 		if(step == 0) step = 1;
-		int szfine = std::floor(bufferSizeTimeMillis * RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0f);
+		int szfine = std::floor(bufferSizeTimeMillis * RHS2116_SAMPLE_FREQUENCY_MS);
 		int szstep = std::floor((float)szfine / (float)step);
 		
 
@@ -113,6 +113,7 @@ public:
 
 		ImGui::Separator();
 		ImGui::InputInt("Probe Plot Height", &probePlotHeight);
+		ImGui::InputFloat("AC Voltage Range", &acVoltageRange);
 
 		ImGui::Text("Select Probes to Plot");
 		ImGui::NewLine();
@@ -163,7 +164,7 @@ public:
 		
 
 #ifdef USE_FRAMEBUFFER
-		bp.processMutex[1].lock();
+		bp.processMutex[SPARSE_MUTEX].lock();
 		ONI::Frame::Rhs2116ProbeData& sparseProbeDataCopy = bp.sparseProbeData[FRONT_BUFFER];
 #else
 		bp.processMutex.lock();
@@ -171,13 +172,14 @@ public:
 #endif
 
 
-		ONI::Interface::plotCombinedHeatMap("Electrode HeatMap", sparseProbeDataCopy);
-		ONI::Interface::plotCombinedLinePlot("AC Combined", sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotIndividualLinePlot("AC Probes", sparseProbeDataCopy, allSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotCombinedLinePlot("DC Combined", sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_DC_DATA);
-		ONI::Interface::plotIndividualLinePlot("DC Probes", sparseProbeDataCopy, allSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
+		ONI::Interface::plotCombinedHeatMap("Electrode HeatMap", acVoltageRange, sparseProbeDataCopy);
+		ONI::Interface::plotCombinedLinePlot("AC Combined", acVoltageRange, sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotIndividualLinePlot("AC Probes", acVoltageRange, sparseProbeDataCopy, allSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
+		ONI::Interface::plotCombinedLinePlot("DC Combined", acVoltageRange, sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_DC_DATA);
+		ONI::Interface::plotIndividualLinePlot("DC Probes", acVoltageRange, sparseProbeDataCopy, allSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
+
 #ifdef USE_FRAMEBUFFER
-		bp.processMutex[1].unlock();
+		bp.processMutex[SPARSE_MUTEX].unlock();
 #else
 		bp.processMutex.unlock();
 #endif
@@ -210,6 +212,7 @@ protected:
 	bool bSelectAll = true;
 	
 	int probePlotHeight = 60;
+	float acVoltageRange = 6.0f;
 
 	int bufferSizeTimeMillis = -1;
 	int sparseStepSizeMillis = -1;

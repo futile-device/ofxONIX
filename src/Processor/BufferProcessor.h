@@ -38,6 +38,9 @@
 #define FRONT_BUFFER 0
 #define BACK_BUFFER 1
 
+#define DENSE_MUTEX 0
+#define SPARSE_MUTEX 1
+
 namespace ONI{
 
 namespace Interface{
@@ -46,10 +49,13 @@ class BufferInterface;
 
 namespace Processor{
 
+class SpikeProcessor;
+
 class BufferProcessor : public BaseProcessor{
 
 public:
 
+    friend class SpikeProcessor;
     friend class ONI::Interface::BufferInterface;
 
     BufferProcessor(){
@@ -65,8 +71,8 @@ public:
     void setup(ONI::Processor::BaseProcessor* source){
 
         LOGDEBUG("Setting up Buffer Processor");
-        processorTypeID = ONI::Processor::TypeID::BUFFER_PROCESSOR;
-        processorName = toString(processorTypeID);
+        //processorTypeID = ONI::Processor::TypeID::BUFFER_PROCESSOR;
+        //processorName = toString(processorTypeID);
 
         this->source = source;
         this->source->subscribeProcessor("BufferProcessor", ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
@@ -96,13 +102,18 @@ public:
 
 	inline void process(ONI::Frame::BaseFrame& frame){
 #ifdef USE_FRAMEBUFFER
-        dataMutex[0].lock();
+        dataMutex[DENSE_MUTEX].lock();
         denseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)); // TODO:: right now I am assuming a Rhs2116MultiProcessor/multiframe but I shouldn't be!!!
-        dataMutex[0].unlock();
+        dataMutex[DENSE_MUTEX].unlock();
 
-        dataMutex[1].lock();
+        dataMutex[SPARSE_MUTEX].lock();
         sparseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame));
-        dataMutex[1].unlock();
+        dataMutex[SPARSE_MUTEX].unlock();
+
+        //for(auto& it : postProcessors){
+        //    it.second->process(frame);
+        //}
+
 #else
         dataMutex.lock();
         denseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)); // TODO:: right now I am assuming a Rhs2116MultiProcessor/multiframe but I shouldn't be!!!
@@ -152,10 +163,10 @@ public:
 
     inline void lockAll() {
 #ifdef USE_FRAMEBUFFER
-        dataMutex[0].lock();
-        processMutex[0].lock();
-        dataMutex[1].lock();
-        processMutex[1].lock();
+        dataMutex[DENSE_MUTEX].lock();
+        processMutex[DENSE_MUTEX].lock();
+        dataMutex[SPARSE_MUTEX].lock();
+        processMutex[SPARSE_MUTEX].lock();
 #else
         dataMutex.lock();
         processMutex.lock();
@@ -164,10 +175,10 @@ public:
 
     inline void unlockAll() {
 #ifdef USE_FRAMEBUFFER
-        processMutex[0].unlock();
-        dataMutex[0].unlock();
-        processMutex[1].unlock();
-        dataMutex[1].unlock();
+        processMutex[DENSE_MUTEX].unlock();
+        dataMutex[DENSE_MUTEX].unlock();
+        processMutex[SPARSE_MUTEX].unlock();
+        dataMutex[SPARSE_MUTEX].unlock();
 #else
         processMutex.unlock();
         dataMutex.unlock();
@@ -285,6 +296,7 @@ private:
             processMutex[mutexID].lock();
             std::swap(probeData[FRONT_BUFFER], probeData[BACK_BUFFER]);
             processMutex[mutexID].unlock();
+             
 
         }else{
             std::this_thread::yield();
@@ -307,6 +319,10 @@ private:
             
            // bufferToProbeData(denseBuffer, denseProbeData, 0);
             bufferToProbeData(sparseBuffer, sparseProbeData, 1);
+
+
+
+            //std::this_thread::yield();
 
 #endif // !USE_FRAMEBUFFER
 
