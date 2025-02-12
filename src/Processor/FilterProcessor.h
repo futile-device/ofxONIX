@@ -78,7 +78,7 @@ public:
 		}
 
 
-		setBandPass(300, 3000);
+		setBandPass(100, 3000);
 
     }
 

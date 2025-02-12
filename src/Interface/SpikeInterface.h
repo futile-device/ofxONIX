@@ -60,18 +60,51 @@ public:
 		static std::vector< std::vector<float>> devN;
 		
 		if(frameCount != 0 && numProbes != 0){
+			
 			if(devP.size() != numProbes) devP.resize(numProbes);
 			if(devN.size() != numProbes) devN.resize(numProbes);
 			if(devP[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devP[i].resize(frameCount);
 			if(devN[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devN[i].resize(frameCount);
 			for(size_t probe = 0; probe < numProbes; ++probe) {
 				for(size_t frame = 0; frame < frameCount; ++frame){
-					devP[probe][frame] = ONI::Global::model.getSpikeProcessor()->getStDev(probe) * 3;
-					devN[probe][frame] = -devP[probe][frame];
+					devP[probe][frame] = ONI::Global::model.getSpikeProcessor()->getStDev(probe) * ONI::Global::model.getSpikeProcessor()->settings.positiveDeviationMultiplier;
+					devN[probe][frame] = -ONI::Global::model.getSpikeProcessor()->getStDev(probe) * ONI::Global::model.getSpikeProcessor()->settings.negativeDeviationMultiplier;
 				}
 			}
 		}
+		static bool bNeedsUpdate = false;
+		static bool bFirstLoad = true;
+		if(bFirstLoad){
+			nextSettings = sp.settings;
+			bFirstLoad = false;
+		}
+		
 
+		if(ImGui::InputFloat("Positive Deviation Multiplier", &nextSettings.positiveDeviationMultiplier)) bNeedsUpdate = true;
+		if(ImGui::InputFloat("Negative Deviation Multiplier", &nextSettings.negativeDeviationMultiplier)) bNeedsUpdate = true;
+
+		static char* spikeDetectionTypes = "FALLING EDGE\0RISING EDGE\0BOTH EDGES";
+		if(ImGui::Combo("Detection Type", (int*)&nextSettings.spikeEdgeDetectionType, spikeDetectionTypes, 3)) bNeedsUpdate = true;
+
+		if(ImGui::InputFloat("Spike Wave Length (ms)", &nextSettings.spikeWaveformLengthMs)) bNeedsUpdate = true;;
+		nextSettings.spikeWaveformLengthMs = std::clamp(nextSettings.spikeWaveformLengthMs, 0.02f, 1000.0f);
+		nextSettings.spikeWaveformLengthSamples = nextSettings.spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
+
+		if(ImGui::InputInt("Spike Detection Buffer Size", &nextSettings.spikeWaveformBufferSize)) bNeedsUpdate = true;
+
+		if(!bNeedsUpdate) ImGui::BeginDisabled();
+
+		bool bAppliedSettings = false;
+		if(ImGui::Button("Apply Settings")){
+
+			sp.settings = nextSettings;
+			sp.reset();
+			bNeedsUpdate = false;
+			bAppliedSettings = true;
+
+		}
+
+		if(!bNeedsUpdate && !bAppliedSettings) ImGui::EndDisabled();
 
 		ImGui::Begin("SpikeDetection");
 		ImGui::PushID("##SpikeDetection");
@@ -105,7 +138,7 @@ public:
 				//ImGui::TableSetColumnIndex(2);
 
 				ImGui::PushID(probe);
-				float voltageRange = 0.05;
+				float voltageRange = 0.02;
 				
 				ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
 
@@ -164,6 +197,8 @@ public:
 	}
 
 protected:
+
+	ONI::Settings::SpikeSettings nextSettings;
 
 	bool bUseFallingEdge = true;
 	bool bUseRisingEdge = false;

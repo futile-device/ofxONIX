@@ -77,8 +77,8 @@ public:
 
         settings.spikeEdgeDetectionType = ONI::Settings::SpikeEdgeDetectionType::BOTH;
 
-        settings.positiveDeviationMultiplier = 2;
-        settings.negativeDeviationMultiplier = 3;
+        settings.positiveDeviationMultiplier = 3.5;
+        settings.negativeDeviationMultiplier = 3.5;
 
         settings.spikeWaveformLengthMs = 2;
         settings.spikeWaveformLengthSamples = settings.spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;

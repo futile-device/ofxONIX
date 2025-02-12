@@ -527,12 +527,12 @@ struct SpikeSettings{
 
 	SpikeEdgeDetectionType spikeEdgeDetectionType = FALLING;
 
-	int positiveDeviationMultiplier = 3;
-	int negativeDeviationMultiplier = 3;
+	float positiveDeviationMultiplier = 3.0f;
+	float negativeDeviationMultiplier = 3.0f;
 
-	float spikeWaveformLengthMs = 2;
-	size_t spikeWaveformLengthSamples = spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
-	size_t spikeWaveformBufferSize = 10;
+	float spikeWaveformLengthMs = 2.0f;
+	int spikeWaveformLengthSamples = spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
+	int spikeWaveformBufferSize = 10;
 
 	// copy assignment (copy-and-swap idiom)
 	SpikeSettings& SpikeSettings::operator=(SpikeSettings other) noexcept{
