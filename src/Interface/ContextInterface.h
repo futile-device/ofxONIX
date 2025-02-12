@@ -33,6 +33,7 @@
 #include "../Interface/Rhs2116StimInterface.h"
 #include "../Interface/RecordInterface.h"
 #include "../Interface/SpikeInterface.h"
+#include "../Interface/FilterInterface.h"
 
 #include "ofxImGui.h"
 #include "ofxImPlot.h"
@@ -231,6 +232,11 @@ public:
 			if(ImGui::CollapsingHeader("ChannelMapProcessor", true)) channelMapInterface.gui(*ONI::Global::model.getChannelMapProcessor());
 		}
 
+		if(ONI::Global::model.getFilterProcessor() != nullptr){
+			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
+			if(ImGui::CollapsingHeader("FilterProcessor", true)) filterProcessorInterface.gui(*ONI::Global::model.getFilterProcessor());
+		}
+
 		if (ONI::Global::model.getSpikeProcessor() != nullptr) {
 			if (bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if (ImGui::CollapsingHeader("SpikeProcessor", true)) spikeProcessorInterface.gui(*ONI::Global::model.getSpikeProcessor());
@@ -268,6 +274,7 @@ protected:
 	ONI::Interface::Rhs2116StimulusInterface stimInterface;
 	ONI::Interface::RecordInterface recordProcessorInterface;
 	ONI::Interface::SpikeInterface spikeProcessorInterface;
+	ONI::Interface::FilterInterface filterProcessorInterface;
 
 };
 

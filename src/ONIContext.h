@@ -40,6 +40,7 @@
 #include "../Processor/SpikeProcessor.h"
 #include "../Processor/Rhs2116MultiProcessor.h"
 #include "../Processor/Rhs2116StimProcessor.h"
+#include "../Processor/FilterProcessor.h"
 
 #include "../Interface/BaseInterface.h"
 #include "../Interface/FmcInterface.h"
@@ -47,6 +48,7 @@
 #include "../Interface/Rhs2116Interface.h"
 #include "../Interface/Rhs2116MultiInterface.h"
 #include "../Interface/Rhs2116StimInterface.h"
+#include "../Interface/FilterInterface.h"
 
 // TODO:: Finish off recorder interface: time, play, pause, load, save, export, meta data, auto name with datetime
 
@@ -127,7 +129,11 @@ public:
 		if(bIsPlaying){
 			//if(bIsAcquiring) stopAcquisition(); // this isn't elegant but necessary if we don't create proxy functions on the oni Context for starting playback
 			//return; // can't change settings? or just let it happen?
-			if(recordProcessor->isPlaybackLoopRequired()) recordProcessor->play();
+			if(recordProcessor->isPlaybackLoopRequired()){
+				if(ONI::Global::model.getBufferProcessor() != nullptr) ONI::Global::model.getBufferProcessor()->reset();
+				if(ONI::Global::model.getSpikeProcessor() != nullptr) ONI::Global::model.getSpikeProcessor()->reset();
+				recordProcessor->play();
+			}
 		}
 
 		//if(bIsRecording && !bIsAcquiring){
@@ -327,6 +333,11 @@ public:
 		LOGINFO("Created new %s", name.c_str());
 		processors[typeID] = std::move(processor);
 		return reinterpret_cast<ProcessorType*>(processors[typeID]);
+	}
+
+	ONI::Processor::FilterProcessor* createFilterProcessor(){
+		ONI::Global::model.filterProcessor = createProcessor<ONI::Processor::FilterProcessor>();
+		return ONI::Global::model.filterProcessor;
 	}
 
 	ONI::Processor::BufferProcessor* createBufferProcessor(){

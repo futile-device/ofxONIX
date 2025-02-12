@@ -212,7 +212,7 @@ protected:
 	bool bSelectAll = true;
 	
 	int probePlotHeight = 60;
-	float acVoltageRange = 6.0f;
+	float acVoltageRange = 0.06f;
 
 	int bufferSizeTimeMillis = -1;
 	int sparseStepSizeMillis = -1;

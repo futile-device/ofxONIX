@@ -49,7 +49,7 @@ public:
 	
 		ONI::Processor::SpikeProcessor& sp = *reinterpret_cast<ONI::Processor::SpikeProcessor*>(&processor);
 
-		size_t frameCount = sp.spikeSampleLength;
+		size_t frameCount = sp.settings.spikeWaveformLengthSamples;
 		numProbes = sp.numProbes;
 
 		ImGui::PushID(sp.getName().c_str());
@@ -105,7 +105,7 @@ public:
 				//ImGui::TableSetColumnIndex(2);
 
 				ImGui::PushID(probe);
-				float voltageRange = 0.06;
+				float voltageRange = 0.05;
 				
 				ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
 
@@ -165,7 +165,8 @@ public:
 
 protected:
 
-
+	bool bUseFallingEdge = true;
+	bool bUseRisingEdge = false;
 
 };
 

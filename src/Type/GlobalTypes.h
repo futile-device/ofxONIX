@@ -40,6 +40,7 @@ class RecordProcessor;
 class SpikeProcessor;
 class Rhs2116MultiProcessor;
 class Rhs2116StimProcessor;
+class FilterProcessor;
 
 
 enum TypeID{
@@ -52,6 +53,7 @@ enum TypeID{
 	CHANNEL_PROCESSOR		= 601,
 	RECORD_PROCESSOR		= 602,
 	SPIKE_PROCESSOR			= 603,
+	FILTER_PROCESSOR		= 604,
 	RHS2116_MULTI_PROCESSOR	= 666,
 	RHS2116_STIM_PROCESSOR	= 667,
 };
@@ -67,6 +69,7 @@ static std::string toString(const ONI::Processor::TypeID& typeID){
 	case CHANNEL_PROCESSOR: {return "CHANNEL Processor"; break;}
 	case RECORD_PROCESSOR: {return "RECORD Processor"; break;}
 	case SPIKE_PROCESSOR: {return "SPIKE Processor"; break;}
+	case FILTER_PROCESSOR: { return "FILTER Processor"; break; }
 	case RHS2116_MULTI_PROCESSOR: {return "RHS2116MULTI Processor"; break;}
 	case RHS2116_STIM_PROCESSOR: {return "RHS2116STIM Processor"; break;}
 	default: {assert(false, "UNKNOWN TYPE"); return "UNKNOWN Processor"; break; }
@@ -178,6 +181,10 @@ public:
 		return channelMapProcessor;
 	}
 
+	ONI::Processor::FilterProcessor* getFilterProcessor(){
+		return filterProcessor;
+	}
+
 	ONI::Processor::RecordProcessor* getRecordProcessor(){
 		return recordProcessor;
 	}
@@ -218,6 +225,7 @@ private:
 	ONI::Processor::SpikeProcessor * spikeProcessor = nullptr;
 	ONI::Processor::Rhs2116MultiProcessor * rhs2116MultiProcessor = nullptr;
 	ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = nullptr;
+	ONI::Processor::FilterProcessor* filterProcessor = nullptr;
 
 };
 

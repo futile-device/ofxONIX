@@ -517,6 +517,68 @@ struct Rhs2116StimDeviceSettings{
 inline bool operator==(Rhs2116StimDeviceSettings& lhs, Rhs2116StimDeviceSettings& rhs){ return (lhs.bTriggerDevice == rhs.bTriggerDevice); }
 inline bool operator!=(Rhs2116StimDeviceSettings& lhs, Rhs2116StimDeviceSettings& rhs) { return !(lhs == rhs); }
 
+enum SpikeEdgeDetectionType{
+	FALLING = 0,
+	RISING,
+	BOTH
+};
+
+struct SpikeSettings{
+
+	SpikeEdgeDetectionType spikeEdgeDetectionType = FALLING;
+
+	int positiveDeviationMultiplier = 3;
+	int negativeDeviationMultiplier = 3;
+
+	float spikeWaveformLengthMs = 2;
+	size_t spikeWaveformLengthSamples = spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
+	size_t spikeWaveformBufferSize = 10;
+
+	// copy assignment (copy-and-swap idiom)
+	SpikeSettings& SpikeSettings::operator=(SpikeSettings other) noexcept{
+		std::swap(spikeEdgeDetectionType, other.spikeEdgeDetectionType);
+		std::swap(positiveDeviationMultiplier, other.positiveDeviationMultiplier);
+		std::swap(negativeDeviationMultiplier, other.negativeDeviationMultiplier);
+		std::swap(spikeWaveformLengthMs, other.spikeWaveformLengthMs);
+		std::swap(spikeWaveformLengthSamples, other.spikeWaveformLengthSamples);
+		std::swap(spikeWaveformBufferSize, other.spikeWaveformBufferSize);
+		return *this;
+	}
+
+};
+
+
+inline bool operator==(const SpikeSettings& lhs, const SpikeSettings& rhs){
+	return (lhs.spikeEdgeDetectionType == rhs.spikeEdgeDetectionType &&
+			lhs.positiveDeviationMultiplier == rhs.positiveDeviationMultiplier &&
+			lhs.negativeDeviationMultiplier == rhs.negativeDeviationMultiplier &&
+			lhs.spikeWaveformLengthMs == rhs.spikeWaveformLengthMs &&
+			lhs.spikeWaveformLengthSamples == rhs.spikeWaveformLengthSamples &&
+			lhs.spikeWaveformBufferSize == rhs.spikeWaveformBufferSize);
+}
+inline bool operator!=(const SpikeSettings& lhs, const SpikeSettings& rhs) { return !(lhs == rhs); }
+
+
+struct FilterSettings{
+
+	int lowCut = 300;
+	int highCut = 3000;
+
+	// copy assignment (copy-and-swap idiom)
+	FilterSettings& FilterSettings::operator=(FilterSettings other) noexcept{
+		std::swap(highCut, other.highCut);
+		std::swap(lowCut, other.lowCut);
+		return *this;
+	}
+
+};
+
+
+inline bool operator==(const FilterSettings& lhs, const FilterSettings& rhs){
+	return (lhs.highCut == rhs.highCut &&
+			lhs.lowCut == rhs.lowCut);
+}
+inline bool operator!=(const FilterSettings& lhs, const FilterSettings& rhs) { return !(lhs == rhs); }
 
 
 } // namespace Settings

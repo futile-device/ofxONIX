@@ -31,6 +31,8 @@
 #include "../Processor/BaseProcessor.h"
 //#include "../Processor/Rhs2116MultiProcessor.h"
 
+
+
 #pragma once
 
 #define USE_FRAMEBUFFER 1
@@ -84,10 +86,12 @@ public:
 
         reset();
 
+
         //bThread = true;
         //thread = std::thread(&ONI::Processor::BufferProcessor::processProbeDataThread, this);
 
     }
+    
 
     void reset(){
         bThread = false;
@@ -102,6 +106,8 @@ public:
 
 	inline void process(ONI::Frame::BaseFrame& frame){
 #ifdef USE_FRAMEBUFFER
+
+
         dataMutex[DENSE_MUTEX].lock();
         denseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)); // TODO:: right now I am assuming a Rhs2116MultiProcessor/multiframe but I shouldn't be!!!
         dataMutex[DENSE_MUTEX].unlock();

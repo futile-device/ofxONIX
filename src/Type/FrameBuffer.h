@@ -91,11 +91,11 @@ public:
 				probeData.stimProbeData[probe][currentBufferIndex + bufferSize] = probeData.stimProbeData[probe][currentBufferIndex + bufferSize * 2] = probeData.stimProbeData[probe][currentBufferIndex];
 
 
-				probeData.acProbeStats[probe].sum += dataFrame.ac_uV[probe] - lastDataFrame.ac_uV[probe];
-				probeData.dcProbeStats[probe].sum += dataFrame.dc_mV[probe] - lastDataFrame.dc_mV[probe];
+				//probeData.acProbeStats[probe].sum += dataFrame.ac_uV[probe] - lastDataFrame.ac_uV[probe];
+				//probeData.dcProbeStats[probe].sum += dataFrame.dc_mV[probe] - lastDataFrame.dc_mV[probe];
 
-				probeData.acProbeStats[probe].mean = probeData.acProbeStats[probe].sum / bufferSize;
-				probeData.dcProbeStats[probe].mean = probeData.dcProbeStats[probe].sum / bufferSize;
+				//probeData.acProbeStats[probe].mean = probeData.acProbeStats[probe].sum / bufferSize;
+				//probeData.dcProbeStats[probe].mean = probeData.dcProbeStats[probe].sum / bufferSize;
 
 				//probeData.acProbeStats[probe].ss = 0;
 				//probeData.dcProbeStats[probe].ss = 0;
@@ -143,8 +143,16 @@ public:
 			std::memcpy(&to.acProbeStats[probe], &probeData.acProbeStats[probe], sizeof(ONI::Frame::ProbeStatistics));
 			std::memcpy(&to.dcProbeStats[probe], &probeData.dcProbeStats[probe], sizeof(ONI::Frame::ProbeStatistics));
 
-			probeData.acProbeStats[probe].ss = 0;
-			probeData.dcProbeStats[probe].ss = 0;
+			for(size_t frame = 0; frame < bufferSize; ++frame) {
+				to.acProbeStats[probe].sum += to.acProbeVoltages[probe][frame];
+				to.dcProbeStats[probe].sum += to.dcProbeVoltages[probe][frame];
+			}
+
+			to.acProbeStats[probe].mean = to.acProbeStats[probe].sum / bufferSize;
+			to.dcProbeStats[probe].mean = to.dcProbeStats[probe].sum / bufferSize;
+
+			to.acProbeStats[probe].ss = 0;
+			to.dcProbeStats[probe].ss = 0;
 
 			for (size_t frame = 0; frame < bufferSize; ++frame) {
 				float acdiff = to.acProbeVoltages[probe][frame] - to.acProbeStats[probe].mean;
@@ -174,11 +182,11 @@ public:
 	}
 
 	inline float* getAcuVFloatRaw(const size_t& probe, const size_t& from){
-		return &probeData.acProbeVoltages[probe][from];
+		return &probeData.acProbeVoltages[probe][from + bufferSize]; // allow negative values by wrapping 
 	}
 
 	inline ONI::Frame::Rhs2116MultiFrame& getFrameAt(const size_t& idx){
-		assert(idx > 0 && idx < bufferSize);
+		//assert(idx > 0 && idx < bufferSize);
 		return rawFrameBuffer[idx];
 	}
 

@@ -149,14 +149,21 @@ void ofApp::setup(){
         }
     }
 
-    ONI::Processor::BufferProcessor* bufferProcessor = oni.createBufferProcessor();
-    bufferProcessor->setup(rhs2116StimProcessor);
-
     ONI::Processor::RecordProcessor* recordProcessor = oni.createRecordProcessor();
     recordProcessor->setup();
 
+    ONI::Processor::FilterProcessor* filterProcessor = oni.createFilterProcessor();
+    filterProcessor->setup(rhs2116StimProcessor);
+
+    ONI::Processor::BufferProcessor* bufferProcessor = oni.createBufferProcessor();
+    bufferProcessor->setup(filterProcessor);
+
     ONI::Processor::SpikeProcessor* spikeProcessor = oni.createSpikeProcessor();
     spikeProcessor->setup(bufferProcessor);
+
+
+
+
     
 
     rhs2116StimProcessor->applyStagedStimuliToDevice();
