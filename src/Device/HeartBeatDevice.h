@@ -108,6 +108,10 @@ public:
 		return ONI::Device::BaseDevice::writeRegister(reg, value);
 	}
 
+	std::string info(){
+		return BaseDevice::getName() + "\n" + settings.info();
+	}
+
 protected:
 
 	//HeartBeatDeviceConfig config;

@@ -455,7 +455,7 @@ public:
 
     ONI::Settings::Rhs2116StimulusStep getRequiredStepSize(ONI::Rhs2116StimulusData& stimulus){
 
-        ONI::Settings::Rhs2116StimulusStep anodicMinStep = ONI::Settings::Rhs2116StimulusStep::StepError; // 10
+        ONI::Settings::Rhs2116StimulusStep anodicMinStep = ONI::Settings::Rhs2116StimulusStep::StepNotSet; // 10
 
         unsigned int anodicSteps = 0;
         for(size_t i = 0; i < 10; ++i){
@@ -467,13 +467,13 @@ public:
             }
         }
 
-        if(anodicMinStep == ONI::Settings::Rhs2116StimulusStep::StepError){
+        if(anodicMinStep == ONI::Settings::Rhs2116StimulusStep::StepNotSet){
             LOGERROR("Requested anodic current is too high");
             anodicMinStep = ONI::Settings::Rhs2116StimulusStep::Step10000nA;
             anodicSteps = 255;
         }
 
-        ONI::Settings::Rhs2116StimulusStep cathodicMinStep = ONI::Settings::Rhs2116StimulusStep::StepError; // 11
+        ONI::Settings::Rhs2116StimulusStep cathodicMinStep = ONI::Settings::Rhs2116StimulusStep::StepNotSet; // 11
 
         unsigned int cathodicSteps = 0;
         for(size_t i = 0; i < 10; ++i){

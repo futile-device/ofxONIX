@@ -32,8 +32,6 @@
 
 namespace ONI{
 
-
-
 struct Rhs2116StimulusData{
 
 	bool biphasic = true;
@@ -77,21 +75,7 @@ inline bool operator!=(const Rhs2116StimulusData& lhs, const Rhs2116StimulusData
 
 namespace Settings{
 
-struct FmcDeviceSettings{
-	float voltage = 4.9;
-};
 
-inline bool operator==(const FmcDeviceSettings& lhs, const FmcDeviceSettings& rhs){ return (lhs.voltage == rhs.voltage); }
-inline bool operator!=(const FmcDeviceSettings& lhs, const FmcDeviceSettings& rhs) { return !(lhs == rhs); }
-
-
-
-struct HeartBeatDeviceSettings{
-	unsigned int frequencyHz = 1;
-};
-
-inline bool operator==(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs){ return (lhs.frequencyHz == rhs.frequencyHz); }
-inline bool operator!=(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs) { return !(lhs == rhs); }
 
 
 
@@ -106,7 +90,7 @@ enum Rhs2116StimulusStep{
 	Step2000nA,
 	Step5000nA,
 	Step10000nA,
-	StepError
+	StepNotSet
 };
 
 const double Rhs2116StimulusStepMicroAmps [10]{
@@ -333,22 +317,129 @@ inline bool operator==(const Rhs2116Format& lhs, const Rhs2116Format& rhs){ retu
 inline bool operator!=(const Rhs2116Format& lhs, const Rhs2116Format& rhs) { return !(lhs == rhs); }
 
 
-inline std::ostream& operator<<(std::ostream& os, const Rhs2116Format& format) {
 
-	os << "[unsigned: " << *(unsigned int*)&format << "] ";
-	os << "[dspCutOff: " << format.dspCutoff << "] ";
-	os << "[dsPenable: " << format.dspEnable << "] ";
-	os << "[absmode: " << format.absmode << "] ";
-	os << "[twoscomp: " << format.twoscomp << "] ";
-	os << "[weakMISO: " << format.weakMISO << "] ";
-	os << "[digout1HiZ: " << format.digout1HiZ << "] ";
-	os << "[digout1: " << format.digout1 << "] ";
-	os << "[digout2HiZ: " << format.digout2HiZ << "] ";
-	os << "[digout2: " << format.digout2 << "] ";
-	os << "[digoutOD: " << format.digoutOD << "]";
-
-	return os;
+constexpr std::vector<std::string> Rhs2116DspCutoffStr = {
+	"Differential",
+	"Dsp3309Hz",
+	"Dsp1374Hz",
+	"Dsp638Hz",
+	"Dsp308Hz",
+	"Dsp152Hz",
+	"Dsp75Hz",
+	"Dsp37Hz",
+	"Dsp19Hz",
+	"Dsp9336mHz",
+	"Dsp4665mHz",
+	"Dsp2332mHz",
+	"Dsp1166mHz",
+	"Dsp583mHz",
+	"Dsp291mHz",
+	"Dsp146mHz",
+	"Off"
 };
+
+const std::string& toString(const ONI::Settings::Rhs2116DspCutoff& typeID){
+	assert(typeID < Rhs2116DspCutoffStr.size());
+	return Rhs2116DspCutoffStr[typeID];
+};
+
+constexpr std::vector<std::string> Rhs2116AnalogLowCutoffStr = {
+	"Low1000Hz",
+	"Low500Hz",
+	"Low300Hz",
+	"Low250Hz",
+	"Low200Hz",
+	"Low150Hz",
+	"Low100Hz",
+	"Low75Hz",
+	"Low50Hz",
+	"Low30Hz",
+	"Low25Hz",
+	"Low20Hz",
+	"Low15Hz",
+	"Low10Hz",
+	"Low7500mHz",
+	"Low5000mHz",
+	"Low3090mHz",
+	"Low2500mHz",
+	"Low2000mHz",
+	"Low1500mHz",
+	"Low1000mHz",
+	"Low750mHz",
+	"Low500mHz",
+	"Low300mHz",
+	"Low250mHz",
+	"Low100mHz"
+};
+
+const std::string& toString(const ONI::Settings::Rhs2116AnalogLowCutoff& typeID){
+	assert(typeID < Rhs2116AnalogLowCutoffStr.size());
+	return Rhs2116AnalogLowCutoffStr[typeID];
+};
+
+
+constexpr std::vector<std::string> Rhs2116AnalogHighCutoffStr = {
+	"High20000Hz",
+	"High15000Hz",
+	"High10000Hz",
+	"High7500Hz",
+	"High5000Hz",
+	"High3000Hz",
+	"High2500Hz",
+	"High2000Hz",
+	"High1500Hz",
+	"High1000Hz",
+	"High750Hz",
+	"High500Hz",
+	"High300Hz",
+	"High250Hz",
+	"High200Hz",
+	"High150Hz",
+	"High100Hz",
+};
+
+const std::string& toString(const ONI::Settings::Rhs2116AnalogHighCutoff& typeID){
+	assert(typeID < Rhs2116AnalogHighCutoffStr.size());
+	return Rhs2116AnalogHighCutoffStr[typeID];
+};
+
+
+constexpr std::vector<std::string> Rhs2116StimulusStepStr = {
+	"Step10nA",
+	"Step20nA",
+	"Step50nA",
+	"Step100nA",
+	"Step200nA",
+	"Step500nA",
+	"Step1000nA",
+	"Step2000nA",
+	"Step5000nA",
+	"Step10000nA",
+	"StepNotSet"
+};
+
+const std::string& toString(const ONI::Settings::Rhs2116StimulusStep& typeID){
+	assert(typeID < Rhs2116StimulusStepStr.size());
+	return Rhs2116StimulusStepStr[typeID];
+};
+
+//inline std::ostream& operator<<(std::ostream& os, const Rhs2116Format& format) {
+//
+//	os << "[unsigned: " << *(unsigned int*)&format << "] ";
+//	os << "[dspCutOff: " << format.dspCutoff << "] ";
+//	os << "[dsPenable: " << format.dspEnable << "] ";
+//	os << "[absmode: " << format.absmode << "] ";
+//	os << "[twoscomp: " << format.twoscomp << "] ";
+//	os << "[weakMISO: " << format.weakMISO << "] ";
+//	os << "[digout1HiZ: " << format.digout1HiZ << "] ";
+//	os << "[digout1: " << format.digout1 << "] ";
+//	os << "[digout2HiZ: " << format.digout2HiZ << "] ";
+//	os << "[digout2: " << format.digout2 << "] ";
+//	os << "[digoutOD: " << format.digoutOD << "]";
+//
+//	return os;
+//
+//};
 
 
 #pragma pack(push, 1)
@@ -359,17 +450,87 @@ struct Rhs2116Bias{
 };
 #pragma pack(pop)
 
+class BaseSettings{
 
-struct Rhs2116DeviceSettings{
+public:
+
+	virtual ~BaseSettings(){};
+
+	virtual std::string info() = 0;
+
+};
+
+class FmcDeviceSettings : public BaseSettings{
+
+public:
+
+	~FmcDeviceSettings(){};
+
+	float voltage = 4.9;
+
+	std::string info(){
+		char buf[256];
+		std::sprintf(buf, "FMC Voltage: %0.2f", voltage);
+		return std::string(buf);
+	}
+
+	FmcDeviceSettings& FmcDeviceSettings::operator=(FmcDeviceSettings other) noexcept{
+		std::swap(voltage, other.voltage);
+		return *this;
+	}
+};
+
+inline bool operator==(const FmcDeviceSettings& lhs, const FmcDeviceSettings& rhs){ return (lhs.voltage == rhs.voltage); }
+inline bool operator!=(const FmcDeviceSettings& lhs, const FmcDeviceSettings& rhs) { return !(lhs == rhs); }
+
+
+class HeartBeatDeviceSettings : public BaseSettings{
+
+public:
+
+	~HeartBeatDeviceSettings(){};
+
+	unsigned int frequencyHz = 1;
+
+	std::string info(){
+		char buf[256];
+		std::sprintf(buf, "HeartBeat Hz: %i", frequencyHz);
+		return std::string(buf);
+	}
+
+	HeartBeatDeviceSettings& HeartBeatDeviceSettings::operator=(HeartBeatDeviceSettings other) noexcept{
+		std::swap(frequencyHz, other.frequencyHz);
+		return *this;
+	}
+};
+
+inline bool operator==(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs){ return (lhs.frequencyHz == rhs.frequencyHz); }
+inline bool operator!=(const HeartBeatDeviceSettings& lhs, const HeartBeatDeviceSettings& rhs) { return !(lhs == rhs); }
+
+
+
+class Rhs2116DeviceSettings : public BaseSettings{
+
+public:
+
+	~Rhs2116DeviceSettings(){};
 
 	Rhs2116Format format;
 
-	Rhs2116StimulusStep stepSize = Step10nA;
 	Rhs2116DspCutoff dspCutoff = Dsp308Hz;
 
 	Rhs2116AnalogLowCutoff lowCutoff = Low100mHz;
 	Rhs2116AnalogLowCutoff lowCutoffRecovery = Low250Hz;
 	Rhs2116AnalogHighCutoff highCutoff = High10000Hz;
+
+	Rhs2116StimulusStep stepSize = Step10nA;
+
+	std::string info(){
+		char buf[256];
+		std::sprintf(buf, "DSP Cutoff: %s\nLow Cutoff: %s\nLow Cut Recovery: %s\nHigh Cutoff: %s\nStimulus Step: %s\n", 
+					 toString(dspCutoff).c_str(), toString(lowCutoff).c_str(), toString(lowCutoffRecovery).c_str(), toString(highCutoff).c_str(), toString(stepSize).c_str());
+		return std::string(buf);
+	}
 
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116DeviceSettings& Rhs2116DeviceSettings::operator=(Rhs2116DeviceSettings other) noexcept{
@@ -502,9 +663,17 @@ inline bool operator!=(ChannelMapProcessorSettings& lhs, ChannelMapProcessorSett
 
 
 
-struct Rhs2116StimDeviceSettings{
-
+class Rhs2116StimDeviceSettings : public BaseSettings{
+public:
+	~Rhs2116StimDeviceSettings(){};
+	
 	bool bTriggerDevice = true;
+
+	std::string info(){
+		char buf[256];
+		std::sprintf(buf, "Trigger device: %s", bTriggerDevice ? "SENDER" : "RECIEVER");
+		return std::string(buf);
+	}
 
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116StimDeviceSettings& Rhs2116StimDeviceSettings::operator=(Rhs2116StimDeviceSettings other) noexcept{
@@ -520,7 +689,8 @@ inline bool operator!=(Rhs2116StimDeviceSettings& lhs, Rhs2116StimDeviceSettings
 enum SpikeEdgeDetectionType{
 	FALLING = 0,
 	RISING,
-	BOTH
+	BOTH,
+	EITHER
 };
 
 struct SpikeSettings{
@@ -580,6 +750,55 @@ inline bool operator==(const FilterSettings& lhs, const FilterSettings& rhs){
 }
 inline bool operator!=(const FilterSettings& lhs, const FilterSettings& rhs) { return !(lhs == rhs); }
 
+
+
+
+
+struct RecordSettings{
+
+	std::string executableDataPath = "";
+	std::string recordFolder ="";
+	std::string dataFileName = "";
+	std::string timeFileName = "";
+	std::string infoFileName = "";
+	std::string timeStamp = "";
+	std::string description = "";
+	std::string info = "";
+
+	uint64_t acquisitionStartTime = 0;
+	uint64_t acquisitionCurrentTime = 0;
+
+	// copy assignment (copy-and-swap idiom)
+	RecordSettings& RecordSettings::operator=(RecordSettings other) noexcept{
+		std::swap(executableDataPath, other.executableDataPath);
+		std::swap(recordFolder, other.recordFolder);
+		std::swap(dataFileName, other.dataFileName);
+		std::swap(timeFileName, other.timeFileName);
+		std::swap(infoFileName, other.infoFileName);
+		std::swap(timeStamp, other.timeStamp);
+		std::swap(description, other.description);
+		std::swap(info, other.info);
+		std::swap(acquisitionStartTime, other.acquisitionStartTime);
+		std::swap(acquisitionCurrentTime, other.acquisitionCurrentTime);
+		return *this;
+	}
+
+};
+
+
+inline bool operator==(const RecordSettings& lhs, const RecordSettings& rhs){
+	return (lhs.executableDataPath == rhs.executableDataPath &&
+			lhs.recordFolder == rhs.recordFolder &&
+			lhs.dataFileName == rhs.dataFileName &&
+			lhs.timeFileName == rhs.timeFileName &&
+			lhs.infoFileName == rhs.infoFileName &&
+			lhs.timeStamp == rhs.timeStamp &&
+			lhs.description == rhs.description &&
+			lhs.info == rhs.info &&
+			lhs.acquisitionStartTime == rhs.acquisitionStartTime &&
+			lhs.acquisitionCurrentTime == rhs.acquisitionCurrentTime);
+}
+inline bool operator!=(const RecordSettings& lhs, const RecordSettings& rhs) { return !(lhs == rhs); }
 
 } // namespace Settings
 } // namespace ONI

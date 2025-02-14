@@ -66,7 +66,6 @@ struct acquisition_clock_compare {
 };
 
 
-
 struct ProbeStatistics{
 	float sum = 0;
 	float mean = 0;

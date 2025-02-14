@@ -83,7 +83,7 @@ public:
 		if(ImGui::InputFloat("Positive Deviation Multiplier", &nextSettings.positiveDeviationMultiplier)) bNeedsUpdate = true;
 		if(ImGui::InputFloat("Negative Deviation Multiplier", &nextSettings.negativeDeviationMultiplier)) bNeedsUpdate = true;
 
-		static char* spikeDetectionTypes = "FALLING EDGE\0RISING EDGE\0BOTH EDGES";
+		static char* spikeDetectionTypes = "FALLING EDGE\0RISING EDGE\0BOTH EDGES\0EITHER EDGE";
 		if(ImGui::Combo("Detection Type", (int*)&nextSettings.spikeEdgeDetectionType, spikeDetectionTypes, 3)) bNeedsUpdate = true;
 
 		if(ImGui::InputFloat("Spike Wave Length (ms)", &nextSettings.spikeWaveformLengthMs)) bNeedsUpdate = true;;
@@ -143,14 +143,20 @@ public:
 				ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
 
 				if(ImPlot::BeginPlot("##spark", ImVec2(-1, 240), ImPlotFlags_CanvasOnly)){
+					
 					static ImPlotAxisFlags flags = ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels;
+					
 					ImPlot::SetupAxes(nullptr, nullptr, flags, flags);
 					ImPlot::SetupAxesLimits(0, sp.spikes[probe][0].rawWaveform.size(), -voltageRange, voltageRange, ImGuiCond_Always);
 					ImVec4 col = ImPlot::GetColormapColor(probe);
+					
 					for(size_t j = 0; j < sp.spikes[probe].size(); ++j){
-						col.w = (float)j / sp.spikes[probe].size() + 0.2;
+
+						col.w = (float)(j + 1) / (sp.spikeCounts[probe] % sp.spikes[probe].size());
 						ImPlot::SetNextLineStyle(col);
+
 						ImPlot::PlotLine("##spark", &sp.spikes[probe][j].rawWaveform[0], sp.spikes[probe][j].rawWaveform.size(), 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+						
 						if(frameCount != 0 && numProbes != 0){
 							ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0, 0.2), 0.2);
 							ImPlot::PlotLine("##devP", &devP[probe][0], frameCount, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded

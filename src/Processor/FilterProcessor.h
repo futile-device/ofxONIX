@@ -109,9 +109,11 @@ public:
 		
 		ONI::Frame::Rhs2116MultiFrame* f = reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame);
 
-		for(size_t probe = 0; probe < numProbes; ++probe){
-			float* ptr = &f->ac_uV[probe];
-			filters[probe]->process(1, &ptr);
+		if(bUseFilter){
+			for(size_t probe = 0; probe < numProbes; ++probe){
+				float* ptr = &f->ac_uV[probe];
+				filters[probe]->process(1, &ptr);
+			}
 		}
 
 		for(auto& it : postProcessors){
@@ -124,6 +126,8 @@ public:
 private:
 
 protected:
+
+	bool bUseFilter = true;
 
 	ONI::Settings::FilterSettings settings;
 	ONI::Processor::BaseProcessor* source;

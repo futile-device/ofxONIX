@@ -18,6 +18,9 @@
 #include <thread>
 #include <mutex>
 #include <syncstream>
+#include <filesystem>
+#include <limits.h>
+#include <windows.h>     ////GetModuleFileNameW
 
 //#include "../Processor/BaseProcessor.h"
 //#include "../Device/BaseDevice.h"
@@ -31,6 +34,48 @@
 namespace ONI{
 
 class Context; // predeclare for friend access
+
+static std::string GetTimeStamp(){
+	time_t rawtime;
+	struct tm* timeinfo;
+	std::time(&rawtime);
+	timeinfo = std::localtime(&rawtime);
+	char buffer[80];
+	strftime(buffer, 80, "%H_%M_%S_%Y_%m_%d", timeinfo);
+	return std::string(buffer);
+}
+
+// see: https://stackoverflow.com/questions/1528298/get-path-of-executable
+static std::string GetExecutableDataPath(){
+	wchar_t path[MAX_PATH] = {0};
+	GetModuleFileNameW(NULL, path, MAX_PATH);
+	std::wstring ws(path);
+	std::string path_string(ws.begin(), ws.end());
+	size_t slash = path_string.find_last_of("\\");
+	path_string = path_string.substr(0, slash);
+	return path_string;
+}
+
+constexpr long double nanos_to_seconds = 1000000000.0; // conversion factor
+constexpr long double nanos_to_millis = 1000000.0;
+
+static inline std::string GetAcquisitionTimeStamp(const uint64_t& start, const uint64_t& end){
+	using namespace std::chrono;
+	auto ns = chrono::nanoseconds(end - start);
+	auto ms = duration_cast<chrono::milliseconds>(nanoseconds(ns));
+	ns -= duration_cast<chrono::nanoseconds>(ms);
+	auto secs = duration_cast<seconds>(ms);
+	ms -= duration_cast<chrono::milliseconds>(secs);
+	long double mss = ms.count() + (long double)ns.count() / nanos_to_millis;
+	auto mins = duration_cast<minutes>(secs);
+	secs -= duration_cast<seconds>(mins);
+	auto hour = duration_cast<hours>(mins);
+	mins -= duration_cast<minutes>(hour);
+	char buf[32];
+	std::sprintf(buf, "%02d:%02d:%02d:%08.4f", hour.count(), mins.count(), secs.count(), mss);
+	//std::cout << buf << std::endl;
+	return std::string(buf);
+}
 
 namespace Processor{
 class BaseProcessor; // predeclare for pointer storage in model
@@ -81,11 +126,13 @@ enum SubscriptionType{
 	POST_PROCESSOR
 };
 
-static std::string toString(const ONI::Processor::SubscriptionType& typeID){
-	switch(typeID){
-	case PRE_PROCESSOR: {return "PRE_PROCESSOR"; break;}
-	case POST_PROCESSOR: {return "POST_PROCESSOR"; break;}
-	}
+constexpr std::vector<std::string> SubscriptionTypeStr = {
+	"PRE_PROCESSOR",
+	"POST_PROCESSOR"
+};
+
+const std::string& toString(const ONI::Processor::SubscriptionType& typeID){
+	return SubscriptionTypeStr[typeID];
 };
 
 

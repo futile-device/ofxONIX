@@ -121,10 +121,10 @@ public:
 		++bufferSampleCount;
 	}
 
-	inline bool isFrameNew(){ // should I really auto reset? means it can only be called once per cycle
+	inline bool isFrameNew(const bool& reset = true){ // should I really auto reset? means it can only be called once per cycle
 		//const std::lock_guard<std::mutex> lock(mutex);
 		if(bIsFrameNew){
-			bIsFrameNew = false;
+			if(reset) bIsFrameNew = false;
 			return true;
 		}
 		return false;

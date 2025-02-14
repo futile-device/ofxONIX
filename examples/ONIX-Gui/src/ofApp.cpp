@@ -54,7 +54,7 @@ void ofApp::setup(){
 
     //rhs2116Device1->readRegister(ONI::Register::Rhs2116::MAXDELTAS);
 
-    fu::debug << rhs2116Device1->getFormat() << fu::endl;
+    //fu::debug << rhs2116Device1->getFormat() << fu::endl;
 
     ONI::Processor::Rhs2116MultiProcessor* multi = oni.createRhs2116MultiProcessor();
 
@@ -71,7 +71,7 @@ void ofApp::setup(){
     multi->setAnalogLowCutoffRecovery(ONI::Settings::Rhs2116AnalogLowCutoff::Low250Hz);
     multi->setAnalogHighCutoff(ONI::Settings::Rhs2116AnalogHighCutoff::High10000Hz);
 
-    fu::debug << rhs2116Device1->getFormat() << fu::endl;
+    //fu::debug << rhs2116Device1->getSettings().info() << fu::endl;
 
     ONI::Processor::ChannelMapProcessor* channelProcessor = oni.createChannelMapProcessor();
     channelProcessor->setup(multi);
@@ -191,7 +191,7 @@ void ofApp::update(){
         fu::ImGuiConsole.gui();
 
         //ImPlot::ShowDemoWindow();
-        //ImGui::ShowDemoWindow();
+        ImGui::ShowDemoWindow();
 
         ONIGui.gui(oni);
         
@@ -236,13 +236,14 @@ void ofApp::keyPressed(int key){
     ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 
     if(key == 'r'){
-        //recordProcessor->record();
-        oni.record();
+        
+        recordProcessor->record();
+        //oni.record();
     }
 
     if(key == 'p'){
-        //recordProcessor->play();
-        oni.play();
+        recordProcessor->play();
+        //oni.play();
     }
 
     if(key == 't'){

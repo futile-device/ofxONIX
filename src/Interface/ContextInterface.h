@@ -148,7 +148,7 @@ public:
 		bool bDisableOnPlayback = false;
 
 		if (recordProcessor != nullptr) {
-			bDisableOnPlayback = recordProcessor->isPlaying() || recordProcessor->isPaused();
+			bDisableOnPlayback = recordProcessor->isPlaying() || recordProcessor->isPaused() || recordProcessor->isRecording();
 			if (bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if (ImGui::CollapsingHeader("RecordProcessor", true)) recordProcessorInterface.gui(*recordProcessor);
 		}

@@ -20,6 +20,7 @@
 #include <thread>
 #include <mutex>
 #include <syncstream>
+#include <filesystem>
 
 #include "../Type/Log.h"
 #include "../Type/DataBuffer.h"
@@ -37,12 +38,17 @@ namespace ONI{
 
 class Context;
 
+namespace Interface{
+class RecordInterface;
+};
+
 namespace Processor{
 
 class RecordProcessor : public BaseProcessor{
 
 public:
 
+	friend class ONI::Interface::RecordInterface;
 	friend class ONI::Context;
 
 	enum State{
@@ -111,56 +117,25 @@ public:
 		bLoopPlayback = loop;
 	}
 
+	// this is annoying, but I need access to the 
+	// Conetxt when starting play and pause, so
+	// I'm doing this in a nasty update hoo way
+	// probably an event or signal would be better
+
 	void play(){
-		if(state == PLAYING || state == RECORDING) stopStreams();
-		//if(bIsAcquiring) stopAcquisition();
-		//const std::lock_guard<std::mutex> lock(mutex);
-		LOGINFO("Start Playing");
-		state = PLAYING;
-		streamMutex.lock();
-		contextDataStream = std::fstream(ofToDataPath("data_stream.dat"), std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
-		contextTimeStream = std::fstream(ofToDataPath("time_stream.dat"), std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
-		contextDataStream.seekg(0, ::std::ios::beg);
-		contextTimeStream.seekg(0, ::std::ios::beg);
-		contextTimeStream.read(reinterpret_cast<char*>(&lastAcquireTimeStamp),  sizeof(uint64_t));
-		streamMutex.unlock();
-		systemAcquisitionTimeStamp = lastAcquireTimeStamp;
-		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
-		for(auto& device : ONI::Global::model.getDevices()) device.second->reset();
-		ONI::Global::model.getBufferProcessor()->reset();
-		bPlaybackNeedsRestart = false;
-		bThread = true;
-		
-		thread = std::thread(&RecordProcessor::playFrames, this);
-
-		//startAcquisition();
+		bPlaybackNeedsStart = true;
 	}
-	std::string autoNameData = "";
-	std::string autoNameTime = "";
-	void record(){
-		if(state == PLAYING || state == RECORDING) stopStreams();
-		//if(bIsAcquiring) stopAcquisition();
-		LOGINFO("Start Recording");
-		//const std::lock_guard<std::mutex> lock(mutex);
-		std::ostringstream osD;
-		std::ostringstream osT;
-		osD << "data_stream" << ofGetTimestampString() << ".dat";
-		osT << "time_stream" << ofGetTimestampString() << ".dat";
-		streamMutex.lock();
-		contextDataStream = std::fstream(ofToDataPath("data_stream.dat"), std::ios::binary | std::ios::out);// | std::ios::out);// | std::ios::app);
-		contextTimeStream = std::fstream(ofToDataPath("time_stream.dat"), std::ios::binary | std::ios::out);// | std::ios::out);// | std::ios::app);
-		contextDataStream.seekg(0, ::std::ios::beg);
-		contextTimeStream.seekg(0, ::std::ios::beg);
-		streamMutex.unlock();
-		using namespace std::chrono;
-		uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-		contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
-		if(contextTimeStream.bad()) LOGERROR("Bad init time frame write");
-		for(auto& device : ONI::Global::model.getDevices()) device.second->reset();
-		//ONI::Global::model.getBufferProcessor()->reset();
 
-		state = RECORDING;
-		//startAcquisition();
+	void record(){
+		bRecordNeedsStart = true;
+	}
+
+	inline bool isPlaybackDependencyResetRequired(const bool& reset = true){
+		if(bPlaybackNeedsDependencyReset){
+			if(reset) bPlaybackNeedsDependencyReset = false;
+			return true;
+		}
+		return false;
 	}
 
 	inline bool isPlaybackLoopRequired(){
@@ -168,6 +143,7 @@ public:
 	}
 
 	void stopStreams(){
+
 		LOGINFO("Stop Play/Record Streams");
 
 		if(bThread){
@@ -196,7 +172,182 @@ public:
 		// what else?
 	}
 
+	std::string getTime(){
+		return ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
+	}
+
+	std::vector<std::string> getAllRecordingFolders(const std::string& path = "", const bool& bReverseSort = true){
+		std::vector<std::string> eFolders;
+		if(path == "") settings.executableDataPath = ONI::GetExecutableDataPath();
+		std::string recordingsFolder = settings.executableDataPath + "\\data\\recordings\\";
+		for(const auto& entry : std::filesystem::directory_iterator(recordingsFolder)){
+			if(entry.is_directory() && entry.path().string().find("experiment_") != std::string::npos){
+				//LOGDEBUG("Experiment Folder I: %s", entry.path().string().c_str());
+				eFolders.push_back(entry.path().string());
+			} else{
+				//LOGDEBUG("Some other file or folder: %s", entry.path().string().c_str());
+			}
+		}
+		std::sort(eFolders.begin(), eFolders.end());
+		if(bReverseSort) std::reverse(eFolders.begin(), eFolders.end());
+		//for(const std::string& f : eFolders){
+		//	LOGDEBUG("Experiment Folder S: %s", f.c_str());
+		//}
+		return eFolders;
+	}
+
+	inline bool getStreamNamesFromFolder(const std::string& path){
+		// TODO: sanity check this thing
+		if(std::filesystem::is_directory(path) && path.find("experiment_") != std::string::npos){
+
+			LOGINFO("Loading experiment folder: %s", path);
+
+			if(settings.executableDataPath == "") settings.executableDataPath = ONI::GetExecutableDataPath();
+			std::string recordingsFolder = settings.executableDataPath + "\\data\\recordings\\";
+
+			settings.recordFolder = path;
+			std::string exp = "experiment_";
+			settings.timeStamp = path.substr(path.find(exp) + exp.size());
+
+			std::ostringstream osD; osD << path << "\\data_stream_" << settings.timeStamp << ".dat";
+			std::ostringstream osT; osT << path << "\\time_stream_" << settings.timeStamp << ".dat";
+			std::ostringstream osI; osI << path << "\\info_" << settings.timeStamp << ".txt";
+
+			settings.dataFileName = osD.str();
+			settings.timeFileName = osT.str();
+			settings.infoFileName = osI.str();
+
+			std::ifstream infostream;
+			infostream.open(settings.infoFileName.c_str());
+			std::string line; std::ostringstream osInf;
+			while(std::getline(infostream, line)){
+				osInf << line << "\n";
+			}
+			settings.info = osInf.str();
+
+			return true;
+		} else{
+			LOGERROR("Not a valid experiment folder: %s", path);
+			return false;
+		}
+
+	}
+
+	std::string getInfoForFolder(const std::string& path){
+		
+	}
+
 private:
+
+	void _play(){
+
+		bPlaybackNeedsStart = bRecordNeedsStart = false;
+
+		if(state == PLAYING || state == RECORDING) stopStreams();
+		//if(bIsAcquiring) stopAcquisition();
+		//const std::lock_guard<std::mutex> lock(mutex);
+		LOGINFO("Start Playing");
+
+		if(settings.dataFileName == "" || settings.timeFileName == ""){
+			LOGINFO("No file set, attempt to play last recorded...");
+			std::vector<std::string> folders = getAllRecordingFolders();
+			if(folders.size() == 0) return;
+			if(!getStreamNamesFromFolder(folders[0])) return;
+		}
+
+		
+		streamMutex.lock();
+		contextDataStream = std::fstream(settings.dataFileName, std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
+		contextTimeStream = std::fstream(settings.timeFileName, std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
+		contextDataStream.seekg(0, ::std::ios::beg);
+		contextTimeStream.seekg(0, ::std::ios::beg);
+		contextTimeStream.read(reinterpret_cast<char*>(&lastAcquireTimeStamp), sizeof(uint64_t));
+		settings.acquisitionStartTime = settings.acquisitionCurrentTime = systemAcquisitionTimeStamp = lastAcquireTimeStamp;
+		streamMutex.unlock();
+
+		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
+		for(auto& device : ONI::Global::model.getDevices()) device.second->reset();
+		//ONI::Global::model.getBufferProcessor()->reset();
+		bPlaybackNeedsRestart = false;
+		bPlaybackNeedsDependencyReset = true;
+		state = PLAYING;
+
+		bThread = true;
+
+		thread = std::thread(&RecordProcessor::playFrames, this);
+
+		//startAcquisition();
+	}
+
+
+	void _record(){
+
+		bPlaybackNeedsStart = bRecordNeedsStart = false;
+
+		if(state == PLAYING || state == RECORDING) stopStreams();
+		//if(bIsAcquiring) stopAcquisition();
+		LOGINFO("Start Recording");
+		//const std::lock_guard<std::mutex> lock(mutex);
+
+		settings.timeStamp = ONI::GetTimeStamp();
+
+		if(settings.executableDataPath == "") settings.executableDataPath = ONI::GetExecutableDataPath();
+
+		std::ostringstream osP; osP << settings.executableDataPath << "\\data\\recordings\\experiment_" <<  settings.timeStamp;
+
+		settings.recordFolder = osP.str();
+
+		std::ostringstream osD; osD << osP.str() << "\\data_stream_" << settings.timeStamp << ".dat";
+		std::ostringstream osT; osT << osP.str() << "\\time_stream_" << settings.timeStamp << ".dat";
+		std::ostringstream osI; osI << osP.str() << "\\info_" << settings.timeStamp << ".txt";
+
+		settings.dataFileName = osD.str();
+		settings.timeFileName = osT.str();
+		settings.infoFileName = osI.str();
+
+		bool bFolder = std::filesystem::create_directories(settings.recordFolder.c_str());
+
+		if(!bFolder){
+			LOGERROR("Could not create folder: %s", settings.recordFolder.c_str());
+			return;
+		} else{
+			LOGINFO("Created recording folder: %s", settings.recordFolder.c_str())
+		}
+
+		std::ofstream infostream;
+		infostream.open(settings.infoFileName.c_str());
+
+		infostream << "Time: " << settings.timeStamp << "\n\n";
+		infostream << "Description: " << settings.description << "\n\n";
+
+		for(auto& device : ONI::Global::model.getDevices()) {
+			device.second->reset();
+			infostream << device.second->info() << "\n\n";
+		}
+
+		infostream.close();
+
+		streamMutex.lock();
+
+		contextDataStream = std::fstream(settings.dataFileName.c_str(), std::ios::binary | std::ios::out);// | std::ios::out);// | std::ios::app);
+		contextTimeStream = std::fstream(settings.timeFileName.c_str(), std::ios::binary | std::ios::out);// | std::ios::out);// | std::ios::app);
+		contextDataStream.seekg(0, ::std::ios::beg);
+		contextTimeStream.seekg(0, ::std::ios::beg);
+
+		using namespace std::chrono;
+		uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+
+		contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
+
+		if(contextTimeStream.bad()) LOGERROR("Bad init time frame write");
+		settings.acquisitionStartTime = systemAcquisitionTimeStamp;
+
+		streamMutex.unlock();
+		//ONI::Global::model.getBufferProcessor()->reset();
+
+		state = RECORDING;
+		//startAcquisition();
+	}
 
 	void recordFrame(oni_frame_t* frame){
 
@@ -215,6 +366,9 @@ private:
 
 				std::memcpy(frame_out->data, frame->data, frame->data_sz);
 				streamMutex.lock();
+
+				settings.acquisitionCurrentTime = systemAcquisitionTimeStamp;
+
 				contextDataStream.write(reinterpret_cast<char*>(frame_out), sizeof(ONI::Frame::Rhs2116DataRaw));
 				if(contextDataStream.bad()){
 					LOGERROR("Bad data frame write");
@@ -226,7 +380,7 @@ private:
 				}
 				streamMutex.unlock();
 				delete frame_out;
-
+				ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
 			//}
 
 		}else{
@@ -241,10 +395,11 @@ private:
 
 			if(state == PLAYING){
 
-				
 				streamMutex.lock();
 				contextTimeStream.read(reinterpret_cast<char*>(&systemAcquisitionTimeStamp),  sizeof(uint64_t));
 				if(contextTimeStream.bad()) LOGERROR("Bad time frame read");
+
+				settings.acquisitionCurrentTime = systemAcquisitionTimeStamp;
 
 				ONI::Frame::Rhs2116DataRaw * frame_in = new ONI::Frame::Rhs2116DataRaw;
 
@@ -321,6 +476,7 @@ private:
 
 protected:
 
+	ONI::Settings::RecordSettings settings;
 
 	std::fstream contextDataStream;
 	std::fstream contextTimeStream;
@@ -330,7 +486,11 @@ protected:
 
 	std::atomic_uint state = STOPPED;
 	std::atomic_bool bLoopPlayback = true;
+	std::atomic_bool bPlaybackNeedsDependencyReset = false;
 	std::atomic_bool bPlaybackNeedsRestart = false;
+
+	std::atomic_bool bPlaybackNeedsStart = false; 
+	std::atomic_bool bRecordNeedsStart = false;
 
 	//std::atomic_bool bStopPlaybackThread = false;
 	std::atomic_bool bThread = false;

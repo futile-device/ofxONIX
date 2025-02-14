@@ -122,16 +122,22 @@ public:
 		bool bIsPlaying = false;
 		bool bIsRecording = false;
 		if(recordProcessor != nullptr){
+
+			if(recordProcessor->bPlaybackNeedsStart) play();
+			if(recordProcessor->bRecordNeedsStart) record();
+
 			bIsPlaying = recordProcessor->isPlaying() || recordProcessor->isPaused();
 			bIsRecording = recordProcessor->isRecording();
 		}
 
 		if(bIsPlaying){
-			//if(bIsAcquiring) stopAcquisition(); // this isn't elegant but necessary if we don't create proxy functions on the oni Context for starting playback
-			//return; // can't change settings? or just let it happen?
-			if(recordProcessor->isPlaybackLoopRequired()){
+			
+			if(recordProcessor->isPlaybackDependencyResetRequired()){
 				if(ONI::Global::model.getBufferProcessor() != nullptr) ONI::Global::model.getBufferProcessor()->reset();
 				if(ONI::Global::model.getSpikeProcessor() != nullptr) ONI::Global::model.getSpikeProcessor()->reset();
+			}
+
+			if(recordProcessor->isPlaybackLoopRequired()){
 				recordProcessor->play();
 			}
 		}
@@ -301,18 +307,21 @@ public:
 		LOGINFO("...ONIX Context closed");
 	}
 
+	inline const bool& isAcquiring(){
+		return bIsAcquiring;
+	}
 
 	void record(){
 		if(!bIsAcquiring) startAcquisition();
 		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
-		recordProcessor->record();
+		recordProcessor->_record();
 		
 	}
 
 	void play(){
 		if(bIsAcquiring) stopFrameRead();
 		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
-		recordProcessor->play();
+		recordProcessor->_play();
 	}
 
 	// TODO: this is a fairly weak factory style -> currently it only handles single instances of a processor type

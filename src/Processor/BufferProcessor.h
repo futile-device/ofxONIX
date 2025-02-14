@@ -339,6 +339,16 @@ private:
 
     }
 
+
+    //inline std::mutex& getProcessMutex(const int& idx){
+    //    return processMutex[idx];
+    //}
+
+
+    //inline std::mutex& getDataMutex(const int& idx){
+    //    return dataMutex[idx];
+    //}
+
 protected:
 
     ONI::Frame::Rhs2116ProbeData denseProbeData[2]; 

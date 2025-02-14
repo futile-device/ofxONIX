@@ -57,6 +57,8 @@ public:
 		lowCut = fp.settings.lowCut;
 		highCut = fp.settings.highCut;
 
+		ImGui::Checkbox("Use Band Pass", &fp.bUseFilter);
+
 		ImGui::InputInt("Low Cut", &lowCut);
 		ImGui::InputInt("High Cut", &highCut);
 

@@ -70,6 +70,8 @@ public:
 		return false;
 	}
 
+	virtual std::string info() = 0;
+
 	//inline long double getAcqDeltaTimeMicros(const uint64_t& t){
 	//	if(firstFrameTime == -1) firstFrameTime = t;
 	//	return (t - firstFrameTime) / (long double)acq_clock_khz * 1000000; // 250000000

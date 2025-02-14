@@ -214,7 +214,11 @@ public:
 		return ONI::Device::BaseDevice::writeRegister(reg, value, bSetWithoutCheck);
 	}
 
-	const ONI::Settings::Rhs2116DeviceSettings& getSettings(){
+	std::string info(){
+		return BaseDevice::getName() + "\n" + settings.info();
+	}
+
+	ONI::Settings::Rhs2116DeviceSettings& getSettings(){
 		return settings;
 	}
 
@@ -254,7 +258,7 @@ protected:
 			   regs[1] == r0.RH1_sel2 && 
 			   regs[2] == r1.RH1_sel1 && 
 			   regs[3] == r1.RH1_sel2 && regf == fast){
-				LOGINFO("AnalogHighCutoff %i", i);
+				//LOGINFO("AnalogHighCutoff %i", i);
 				return (ONI::Settings::Rhs2116AnalogHighCutoff)(i);
 			}
 		}

@@ -8,6 +8,7 @@ docs/tagfile.xml
 */bin/*
 !*/bin/data/
 *.dat
+*experiment_*
 
 # for bin folder in root
 /bin/*
