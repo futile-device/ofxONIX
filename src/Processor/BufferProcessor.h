@@ -66,6 +66,7 @@ public:
     }
 
 	~BufferProcessor(){
+        LOGDEBUG("BufferProcessor DTOR");
         close();
     };
 

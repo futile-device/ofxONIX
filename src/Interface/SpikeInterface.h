@@ -106,6 +106,11 @@ public:
 
 		if(!bNeedsUpdate && !bAppliedSettings) ImGui::EndDisabled();
 
+		ImGui::SameLine();
+		if(ImGui::Button("Reset")){
+			sp.reset();
+		}
+
 		ImGui::Begin("SpikeDetection");
 		ImGui::PushID("##SpikeDetection");
 		static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg;

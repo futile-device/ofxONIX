@@ -341,7 +341,9 @@ public:
 		return devices;
 	}
 
-
+	std::string info(){
+		return getDevice(0)->info();
+	}
 
 protected:
 

@@ -113,8 +113,13 @@ public:
 	Context(){};
 
 	~Context(){
-		closeContext();
+
 	};
+
+	void close(){
+		closeDevices();
+		closeContext();
+	}
 
 	inline void update(){
 
@@ -297,6 +302,9 @@ public:
 		LOGDEBUG("Closing ONIX Context...");
 		//ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 		//if(recordProcessor != nullptr) recordProcessor->stop();
+		// lets set 0 voltage on exit??
+
+
 		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
 		if(ctx == nullptr) return; // nothing to do
 		//bIsAcquiring = false;
@@ -305,6 +313,26 @@ public:
 		stopContext();
 		oni_destroy_ctx(*ctx);
 		LOGINFO("...ONIX Context closed");
+	}
+
+	void closeDevices(){
+		LOGINFO("Deleting devices");
+
+		stopAcquisition();
+
+		if(getSpikeProcessor() != nullptr) delete getSpikeProcessor(); // total hack, but this must delete first!
+
+		for(auto& it : ONI::Global::model.getProcessors()){
+			//ONI::Processor::BaseProcessor* processor = it.second;
+			if(it.first == ONI::Processor::TypeID::SPIKE_PROCESSOR) continue; // total hack, but this must delete first!
+			delete it.second;
+		}
+		for(auto& it : ONI::Global::model.getDevices()){
+			//ONI::Device::BaseDevice* device = it.second;
+			if(it.second != nullptr) delete it.second;
+		}
+		ONI::Global::model.getProcessors().clear();
+		ONI::Global::model.getDevices().clear();
 	}
 
 	inline const bool& isAcquiring(){

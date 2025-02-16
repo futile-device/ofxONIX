@@ -32,54 +32,71 @@
 namespace ONI{
 namespace Interface{
 
-enum Command{
-	PLAY,
-	RECORD,
-	PAUSE,
-	STOP,
+enum ShuttleCommand{
 	OPEN,
+	PLAY,
+	STOP,
+	RECORD,
 	NONE
 };
-
 
 class RecordInterface : public ONI::Interface::BaseInterface{
 
 public:
 
+	RecordInterface(){};
 	~RecordInterface(){};
 
 	void reset(){};
 	inline void process(oni_frame_t* frame){}; // nothing
 	inline void process(ONI::Frame::BaseFrame& frame){}; // nothing
-	
+
+
 	inline void gui(ONI::Processor::BaseProcessor& processor){
 	
 		ONI::Processor::RecordProcessor& rp = *reinterpret_cast<ONI::Processor::RecordProcessor*>(&processor);
 
-		BaseInterface::numProbes = rp.getNumProbes();
-		//if(!bIsApplying) nextSettings = rp.settings;
+		if(bFirstLoad){
+			listFiles(rp);
+			rp.getStreamNamesFromFolder(folders[fileIDX]);
+			std::string info = rp.getInfoFromFolder(folders[fileIDX]);
+			std::sprintf(descriptionReadBuf, "%s", info.c_str());
+			flashTimer.start<fu::millis>(750);
+			bFirstLoad = false;
+		}
+
+		if(flashTimer.finished()) flashTimer.restart();
 
 		ImGui::PushID(rp.getName().c_str());
-		ImGui::Text(rp.getName().c_str());
+		ImGui::Begin(rp.getName().c_str());
 
-		if(ImGui::Button("Open")) open();
-		ImGui::SameLine();
-		if(ImGui::Button("Play")) play();
-		ImGui::SameLine();
-		if(ImGui::Button("Record")) record();
-		ImGui::SameLine();
-		if(ImGui::Button("Stop")) stop();
+		ImGui::PushFont(fu::IconsSymbol);
+		//ImGuiStyle& style = ImGui::GetStyle();
+		//float avail = ImGui::GetContentRegionAvail().x;
+		//ImGui::SetCursorPosX(ImGui::GetCursorPosX() + 300);
 
-		ImGui::Text("Record Time: %s", rp.getTime().c_str());
+		if(openButton()) open();
+		ImGui::SameLine();
+		if(playButton()) play();
+		ImGui::SameLine();
+		if(recordButton()) record();
+		ImGui::SameLine();
+		if(stopButton()) stop();
+		ImGui::SameLine();
+		ImGui::Text("  [%s]", rp.getTime().c_str()); 
+		ImGui::SameLine();
+		ImGui::Text("   ||   %s", rp.settings.timeStamp.c_str());
+		ImGui::NewLine();
+		ImGui::PopFont();
 
 		
-
 
 		switch(nextCommand)
 		{
 		case ONI::Interface::PLAY:
 		{
 			rp.play();
+			nextCommand = ONI::Interface::NONE;
 			break;
 		}
 		
@@ -88,12 +105,12 @@ public:
 			ImGui::OpenPopup("Record Description");
 			break;
 		}
-		case ONI::Interface::PAUSE:
-		{
-			rp.pause();
-			nextCommand = ONI::Interface::NONE;
-			break;
-		}
+		//case ONI::Interface::PAUSE:
+		//{
+		//	rp.pause();
+		//	nextCommand = ONI::Interface::NONE;
+		//	break;
+		//}
 		case ONI::Interface::STOP:
 		{
 			rp.stop();
@@ -118,41 +135,61 @@ public:
 
 		ImVec2 center = ImGui::GetMainViewport()->GetCenter();
 		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f)); // centre pop up
-		ImGui::SetNextWindowSize(ImVec2(400, 800));
+		ImGui::SetNextWindowSize(ImVec2(250, 200));
 		if(ImGui::BeginPopupModal("Record Description", NULL)){
-			nextCommand = Command::NONE;
-			static char description[512];
-			ImGui::InputTextMultiline("Description", description, 512);
-			ImGui::Separator();
-			ImGui::SetItemDefaultFocus();
-			if(ImGui::Button("Start", ImVec2(120, 0))) { rp.settings.description = std::string(description); rp.record(); ImGui::CloseCurrentPopup(); }
-			ImGui::SameLine();
-			if(ImGui::Button("Cancel", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
-			ImGui::EndPopup();
-		}
-
-		if(ImGui::BeginPopupModal("Select File", NULL)){
-			nextCommand = Command::NONE;
-
+			nextCommand = ShuttleCommand::NONE;
+			
 			ImGui::SetNextItemWidth(200);
-			if(ImFui::ListBox("##", &fileIDX, files)){
-				rp.getStreamNamesFromFolder(folders[fileIDX]);
-			}
-			ImGui::SameLine();
-			ImGui::Text("%s", rp.settings.info.c_str());
+			ImGui::InputTextMultiline("##write", descriptionWriteBuf, 1024);
 
+			ImGui::NewLine();
 			ImGui::SetItemDefaultFocus();
-			if(fileIDX == -1) ImGui::BeginDisabled();
-			if(ImGui::Button("Open", ImVec2(120, 0))) { 
-				rp.play();
+			if(ImGui::Button("Start", ImVec2(120, 0))) { 
+				rp.settings.description = std::string(descriptionWriteBuf); 
+				//memset(descriptionWriteBuf, 0, 1024);
+				rp.record(); 
+				listFiles(rp);
 				ImGui::CloseCurrentPopup();
 			}
-			if(fileIDX == -1) ImGui::EndDisabled();
 			ImGui::SameLine();
 			if(ImGui::Button("Cancel", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
 			ImGui::EndPopup();
 		}
 
+		ImGui::SetNextWindowSize(ImVec2(400, 490));
+		if(ImGui::BeginPopupModal("Select File", NULL)){
+			nextCommand = ShuttleCommand::NONE;
+
+			ImGui::SetNextItemWidth(200);
+			if(ImFui::ListBox("##f", &fileIDX, files, 25)){
+				std::string info = rp.getInfoFromFolder(folders[fileIDX]);
+				std::sprintf(descriptionReadBuf, "%s", info.c_str());
+			}
+			ImGui::SameLine();
+
+			ImGui::SetNextItemWidth(180);
+			// TODO: make info/description editable
+			ImGui::InputTextMultiline("##read", descriptionReadBuf, 1024, ImVec2(180, 29 * ImGui::GetFontSize()), ImGuiInputTextFlags_ReadOnly);
+
+			ImGui::NewLine();
+			ImGui::SetItemDefaultFocus();
+
+			if(ImGui::Button("Play File", ImVec2(120, 0))) {
+				rp.getStreamNamesFromFolder(folders[fileIDX]);
+				rp.play(); 
+				ImGui::CloseCurrentPopup();
+			}
+			ImGui::SameLine();
+
+			if(ImGui::Button("Refresh List", ImVec2(120, 0))) {
+				listFiles(rp);
+			}
+
+			ImGui::SameLine();
+			if(ImGui::Button("Cancel", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+			ImGui::EndPopup();
+		}
+		ImGui::End();
 		ImGui::PopID();
 
 	};
@@ -166,32 +203,97 @@ public:
 	}
 
 	void record(){
-		nextCommand = Command::RECORD;
+		nextCommand = ShuttleCommand::RECORD;
 	}
 
 	void play(){
-		nextCommand = Command::PLAY;
+		nextCommand = ShuttleCommand::PLAY;
 	}
 
-	void pause(){
-		nextCommand = Command::PAUSE;
-	}
+	//void pause(){
+	//	nextCommand = Command::PAUSE;
+	//}
 
 	void stop(){
-		nextCommand = Command::STOP;
+		nextCommand = ShuttleCommand::STOP;
 	}
 
 	void open(){
-		nextCommand = Command::OPEN;
+		nextCommand = ShuttleCommand::OPEN;
 	}
 
 private:
 
+	inline bool openButton(){
 
+		ImGui::PushID(ICON_MD_FOLDER_OPEN);
+		ImGuiStyle& style = ImGui::GetStyle();
+		if(nextCommand == ShuttleCommand::OPEN) ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
+
+		bool bPressed = ImGui::Button(ICON_MD_FOLDER_OPEN, buttonSize);
+
+		if(nextCommand == ShuttleCommand::OPEN) ImGui::PopStyleColor(1);
+		ImGui::PopID();
+		return bPressed;
+	}
+
+	inline bool playButton(){
+
+		ImGui::PushID(ICON_MD_PLAY_CIRCLE);
+		ImGuiStyle& style = ImGui::GetStyle();
+
+		if(ONI::Global::model.getRecordProcessor()->isPlaying()){
+			ImVec4 mod = style.Colors[ImGuiCol_Button];
+			mod.y += 2 * (1 - flashTimer.easePct(fu::EASE_INOUTEXPO));
+			ImGui::PushStyleColor(ImGuiCol_Button, mod);
+		} else if(nextCommand == ShuttleCommand::PLAY){
+			ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
+		} else{
+			ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_Button]);
+		}
+
+		bool bPressed = ImGui::Button(ICON_MD_PLAY_CIRCLE, buttonSize);
+
+		ImGui::PopStyleColor();
+		ImGui::PopID();
+		return bPressed;
+	}
+
+	inline bool recordButton(){
+
+		ImGui::PushID(ICON_MD_RADIO_BUTTON_CHECKED);
+		ImGuiStyle& style = ImGui::GetStyle();
+
+		if(ONI::Global::model.getRecordProcessor()->isRecording()){
+			ImVec4 mod = style.Colors[ImGuiCol_Button];
+			mod.x += 2 * (1 - flashTimer.easePct(fu::EASE_INOUTEXPO));
+			ImGui::PushStyleColor(ImGuiCol_Button, mod);
+		} else if(nextCommand == ShuttleCommand::RECORD){
+			ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
+		} else{
+			ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_Button]);
+		}
+
+		bool bPressed = ImGui::Button(ICON_MD_RADIO_BUTTON_CHECKED, buttonSize);
+
+		ImGui::PopStyleColor(1);
+		ImGui::PopID();
+		return bPressed;
+	}
+
+	inline bool stopButton(){
+		ImGui::PushID(ICON_MD_STOP_CIRCLE);
+		ImGuiStyle& style = ImGui::GetStyle();
+		if(nextCommand == ShuttleCommand::STOP) ImGui::PushStyleColor(ImGuiCol_Button, style.Colors[ImGuiCol_ButtonActive]);
+		bool bPressed = ImGui::Button(ICON_MD_STOP_CIRCLE, buttonSize);
+		if(nextCommand == ShuttleCommand::STOP) ImGui::PopStyleColor(1);
+		ImGui::PopID();
+		return bPressed;
+	}
 
 	bool listFiles(ONI::Processor::RecordProcessor& rp){
 		folders.clear();
-		fileIDX = -1;
+		fileIDX = 0;
 		folders = rp.getAllRecordingFolders();
 		if(folders.size() == 0){
 			LOGERROR("No recording files");
@@ -207,11 +309,18 @@ private:
 
 protected:
 
-	int fileIDX = -1;
+	constexpr ImVec2 buttonSize = ImVec2(64, 60);
+	fu::Timer flashTimer;
+	
+	char descriptionReadBuf[1024];
+	char descriptionWriteBuf[1024];
+
+	int fileIDX = 0;
 	std::vector<std::string> folders;
 	std::vector<std::string> files;
-	
-	Command nextCommand = NONE;
+
+	ShuttleCommand nextCommand = NONE;
+	bool bFirstLoad = true;
 
 };
 

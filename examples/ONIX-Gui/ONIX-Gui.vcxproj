@@ -192,6 +192,7 @@
     <ClCompile Include="..\..\..\..\addons\ofxONIX\libs\DSPFilters\include\DspFilters\State.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\..\ofxFutilities\libs\FontIcons\IconsMaterialSymbols.h" />
     <ClInclude Include="src\ofApp.h" />
     <ClInclude Include="..\..\..\..\addons\ofxBoost1.81\src\BoostSerializer.h" />
     <ClInclude Include="..\..\..\..\addons\ofxOpenCv\src\ofxCvBlob.h" />

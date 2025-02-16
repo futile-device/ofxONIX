@@ -19,6 +19,8 @@ void ofApp::setup(){
     ofSetLogLevel(OF_LOG_VERBOSE);
     ofLogToConsole();
 
+    ofAddListener(ofGetWindowPtr()->events().keyPressed, this, &ofApp::keyPressed);
+
     fu::AddLogChannel((fu::LogChannel*)new fu::ConsoleLogChannel);
     fu::AddLogChannel((fu::LogChannel*)&fu::ImGuiConsole);
 
@@ -210,45 +212,52 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::exit(){
-
-    //oni.close();
+    oni.close();
     plt.exit();
     fu::gui.exit();
 
 }
 
 //--------------------------------------------------------------
-void ofApp::keyPressed(int key){
-    if(key == 'c'){
-        
-        oni.stopAcquisition();
-        oni.getContextOption(ONI::ContextOption::BLOCKREADSIZE);
-        oni.setContextOption(ONI::ContextOption::RESET, 1);
-        //oni.getContextOption(ONI::Context::BLOCKREADSIZE);
-        oni.setContextOption(ONI::ContextOption::BLOCKREADSIZE, 2048);
-        oni.setContextOption(ONI::ContextOption::BLOCKWRITESIZE, 2048);
-        //oni.setup();
-        ofSleepMillis(500);
-        oni.startAcquisition();
-    }
+void ofApp::keyPressed(ofKeyEventArgs& e){
 
-    ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = oni.getRhs2116StimProcessor();
+    //using namespace std;
+    //cout << "KEY : " << e.key << endl;
+    //cout << "KEYCODE : " << e.keycode << endl;
+    //cout << "MODIFIERS : " << e.modifiers << endl;
+
+    if(e.modifiers != OF_KEY_CONTROL) return;
+
+    ONI::Processor::Rhs2116StimProcessor* rhs2116StimProcessor = oni.getRhs2116StimProcessor();
     ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 
-    if(key == 'r'){
-        
-        recordProcessor->record();
+    if(e.keycode == 82){ // r
+         recordProcessor->record();
         //oni.record();
     }
 
-    if(key == 'p'){
+    if(e.keycode == 80){ // p
         recordProcessor->play();
         //oni.play();
     }
 
-    if(key == 't'){
+    if(e.keycode == 83){ // s
+        recordProcessor->stop();
+        //oni.play();
+    }
+
+    if(e.keycode == 84){ // t
         rhs2116StimProcessor->triggerStimulusSequence();
     }
+
+}
+
+
+void ofApp::keyPressed(int key){
+
+
+
+
 }
 
 //--------------------------------------------------------------

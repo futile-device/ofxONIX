@@ -761,7 +761,8 @@ struct RecordSettings{
 	std::string dataFileName = "";
 	std::string timeFileName = "";
 	std::string infoFileName = "";
-	std::string timeStamp = "";
+	std::string timeStamp = "";      // "normal"
+	std::string fileTimeStamp = "";  // reversed for file sorting
 	std::string description = "";
 	std::string info = "";
 
@@ -776,6 +777,7 @@ struct RecordSettings{
 		std::swap(timeFileName, other.timeFileName);
 		std::swap(infoFileName, other.infoFileName);
 		std::swap(timeStamp, other.timeStamp);
+		std::swap(fileTimeStamp, other.fileTimeStamp);
 		std::swap(description, other.description);
 		std::swap(info, other.info);
 		std::swap(acquisitionStartTime, other.acquisitionStartTime);
@@ -793,6 +795,7 @@ inline bool operator==(const RecordSettings& lhs, const RecordSettings& rhs){
 			lhs.timeFileName == rhs.timeFileName &&
 			lhs.infoFileName == rhs.infoFileName &&
 			lhs.timeStamp == rhs.timeStamp &&
+			lhs.fileTimeStamp == rhs.fileTimeStamp &&
 			lhs.description == rhs.description &&
 			lhs.info == rhs.info &&
 			lhs.acquisitionStartTime == rhs.acquisitionStartTime &&

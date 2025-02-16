@@ -35,13 +35,23 @@ namespace ONI{
 
 class Context; // predeclare for friend access
 
+static std::string ReverseTimeStamp(const std::string& ts){
+	std::vector<std::string> tsparts = ofSplitString(ts, "_");
+	std::reverse(tsparts.begin(), tsparts.end());
+	std::ostringstream os;
+	for(size_t i = 0; i < tsparts.size(); ++i){
+		os << tsparts[i] << (i != tsparts.size() - 1 ? "_" : "");
+	}
+	return os.str();
+}
+
 static std::string GetTimeStamp(){
 	time_t rawtime;
 	struct tm* timeinfo;
 	std::time(&rawtime);
 	timeinfo = std::localtime(&rawtime);
 	char buffer[80];
-	strftime(buffer, 80, "%H_%M_%S_%Y_%m_%d", timeinfo);
+	strftime(buffer, 80, "%H_%M_%S_%d_%m_%Y", timeinfo); // "normal" AU time stamp
 	return std::string(buffer);
 }
 

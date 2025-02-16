@@ -69,7 +69,11 @@ public:
         BaseProcessor::processorName = toString(processorTypeID);
     }
 
-	~SpikeProcessor(){};
+	~SpikeProcessor(){
+        LOGDEBUG("SpikeProcessor DTOR");
+        bThread = false;
+        if(thread.joinable()) thread.join();
+    };
 
     void setup(ONI::Processor::BufferProcessor* source){
 
@@ -82,7 +86,7 @@ public:
 
         BaseProcessor::numProbes = bufferProcessor->getNumProbes();
 
-        settings.spikeEdgeDetectionType = ONI::Settings::SpikeEdgeDetectionType::BOTH;
+        settings.spikeEdgeDetectionType = ONI::Settings::SpikeEdgeDetectionType::EITHER;
 
         settings.positiveDeviationMultiplier = 3.5;
         settings.negativeDeviationMultiplier = 3.5;
@@ -202,7 +206,7 @@ public:
                                 std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
                                 
                                 // cache this spike detection buffer count (so we can suppress re-detecting the same spike)
-                                nextPeekDetectBufferCount[probe] = bufferCount + halfLength + peakOffsetIndex; // is this reasonable?
+                                nextPeekDetectBufferCount[probe] = bufferCount + settings.spikeWaveformLengthSamples;// halfLength + peakOffsetIndex; // is this reasonable?
                                 spikeIndexes[probe] = (spikeIndexes[probe] + 1) % settings.spikeWaveformBufferSize;
                                 spikeCounts[probe]++;
                                 //if(spikeCounts[probe] < settings.spikeWaveformBufferSize) spikeCounts[probe]++;
@@ -236,6 +240,7 @@ public:
                                (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && troughVoltage < -probeStats[probe].deviation * settings.negativeDeviationMultiplier)){ // ...reject if min voltage is not under the threshold
 
                                 size_t halfLength = std::floor(settings.spikeWaveformLengthSamples / 2);
+
                                 rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
 
                                 // store the spike data and waveform
@@ -249,7 +254,7 @@ public:
                                 std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
 
                                 // cache this spike detection buffer count (so we can suppress re-detecting the same spike)
-                                nextPeekDetectBufferCount[probe] = bufferCount + halfLength; // is this reasonable?
+                                nextPeekDetectBufferCount[probe] = bufferCount + settings.spikeWaveformLengthSamples;//+ halfLength; // is this reasonable?
                                 spikeIndexes[probe] = (spikeIndexes[probe] + 1) % settings.spikeWaveformBufferSize;
                                 spikeCounts[probe]++;
                                 //if(spikeCounts[probe] < settings.spikeWaveformBufferSize) spikeCounts[probe]++;

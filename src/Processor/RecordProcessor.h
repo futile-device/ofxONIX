@@ -63,7 +63,10 @@ public:
 		BaseProcessor::processorName = toString(processorTypeID);
 	}
 
-	~RecordProcessor(){};
+	~RecordProcessor(){
+		LOGINFO("RecordProcessor DTOR");
+		stopStreams();
+	};
 
     void setup(){
 
@@ -176,7 +179,7 @@ public:
 		return ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
 	}
 
-	std::vector<std::string> getAllRecordingFolders(const std::string& path = "", const bool& bReverseSort = true){
+	std::vector<std::string> getAllRecordingFolders(const std::string& path = ""){
 		std::vector<std::string> eFolders;
 		if(path == "") settings.executableDataPath = ONI::GetExecutableDataPath();
 		std::string recordingsFolder = settings.executableDataPath + "\\data\\recordings\\";
@@ -189,29 +192,64 @@ public:
 			}
 		}
 		std::sort(eFolders.begin(), eFolders.end());
-		if(bReverseSort) std::reverse(eFolders.begin(), eFolders.end());
+		std::reverse(eFolders.begin(), eFolders.end());
 		//for(const std::string& f : eFolders){
 		//	LOGDEBUG("Experiment Folder S: %s", f.c_str());
 		//}
 		return eFolders;
 	}
 
+	std::string getInfoFromFolder(const std::string& path){
+
+		std::string info = "";
+
+		if(std::filesystem::is_directory(path) && path.find("experiment_") != std::string::npos){
+
+			LOGINFO("Loading info for folder: %s", path.c_str());
+
+			if(settings.executableDataPath == "") settings.executableDataPath = ONI::GetExecutableDataPath();
+			std::string recordingsFolder = path;
+
+			std::string exp = "experiment_";
+			std::string fileTimeStamp = path.substr(path.find(exp) + exp.size());
+			std::ostringstream osI; osI << path << "\\info_" << fileTimeStamp << ".txt";
+
+
+			std::ifstream infostream;
+			infostream.open(osI.str().c_str());
+			std::string line; std::ostringstream osInf;
+			while(std::getline(infostream, line)){
+				osInf << line << "\n";
+			}
+			info = osInf.str();
+
+		}else{
+			LOGERROR("Path for info not valid: %s", path.c_str());
+			//info = "";
+		}
+
+		return info;
+
+	}
+
 	inline bool getStreamNamesFromFolder(const std::string& path){
+
 		// TODO: sanity check this thing
 		if(std::filesystem::is_directory(path) && path.find("experiment_") != std::string::npos){
 
-			LOGINFO("Loading experiment folder: %s", path);
+			LOGINFO("Loading experiment folder: %s", path.c_str());
 
 			if(settings.executableDataPath == "") settings.executableDataPath = ONI::GetExecutableDataPath();
-			std::string recordingsFolder = settings.executableDataPath + "\\data\\recordings\\";
+			//std::string recordingsFolder = settings.executableDataPath + "\\data\\recordings\\";
 
 			settings.recordFolder = path;
 			std::string exp = "experiment_";
-			settings.timeStamp = path.substr(path.find(exp) + exp.size());
+			settings.fileTimeStamp = path.substr(path.find(exp) + exp.size());
+			settings.timeStamp = ONI::ReverseTimeStamp(settings.fileTimeStamp);
 
-			std::ostringstream osD; osD << path << "\\data_stream_" << settings.timeStamp << ".dat";
-			std::ostringstream osT; osT << path << "\\time_stream_" << settings.timeStamp << ".dat";
-			std::ostringstream osI; osI << path << "\\info_" << settings.timeStamp << ".txt";
+			std::ostringstream osD; osD << path << "\\data_stream_" << settings.fileTimeStamp << ".dat";
+			std::ostringstream osT; osT << path << "\\time_stream_" << settings.fileTimeStamp << ".dat";
+			std::ostringstream osI; osI << path << "\\info_" << settings.fileTimeStamp << ".txt";
 
 			settings.dataFileName = osD.str();
 			settings.timeFileName = osT.str();
@@ -290,16 +328,17 @@ private:
 		//const std::lock_guard<std::mutex> lock(mutex);
 
 		settings.timeStamp = ONI::GetTimeStamp();
+		settings.fileTimeStamp = ONI::ReverseTimeStamp(settings.timeStamp);
 
 		if(settings.executableDataPath == "") settings.executableDataPath = ONI::GetExecutableDataPath();
 
-		std::ostringstream osP; osP << settings.executableDataPath << "\\data\\recordings\\experiment_" <<  settings.timeStamp;
+		std::ostringstream osP; osP << settings.executableDataPath << "\\data\\recordings\\experiment_" <<  settings.fileTimeStamp;
 
 		settings.recordFolder = osP.str();
 
-		std::ostringstream osD; osD << osP.str() << "\\data_stream_" << settings.timeStamp << ".dat";
-		std::ostringstream osT; osT << osP.str() << "\\time_stream_" << settings.timeStamp << ".dat";
-		std::ostringstream osI; osI << osP.str() << "\\info_" << settings.timeStamp << ".txt";
+		std::ostringstream osD; osD << osP.str() << "\\data_stream_" << settings.fileTimeStamp << ".dat";
+		std::ostringstream osT; osT << osP.str() << "\\time_stream_" << settings.fileTimeStamp << ".dat";
+		std::ostringstream osI; osI << osP.str() << "\\info_" << settings.fileTimeStamp << ".txt";
 
 		settings.dataFileName = osD.str();
 		settings.timeFileName = osT.str();
@@ -324,6 +363,8 @@ private:
 			device.second->reset();
 			infostream << device.second->info() << "\n\n";
 		}
+
+		//infostream << ONI::Global::model.getRhs2116MultiProcessor()->info() << "\n\n";
 
 		infostream.close();
 

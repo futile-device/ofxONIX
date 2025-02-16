@@ -33,7 +33,7 @@ public:
 	void probePlot();
 	void bufferPlot();
 
-	
+	void keyPressed(ofKeyEventArgs& e);
 
 	ofxImPlot::Plot plt;
 

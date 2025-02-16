@@ -47,6 +47,7 @@ public:
 
 	~FmcDevice(){
 		LOGDEBUG("FMC Device DTOR");
+		setPortVoltage(0);
 	};
 
 

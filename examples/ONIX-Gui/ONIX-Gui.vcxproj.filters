@@ -3122,6 +3122,9 @@
     <ClInclude Include="..\..\..\..\addons\ofxONIX\libs\liboni\include\riffa_driver.h">
       <Filter>addons\ofxONIX\libs\liboni\include</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\..\ofxFutilities\libs\FontIcons\IconsMaterialSymbols.h">
+      <Filter>addons\ofxFutilities\libs\FontIcons</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="icon.rc" />
