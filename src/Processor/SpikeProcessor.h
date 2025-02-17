@@ -176,15 +176,16 @@ public:
                             settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER ||
                             settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH)){
 
-                            // get a raw pointer to the float values (this is the fastest way to access underlying sample data from the buffer vectors)
-                            float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX);
 
-                            // search forward for first peak index
+                            // search forward for first peak index minSampleOffset forces the search to start a 
+                            // //little bit after the initial detection to avoid false positive min/max post detection
                             size_t peakOffsetIndex = 0; float peakVoltage = 0;
-                            for(size_t offset = 1; offset < settings.spikeWaveformLengthSamples; ++offset){
-                                if(rawAcUv[offset - 1] > rawAcUv[offset]){ // the next value is less than the last we are starting to fall
+                            for(size_t offset = settings.minSampleOffset + 1; offset < settings.spikeWaveformLengthSamples; ++offset){
+                                float previous = buffer.getAcuVFloatRaw(probe, centralSampleIDX + offset - 1)[0];
+                                float current = buffer.getAcuVFloatRaw(probe, centralSampleIDX + offset)[0];
+                                if(previous > current){ // the next value is less than the last we are starting to fall
                                     peakOffsetIndex = offset - 1;
-                                    peakVoltage = rawAcUv[peakOffsetIndex];
+                                    peakVoltage = previous;
                                     break; // stop searching!
                                 }
                             }
@@ -193,18 +194,28 @@ public:
                                (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && peakVoltage > probeStats[probe].deviation * settings.positiveDeviationMultiplier)){ // ...reject if max voltage is not over the threshold
                                 
                                 size_t halfLength = std::floor(settings.spikeWaveformLengthSamples / 2);
-                                rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength + peakOffsetIndex); 
-
+ 
                                 // store the spike data and waveform
                                 ONI::Spike& spike = spikes[probe][spikeIndexes[probe]];
-                                spike.rawWaveform.resize(settings.spikeWaveformLengthSamples);
-                                spike.minVoltage = frame.ac_uV[probe];
-                                spike.minSampleIndex = halfLength - peakOffsetIndex;
-                                spike.maxVoltage = peakVoltage;
-                                spike.maxSampleIndex = halfLength;
-                                spike.acquisitionTime = buffer.getFrameAt(centralSampleIDX + peakOffsetIndex).getAcquisitionTime();
-                                std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                
+                                //spike.rawWaveform.resize(settings.spikeWaveformLengthSamples);
+                                if(settings.bFallingAlignMax){ // by default align to the peaks
+                                    spike.minVoltage = frame.ac_uV[probe];
+                                    spike.minSampleIndex = halfLength - peakOffsetIndex;
+                                    spike.maxVoltage = peakVoltage;
+                                    spike.maxSampleIndex = halfLength;
+                                    spike.acquisitionTime = buffer.getFrameAt(centralSampleIDX + peakOffsetIndex).getAcquisitionTime();
+                                    float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength + peakOffsetIndex);
+                                    std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
+                                }else{
+                                    spike.minVoltage = frame.ac_uV[probe];
+                                    spike.minSampleIndex = halfLength;
+                                    spike.maxVoltage = peakVoltage;
+                                    spike.maxSampleIndex = halfLength + peakOffsetIndex;
+                                    spike.acquisitionTime = buffer.getFrameAt(centralSampleIDX).getAcquisitionTime();
+                                    float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
+                                    std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
+                                }
+
                                 // cache this spike detection buffer count (so we can suppress re-detecting the same spike)
                                 nextPeekDetectBufferCount[probe] = bufferCount + settings.spikeWaveformLengthSamples;// halfLength + peakOffsetIndex; // is this reasonable?
                                 spikeIndexes[probe] = (spikeIndexes[probe] + 1) % settings.spikeWaveformBufferSize;
@@ -215,22 +226,22 @@ public:
 
 
                         }
-
+                        
 
                         if(frame.ac_uV[probe] > probeStats[probe].deviation * settings.positiveDeviationMultiplier &&
                            (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::RISING || 
                             settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER ||
                             settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH)){
 
-                            // get a raw pointer to the float values, but this time in the past
-                            float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - settings.spikeWaveformLengthSamples);
 
                             // search backward for first trough index
                             size_t troughOffsetIndex = 0; float troughVoltage = 0;
-                            for(size_t offset = settings.spikeWaveformLengthSamples - 1; offset >= 0 ; --offset){
-                                if(rawAcUv[offset - 1] > rawAcUv[offset]){ // the next value is less than the last we are starting to fall
+                            for(size_t offset = settings.minSampleOffset + 1; offset < settings.spikeWaveformLengthSamples; ++offset){
+                                float previous = buffer.getAcuVFloatRaw(probe, centralSampleIDX - offset - 1)[0];
+                                float current = buffer.getAcuVFloatRaw(probe, centralSampleIDX - offset)[0];
+                                if(previous > current){ // the next value is less than the last we are starting to rise
                                     troughOffsetIndex = offset - 1;
-                                    troughVoltage = rawAcUv[troughOffsetIndex];
+                                    troughVoltage = current;
                                     break; // stop searching!
                                 }
                             }
@@ -241,17 +252,29 @@ public:
 
                                 size_t halfLength = std::floor(settings.spikeWaveformLengthSamples / 2);
 
-                                rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
-
                                 // store the spike data and waveform
-                                ONI::Spike& spike = spikes[probe][spikeIndexes[probe]];
-                                spike.rawWaveform.resize(settings.spikeWaveformLengthSamples);
-                                spike.minVoltage = troughVoltage;
-                                spike.minSampleIndex = halfLength - troughOffsetIndex;
-                                spike.maxVoltage = frame.ac_uV[probe];
-                                spike.maxSampleIndex = halfLength;
-                                spike.acquisitionTime = frame.getAcquisitionTime();
-                                std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
+                                if(!settings.bRisingAlignMin){ // by default align to the peaks
+                                    ONI::Spike& spike = spikes[probe][spikeIndexes[probe]];
+                                    //spike.rawWaveform.resize(settings.spikeWaveformLengthSamples);
+                                    spike.minVoltage = troughVoltage;
+                                    spike.minSampleIndex = halfLength - troughOffsetIndex;
+                                    spike.maxVoltage = frame.ac_uV[probe];
+                                    spike.maxSampleIndex = halfLength;
+                                    spike.acquisitionTime = frame.getAcquisitionTime();
+                                    float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
+                                    std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
+                                }else{
+                                    ONI::Spike& spike = spikes[probe][spikeIndexes[probe]];
+                                    spike.minVoltage = troughVoltage;
+                                    spike.minSampleIndex = halfLength;
+                                    spike.maxVoltage = frame.ac_uV[probe];
+                                    spike.maxSampleIndex = halfLength + troughOffsetIndex;
+                                    spike.acquisitionTime = frame.getAcquisitionTime();
+                                    float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - troughOffsetIndex - halfLength);
+                                    std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
+                                }
+                                
+                                
 
                                 // cache this spike detection buffer count (so we can suppress re-detecting the same spike)
                                 nextPeekDetectBufferCount[probe] = bufferCount + settings.spikeWaveformLengthSamples;//+ halfLength; // is this reasonable?

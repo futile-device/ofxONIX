@@ -704,6 +704,10 @@ struct SpikeSettings{
 	int spikeWaveformLengthSamples = spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
 	int spikeWaveformBufferSize = 10;
 
+	int minSampleOffset = 3; // this is a way to avoid finding minima/maxima too close to the thresholded rise/fall when cntering spikes
+	bool bFallingAlignMax = true;
+	bool bRisingAlignMin = false;
+
 	// copy assignment (copy-and-swap idiom)
 	SpikeSettings& SpikeSettings::operator=(SpikeSettings other) noexcept{
 		std::swap(spikeEdgeDetectionType, other.spikeEdgeDetectionType);
@@ -712,6 +716,9 @@ struct SpikeSettings{
 		std::swap(spikeWaveformLengthMs, other.spikeWaveformLengthMs);
 		std::swap(spikeWaveformLengthSamples, other.spikeWaveformLengthSamples);
 		std::swap(spikeWaveformBufferSize, other.spikeWaveformBufferSize);
+		std::swap(minSampleOffset, other.minSampleOffset);
+		std::swap(bFallingAlignMax, other.bFallingAlignMax);
+		std::swap(bRisingAlignMin, other.bRisingAlignMin);
 		return *this;
 	}
 
@@ -724,7 +731,10 @@ inline bool operator==(const SpikeSettings& lhs, const SpikeSettings& rhs){
 			lhs.negativeDeviationMultiplier == rhs.negativeDeviationMultiplier &&
 			lhs.spikeWaveformLengthMs == rhs.spikeWaveformLengthMs &&
 			lhs.spikeWaveformLengthSamples == rhs.spikeWaveformLengthSamples &&
-			lhs.spikeWaveformBufferSize == rhs.spikeWaveformBufferSize);
+			lhs.spikeWaveformBufferSize == rhs.spikeWaveformBufferSize &&
+			lhs.minSampleOffset == rhs.minSampleOffset &&
+			lhs.bFallingAlignMax == rhs.bFallingAlignMax &&
+			lhs.bRisingAlignMin == rhs.bRisingAlignMin);
 }
 inline bool operator!=(const SpikeSettings& lhs, const SpikeSettings& rhs) { return !(lhs == rhs); }
 

@@ -91,6 +91,11 @@ public:
 		nextSettings.spikeWaveformLengthSamples = nextSettings.spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
 
 		if(ImGui::InputInt("Spike Detection Buffer Size", &nextSettings.spikeWaveformBufferSize)) bNeedsUpdate = true;
+		if(ImGui::InputInt("Spike Min Search Offset (samples)", &nextSettings.minSampleOffset)) bNeedsUpdate = true;
+
+		if(ImGui::Checkbox("Align Falling Edges to Peak", &nextSettings.bFallingAlignMax)) bNeedsUpdate = true;
+		if(ImGui::Checkbox("Align Rising Edges to Trough", &nextSettings.bRisingAlignMin)) bNeedsUpdate = true;
+		//if(ImGui::Checkbox("Align Rising Edges to Peak", &sp.settings.bFallingAlignMax)){}
 
 		if(!bNeedsUpdate) ImGui::BeginDisabled();
 
