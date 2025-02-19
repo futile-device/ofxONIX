@@ -83,9 +83,11 @@ public:
 		ImGui::SameLine();
 		if(stopButton()) stop();
 		ImGui::SameLine();
-		ImGui::Text("  [%s]", rp.getTime().c_str()); 
+		ImGui::Text("  [%s]", rp.getCurrentTimeStamp().c_str()); 
 		ImGui::SameLine();
 		ImGui::Text("   ||   %s", rp.settings.timeStamp.c_str());
+		ImGui::SameLine();
+		ImGui::Text("   ||   [%s]", rp.settings.fileLengthTimeStamp.c_str());
 		ImGui::NewLine();
 		ImGui::PopFont();
 
@@ -103,6 +105,7 @@ public:
 		case ONI::Interface::RECORD:
 		{
 			ImGui::OpenPopup("Record Description");
+			memset(descriptionWriteBuf, 0, 1024);
 			break;
 		}
 		//case ONI::Interface::PAUSE:
@@ -158,13 +161,30 @@ public:
 
 		ImGui::SetNextWindowSize(ImVec2(400, 490));
 		if(ImGui::BeginPopupModal("Select File", NULL)){
+
 			nextCommand = ShuttleCommand::NONE;
 
+			
 			ImGui::SetNextItemWidth(200);
+			ImGuiID lastItemClicked = 0;
 			if(ImFui::ListBox("##f", &fileIDX, files, 25)){
 				std::string info = rp.getInfoFromFolder(folders[fileIDX]);
 				std::sprintf(descriptionReadBuf, "%s", info.c_str());
+				lastItemClicked = ImGui::GetHoveredID();	// store the selected item ID to confirm double click is hovered over the same item
 			}
+
+			static bool bDoubleClicked = false;
+			if(ImGui::IsMouseDoubleClicked(0)) bDoubleClicked = true;  // check if we are double clicked NB: seems like click is mouse up, so we cache the state till next pass...
+
+			if(bDoubleClicked && ImGui::IsItemHovered() && lastItemClicked == ImGui::GetHoveredID()){ // ... and as long as the last pass remains hovered on the same item, lets double click. yawn
+				bDoubleClicked = false;
+				rp.getStreamNamesFromFolder(folders[fileIDX]);
+				rp.play();
+				ImGui::CloseCurrentPopup();
+			}
+
+			
+
 			ImGui::SameLine();
 
 			ImGui::SetNextItemWidth(180);
@@ -293,7 +313,7 @@ private:
 
 	bool listFiles(ONI::Processor::RecordProcessor& rp){
 		folders.clear();
-		fileIDX = 0;
+		//if(fileIDX == -1) fileIDX = 0;
 		folders = rp.getAllRecordingFolders();
 		if(folders.size() == 0){
 			LOGERROR("No recording files");
@@ -304,6 +324,8 @@ private:
 			std::string exp = "experiment_";
 			files.push_back(path.substr(path.find(exp) + exp.size()));
 		}
+		std::string info = rp.getInfoFromFolder(folders[fileIDX]);
+		std::sprintf(descriptionReadBuf, "%s", info.c_str());
 		return true;
 	}
 

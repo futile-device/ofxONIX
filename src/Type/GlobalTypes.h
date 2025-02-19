@@ -29,6 +29,7 @@
 
 #define RHS2116_SAMPLE_FREQUENCY_HZ 30.1932367151e3
 #define RHS2116_SAMPLE_FREQUENCY_MS RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0
+#define RHS2116_SAMPLE_FREQUENCY_NS RHS2116_SAMPLE_FREQUENCY_HZ / 1000000000.0
 #define RHS2116_NUM_DEVICE_PROBES 16
 
 namespace ONI{
@@ -70,6 +71,7 @@ constexpr long double nanos_to_seconds = 1000000000.0; // conversion factor
 constexpr long double nanos_to_millis = 1000000.0;
 
 static inline std::string GetAcquisitionTimeStamp(const uint64_t& start, const uint64_t& end){
+	//if(start < end) return "00:00:00:000.000";
 	using namespace std::chrono;
 	auto ns = chrono::nanoseconds(end - start);
 	auto ms = duration_cast<chrono::milliseconds>(nanoseconds(ns));

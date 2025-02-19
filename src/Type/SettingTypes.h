@@ -546,7 +546,8 @@ public:
 };
 
 
-inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs){ return (lhs.stepSize == rhs.stepSize &&
+inline bool operator==(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSettings& rhs){ return (lhs.format == rhs.format &&
+																									lhs.stepSize == rhs.stepSize &&
 																									lhs.dspCutoff == rhs.dspCutoff &&
 																									lhs.lowCutoff == rhs.lowCutoff &&
 																									lhs.lowCutoffRecovery == rhs.lowCutoffRecovery &&
@@ -773,10 +774,12 @@ struct RecordSettings{
 	std::string infoFileName = "";
 	std::string timeStamp = "";      // "normal"
 	std::string fileTimeStamp = "";  // reversed for file sorting
+	std::string fileLengthTimeStamp = "00:00:00:000.000";
 	std::string description = "";
 	std::string info = "";
 
 	uint64_t acquisitionStartTime = 0;
+	uint64_t acquisitionEndTime = 0;
 	uint64_t acquisitionCurrentTime = 0;
 
 	// copy assignment (copy-and-swap idiom)
@@ -791,6 +794,7 @@ struct RecordSettings{
 		std::swap(description, other.description);
 		std::swap(info, other.info);
 		std::swap(acquisitionStartTime, other.acquisitionStartTime);
+		std::swap(acquisitionEndTime, other.acquisitionEndTime);
 		std::swap(acquisitionCurrentTime, other.acquisitionCurrentTime);
 		return *this;
 	}
@@ -809,6 +813,7 @@ inline bool operator==(const RecordSettings& lhs, const RecordSettings& rhs){
 			lhs.description == rhs.description &&
 			lhs.info == rhs.info &&
 			lhs.acquisitionStartTime == rhs.acquisitionStartTime &&
+			lhs.acquisitionEndTime == rhs.acquisitionEndTime &&
 			lhs.acquisitionCurrentTime == rhs.acquisitionCurrentTime);
 }
 inline bool operator!=(const RecordSettings& lhs, const RecordSettings& rhs) { return !(lhs == rhs); }

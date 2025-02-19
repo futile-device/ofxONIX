@@ -45,15 +45,18 @@ public:
 	void reset(){};
 	inline void process(oni_frame_t* frame){}; // nothing
 	inline void process(ONI::Frame::BaseFrame& frame){};
+	bool bFirstLoad = true;
 
 	inline void gui(ONI::Processor::BaseProcessor& processor){
 
 		ONI::Processor::Rhs2116MultiProcessor& rhsm = *reinterpret_cast<ONI::Processor::Rhs2116MultiProcessor*>(&processor);
 
-		//rhsm.subscribeProcessor(processorName, ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
+		if(bFirstLoad){ // for whatever reason analog high cutoff wasn't updating so let's just force the reset here
+			bFirstLoad = false;
+			rhsm.reset();
+		}
 
 		nextSettings = rhsm.settings;
-		
 		
 		ImGui::PushID(rhsm.getName().c_str());
 		ImGui::Text(rhsm.getName().c_str());

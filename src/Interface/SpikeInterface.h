@@ -95,6 +95,11 @@ public:
 
 		if(ImGui::Checkbox("Align Falling Edges to Peak", &nextSettings.bFallingAlignMax)) bNeedsUpdate = true;
 		if(ImGui::Checkbox("Align Rising Edges to Trough", &nextSettings.bRisingAlignMin)) bNeedsUpdate = true;
+
+		if(ImGui::Button("Estimate Std Deviation")){
+			sp.estimateStats();
+			bNeedsUpdate = true;
+		}
 		//if(ImGui::Checkbox("Align Rising Edges to Peak", &sp.settings.bFallingAlignMax)){}
 
 		if(!bNeedsUpdate) ImGui::BeginDisabled();

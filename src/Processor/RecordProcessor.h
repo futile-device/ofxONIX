@@ -21,6 +21,8 @@
 #include <mutex>
 #include <syncstream>
 #include <filesystem>
+#include <windows.h>
+#include <timeapi.h>
 
 #include "../Type/Log.h"
 #include "../Type/DataBuffer.h"
@@ -175,7 +177,7 @@ public:
 		// what else?
 	}
 
-	std::string getTime(){
+	std::string getCurrentTimeStamp(){
 		return ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
 	}
 
@@ -279,6 +281,8 @@ private:
 
 	void _play(){
 
+		timeBeginPeriod(1);
+
 		bPlaybackNeedsStart = bRecordNeedsStart = false;
 
 		if(state == PLAYING || state == RECORDING) stopStreams();
@@ -298,9 +302,14 @@ private:
 		contextDataStream = std::fstream(settings.dataFileName, std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
 		contextTimeStream = std::fstream(settings.timeFileName, std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
 		contextDataStream.seekg(0, ::std::ios::beg);
+		contextTimeStream.seekg(0, ::std::ios::end);
+		int length = contextTimeStream.tellg();
+		contextTimeStream.seekg(length - sizeof(uint64_t), ::std::ios::beg); 
+		contextTimeStream.read(reinterpret_cast<char*>(&settings.acquisitionEndTime), sizeof(uint64_t));
 		contextTimeStream.seekg(0, ::std::ios::beg);
 		contextTimeStream.read(reinterpret_cast<char*>(&lastAcquireTimeStamp), sizeof(uint64_t));
 		settings.acquisitionStartTime = settings.acquisitionCurrentTime = systemAcquisitionTimeStamp = lastAcquireTimeStamp;
+		settings.fileLengthTimeStamp = ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionEndTime);
 		streamMutex.unlock();
 
 		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
@@ -421,7 +430,8 @@ private:
 				}
 				streamMutex.unlock();
 				delete frame_out;
-				ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
+				settings.fileLengthTimeStamp = ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
+				
 			//}
 
 		}else{
@@ -435,6 +445,10 @@ private:
 		while(bThread){
 
 			if(state == PLAYING){
+
+				using namespace std::chrono;
+				uint64_t elapsed = 0;
+				uint64_t start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
 
 				streamMutex.lock();
 				contextTimeStream.read(reinterpret_cast<char*>(&systemAcquisitionTimeStamp),  sizeof(uint64_t));
@@ -487,14 +501,11 @@ private:
 					LOGALERT("Playback delta time negative: %i", deltaTimeStamp);
 					deltaTimeStamp = 0;
 				}
-
-				using namespace std::chrono;
-				uint64_t elapsed = 0;
-				uint64_t start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-
-				while(elapsed <= deltaTimeStamp){
+				
+				while(elapsed <= deltaTimeStamp){ // hmmm this is a total hack for now
 					elapsed = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - start;
 					std::this_thread::yield();
+					//std::this_thread::sleep_for(1ns);
 				}
 
 				//LOGDEBUG("delta: %i || actual: %i", deltaTimeStamp, elapsed);

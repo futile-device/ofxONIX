@@ -329,16 +329,16 @@ static inline void plotCombinedLinePlot(const std::string plotName,
 		voltageRange = acVoltageRange;//6.0f;
 		unitStr = "mV";
 
-		if(devP.size() != numProbes) devP.resize(numProbes);
-		if(devN.size() != numProbes) devN.resize(numProbes);
-		if(devP[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devP[i].resize(frameCount);
-		if(devN[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devN[i].resize(frameCount);
-		for(size_t probe = 0; probe < numProbes; ++probe) {
-			for(size_t frame = 0; frame < frameCount; ++frame){
-				devP[probe][frame] = ONI::Global::model.getSpikeProcessor()->getStDev(probe) * 3;
-				devN[probe][frame] = -devP[probe][frame];
-			}
-		}
+		//if(devP.size() != numProbes) devP.resize(numProbes);
+		//if(devN.size() != numProbes) devN.resize(numProbes);
+		//if(devP[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devP[i].resize(frameCount);
+		//if(devN[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devN[i].resize(frameCount);
+		//for(size_t probe = 0; probe < numProbes; ++probe) {
+		//	for(size_t frame = 0; frame < frameCount; ++frame){
+		//		devP[probe][frame] = p.acProbeStats[probe].deviation;//ONI::Global::model.getSpikeProcessor()->getPosStDevMultiplied(probe);
+		//		devN[probe][frame] = -devP[probe][frame]; //ONI::Global::model.getSpikeProcessor()->getNegStDevMultiplied(probe);
+		//	}
+		//}
 
 		break;
 	}
@@ -381,10 +381,10 @@ static inline void plotCombinedLinePlot(const std::string plotName,
 			ImPlot::SetupAxesLimits(0, timeStamps[frameCount - 1] - 1, -voltageRange, voltageRange, ImGuiCond_Always);
 			ImPlot::SetNextLineStyle(col);
 			ImPlot::PlotLine("##probe", &timeStamps[0], &(*voltages)[probe][0], frameCount, ImPlotLineFlags_None, offset);
-			ImPlot::SetNextLineStyle(ImVec4(1, 0, 0, 0.5));
-			ImPlot::PlotLine("##devP", &timeStamps[0], &devP[probe][0], frameCount, ImPlotLineFlags_None, offset);
-			ImPlot::SetNextLineStyle(ImVec4(0, 1, 0, 0.5));
-			ImPlot::PlotLine("##devN", &timeStamps[0], &devN[probe][0], frameCount, ImPlotLineFlags_None, offset);
+			//ImPlot::SetNextLineStyle(ImVec4(1, 0, 0, 0.5));
+			//ImPlot::PlotLine("##devP", &timeStamps[0], &devP[probe][0], frameCount, ImPlotLineFlags_None, offset);
+			//ImPlot::SetNextLineStyle(ImVec4(0, 1, 0, 0.5));
+			//ImPlot::PlotLine("##devN", &timeStamps[0], &devN[probe][0], frameCount, ImPlotLineFlags_None, offset);
 			if (stim->isStimulusOnDevice(probe)) {
 				ImPlot::SetNextLineStyle(col, 0.0);
 				ImPlot::SetNextFillStyle(col, 0.6);

@@ -50,10 +50,10 @@ public:
 		currentBufferIndex = 0;
 		bufferSampleCount = 0;
 		bIsFrameNew = false;
-		probeData.millisPerStep = step * framesPerMillis;
+		millisPerStep = probeData.millisPerStep = step * framesPerMillis;
 		return bufferSize;
 	}
-
+	float millisPerStep = 0;
 	constexpr long double framesPerMillis = 1.0 / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0;
 
 	size_t resizeByMillis(const int& bufferSizeMillis, const int& bufferStepMillis,const size_t& numProbes){
@@ -183,6 +183,14 @@ public:
 
 	inline float* getAcuVFloatRaw(const size_t& probe, const size_t& from){
 		return &probeData.acProbeVoltages[probe][from + bufferSize]; // allow negative values by wrapping 
+	}
+
+	inline float* getDcmVFloatRaw(const size_t& probe, const size_t& from){
+		return &probeData.dcProbeVoltages[probe][from + bufferSize]; // allow negative values by wrapping 
+	}
+
+	inline float* getStimFloatRaw(const size_t& probe, const size_t& from){
+		return &probeData.stimProbeData[probe][from + bufferSize]; // allow negative values by wrapping 
 	}
 
 	inline ONI::Frame::Rhs2116MultiFrame& getFrameAt(const size_t& idx){

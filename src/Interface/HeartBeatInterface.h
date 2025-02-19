@@ -40,17 +40,26 @@ class HeartBeatInterface : public ONI::Interface::BaseInterface{
 public:
 
 	~HeartBeatInterface(){
-	
+		
 	};
 
-	void reset(){};
+	void reset(){
+		
+	};
 	inline void process(oni_frame_t* frame){}; // nothing
-
+	bool bStart = true;
 	inline void process(ONI::Frame::BaseFrame& frame){
+		if(bStart){
+			bStart = false;
+			realTime.start();
+		}
 		bHeartBeat = !bHeartBeat;
 		deltaTime = frame.getDeltaTime();
+		cH = realTime.count<fu::millis>();
+		//realTime.count();
 	};
-
+	fu::Timer realTime;
+	float cH = 0;
 	inline void gui(ONI::Processor::BaseProcessor& processor){
 
 		ONI::Device::HeartBeatDevice& hbd = *reinterpret_cast<ONI::Device::HeartBeatDevice*>(&processor);
@@ -62,7 +71,7 @@ public:
 
 		ImGui::RadioButton("HeartBeat", bHeartBeat); ImGui::SameLine();
 		ImGui::Text(" %0.3f (ms)", deltaTime / 1000.0f);
-
+		ImGui::Text(" %0.3f (ms)", cH);
 		ImGui::Separator();
 		ImGui::Separator();
 

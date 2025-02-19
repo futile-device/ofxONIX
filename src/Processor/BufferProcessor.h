@@ -99,8 +99,8 @@ public:
         if(thread.joinable()) thread.join();
         resetBuffers();
         resetProbeData();
-        bThread = true;
-        thread = std::thread(&ONI::Processor::BufferProcessor::processBuffers, this);
+        //bThread = true;
+        //thread = std::thread(&ONI::Processor::BufferProcessor::processBuffers, this);
     }
 
 	inline void process(oni_frame_t* frame){}; // nothing
@@ -162,6 +162,10 @@ public:
         denseProbeData[BACK_BUFFER].resize(BaseProcessor::numProbes, denseBuffer.size());
         sparseProbeData[FRONT_BUFFER].resize(BaseProcessor::numProbes, sparseBuffer.size());
         sparseProbeData[BACK_BUFFER].resize(BaseProcessor::numProbes, sparseBuffer.size());
+
+        sparseTimeStamps.resize(sparseBuffer.size());
+        for(size_t frame = 0; frame < sparseTimeStamps.size(); ++frame) sparseTimeStamps[frame] = frame * sparseBuffer.millisPerStep;
+
         frameBuffer.resize(sparseBuffer.size());
         unlockAll();
         //denseProbeData.resize(source->getNumProbes(), denseBuffer.size());
@@ -324,7 +328,7 @@ private:
 
 #else
             
-           // bufferToProbeData(denseBuffer, denseProbeData, 0);
+            //bufferToProbeData(denseBuffer, denseProbeData, 0);
             bufferToProbeData(sparseBuffer, sparseProbeData, 1);
 
 
@@ -366,6 +370,8 @@ protected:
     std::mutex dataMutex;
     std::mutex processMutex;
 #endif
+
+    std::vector<float> sparseTimeStamps;
 
     ONI::Processor::BaseProcessor* source = nullptr;
 

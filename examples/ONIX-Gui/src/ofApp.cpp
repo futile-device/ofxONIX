@@ -38,8 +38,8 @@ void ofApp::setup(){
     ONI::Device::FmcDevice* fmc1 = (ONI::Device::FmcDevice*)oni.getDevice(1);
     fmc1->setPortVoltage(6.9); // 4.33v // 49.2C
 
-    //ONI::Device::FmcDevice* fmc2 = (ONI::Device::FmcDevice*)oni.getDevice(2);
-    //fmc2->setPortVoltage(6.4); // 4.30v // 44.6C
+    ONI::Device::FmcDevice* fmc2 = (ONI::Device::FmcDevice*)oni.getDevice(2);
+    fmc2->setPortVoltage(6.9); // 4.30v // 44.6C
     
     oni.update(); // requires an update to implement the port voltage settings
     //oni.printDeviceTable();
@@ -51,8 +51,8 @@ void ofApp::setup(){
 
     ONI::Device::Rhs2116Device* rhs2116Device1 = (ONI::Device::Rhs2116Device*)oni.getDevice(256);
     ONI::Device::Rhs2116Device* rhs2116Device2 = (ONI::Device::Rhs2116Device*)oni.getDevice(257);
-    //ONI::Device::Rhs2116Device* rhs2116Device3 = (ONI::Device::Rhs2116Device*)oni.getDevice(512);
-    //ONI::Device::Rhs2116Device* rhs2116Device4 = (ONI::Device::Rhs2116Device*)oni.getDevice(513);
+    ONI::Device::Rhs2116Device* rhs2116Device3 = (ONI::Device::Rhs2116Device*)oni.getDevice(512);
+    ONI::Device::Rhs2116Device* rhs2116Device4 = (ONI::Device::Rhs2116Device*)oni.getDevice(513);
 
     //rhs2116Device1->readRegister(ONI::Register::Rhs2116::MAXDELTAS);
 
@@ -64,8 +64,8 @@ void ofApp::setup(){
 
     multi->addDevice(rhs2116Device1);
     multi->addDevice(rhs2116Device2);
-    //multi->addDevice(rhs2116Device3);
-    //multi->addDevice(rhs2116Device4);
+    multi->addDevice(rhs2116Device3);
+    multi->addDevice(rhs2116Device4);
 
 
     multi->setDspCutOff(ONI::Settings::Rhs2116DspCutoff::Dsp308Hz);
@@ -78,10 +78,10 @@ void ofApp::setup(){
     ONI::Processor::ChannelMapProcessor* channelProcessor = oni.createChannelMapProcessor();
     channelProcessor->setup(multi);
 
-    //std::vector<size_t> channelMap = {59, 34, 33, 32, 63, 16, 17, 11, 58, 35, 60, 61, 14, 13, 18, 10, 57, 36, 19, 62, 15, 12, 20, 9, 56, 38, 37, 39, 23, 21, 22, 8, 40, 54, 53, 55, 7, 5, 6, 24, 41, 52, 44, 47, 0, 28, 4, 25, 42, 51, 45, 46, 1, 2, 3, 26, 43, 50, 49, 48, 31, 30, 29, 27};
+    std::vector<size_t> channelMap = {59, 34, 33, 32, 63, 16, 17, 11, 58, 35, 60, 61, 14, 13, 18, 10, 57, 36, 19, 62, 15, 12, 20, 9, 56, 38, 37, 39, 23, 21, 22, 8, 40, 54, 53, 55, 7, 5, 6, 24, 41, 52, 44, 47, 0, 28, 4, 25, 42, 51, 45, 46, 1, 2, 3, 26, 43, 50, 49, 48, 31, 30, 29, 27};
     //std::vector<size_t> inversechannelMap = {44, 52, 53, 54, 46, 37, 38, 36, 31, 23, 15, 7, 21, 13, 12, 20, 5, 6, 14, 18, 22, 29, 30, 28, 39, 47, 55, 63, 45, 62, 61, 60, 3, 2, 1, 9, 17, 26, 25, 27, 32, 40, 48, 56, 42, 50, 51, 43, 59, 58, 57, 49, 41, 34, 33, 35, 24, 16, 8, 0, 10, 11, 19, 4};
     //std::vector<size_t> channelMap = {59, 34, 33, 32, 63, 16, 17, 11, 58, 35, 60, 61, 14, 13, 18, 10, 57, 36, 19, 62, 15, 12, 20, 9, 56, 38, 37, 39, 23, 21, 22, 8};
-    //channelProcessor->setChannelMap(channelMap);
+    channelProcessor->setChannelMap(channelMap);
 
     //const std::vector<size_t>& chi = oni.getChannelMapProcessor()->getInverseChannelMap();
 
@@ -119,19 +119,19 @@ void ofApp::setup(){
     rhs2116StimProcessor->setup();
 
     ONI::Device::Rhs2116StimDevice * rhs2116StimDevice1 = (ONI::Device::Rhs2116StimDevice*)oni.getDevice(258);
-    //ONI::Device::Rhs2116StimDevice * rhs2116StimDevice2 = (ONI::Device::Rhs2116StimDevice*)oni.getDevice(514);
+    ONI::Device::Rhs2116StimDevice * rhs2116StimDevice2 = (ONI::Device::Rhs2116StimDevice*)oni.getDevice(514);
 
     rhs2116StimDevice1->getTriggerSource();
     rhs2116StimDevice1->setTriggerSource(true);
-    //rhs2116StimDevice2->setTriggerSource(true);
+    rhs2116StimDevice2->setTriggerSource(true);
 
     rhs2116StimProcessor->addStimDevice(rhs2116StimDevice1);
-    //rhs2116StimProcessor->addStimDevice(rhs2116StimDevice2);
+    rhs2116StimProcessor->addStimDevice(rhs2116StimDevice2);
 
     rhs2116StimProcessor->addDevice(rhs2116Device1);
     rhs2116StimProcessor->addDevice(rhs2116Device2);
-    //rhs2116StimProcessor->addDevice(rhs2116Device3);
-    //rhs2116StimProcessor->addDevice(rhs2116Device4);
+    rhs2116StimProcessor->addDevice(rhs2116Device3);
+    rhs2116StimProcessor->addDevice(rhs2116Device4);
 
     rhs2116StimProcessor->getRequiredStepSize(s1);
     rhs2116StimProcessor->getRequiredStepSize(s2);

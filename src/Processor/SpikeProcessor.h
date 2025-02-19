@@ -88,8 +88,8 @@ public:
 
         settings.spikeEdgeDetectionType = ONI::Settings::SpikeEdgeDetectionType::EITHER;
 
-        settings.positiveDeviationMultiplier = 3.5;
-        settings.negativeDeviationMultiplier = 3.5;
+        settings.positiveDeviationMultiplier = 4.0f;
+        settings.negativeDeviationMultiplier = 4.0f;
 
         settings.spikeWaveformLengthMs = 2;
         settings.spikeWaveformLengthSamples = settings.spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
@@ -98,7 +98,7 @@ public:
         reset();
 
     }
-
+    bool bFirstEstimate = false;
     void reset(){
 
         LOGINFO("SpikeProcessor RESET");
@@ -106,7 +106,7 @@ public:
         bThread = false;
         if (thread.joinable()) thread.join();
 
-        probeStats.clear();
+        //probeStats.clear();
         nextPeekDetectBufferCount.clear();
         spikeIndexes.clear();
         spikeCounts.clear();
@@ -141,9 +141,9 @@ public:
 
             // get the AC probe statistics including mean/std dev etc ]
             // which are calculate on the sparse buffer
-            bufferProcessor->processMutex[SPARSE_MUTEX].lock();
-            probeStats = bufferProcessor->sparseProbeData[FRONT_BUFFER].acProbeStats;
-            bufferProcessor->processMutex[SPARSE_MUTEX].unlock();
+            //bufferProcessor->processMutex[SPARSE_MUTEX].lock();
+            //probeStats = bufferProcessor->sparseProbeData[FRONT_BUFFER].acProbeStats;
+            //bufferProcessor->processMutex[SPARSE_MUTEX].unlock();
 
             // get a reference to the dense buffer (ie., all samples)
             bufferProcessor->dataMutex[DENSE_MUTEX].lock();
@@ -155,6 +155,11 @@ public:
                 uint64_t bufferCount = buffer.getBufferCount();
 
                 if(bufferCount > buffer.size()){ // wait until the buffer is full
+
+                    if(bFirstEstimate) {
+                        bFirstEstimate = false;
+                        estimateStats();
+                    }
 
                     // we are going to search for spikes from the 'central' time point in the frame buffer
                     size_t centralSampleIDX = size_t(std::floor(buffer.getCurrentIndex() + buffer.size() / 2.0)) % buffer.size();
@@ -299,10 +304,53 @@ public:
 
     }
 
+    inline void estimateStats(){
+
+        //probeStats.resize(numProbes);
+
+        bufferProcessor->bufferToProbeData(bufferProcessor->sparseBuffer, bufferProcessor->sparseProbeData, 1);
+
+        bufferProcessor->processMutex[SPARSE_MUTEX].lock();
+        probeStats = bufferProcessor->sparseProbeData[FRONT_BUFFER].acProbeStats;
+        bufferProcessor->processMutex[SPARSE_MUTEX].unlock();
+
+        //bufferProcessor->dataMutex[SPARSE_MUTEX].lock();
+        //ONI::FrameBuffer& buffer = bufferProcessor->sparseBuffer;
+        //size_t frameCount = buffer.size();
+        //for(size_t probe = 0; probe < numProbes; ++probe) {
+
+        //    float* acVoltages = buffer.getAcuVFloatRaw(probe, bufferProcessor->sparseBuffer.getCurrentIndex());
+
+        //    probeStats[probe].sum = 0;
+
+        //    for(size_t frame = 0; frame < frameCount; ++frame){
+        //        probeStats[probe].sum += acVoltages[frame];
+        //    }
+
+        //    LOGDEBUG("Sum: %i %0.3f", probe, probeStats[probe].sum);
+        //    probeStats[probe].mean = probeStats[probe].sum / frameCount;
+        //    probeStats[probe].ss = 0;
+        //    for(size_t frame = 0; frame < frameCount; ++frame) {
+        //        float acdiff = acVoltages[frame] - probeStats[probe].mean;
+        //        probeStats[probe].ss += acdiff * acdiff;
+        //    }
+        //    probeStats[probe].variance = probeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
+        //    LOGDEBUG("variance: %i %0.3f", probe, probeStats[probe].variance);
+        //}
+
+        //bufferProcessor->dataMutex[SPARSE_MUTEX].unlock();
+    }
+
+    inline float getPosStDevMultiplied(const size_t& probe){
+        return probeStats[probe].deviation * settings.positiveDeviationMultiplier;
+    }
 
 
+    inline float getNegStDevMultiplied(const size_t& probe){
+        return -probeStats[probe].deviation * settings.negativeDeviationMultiplier;
+    }
 
-    float getStDev(const size_t& probe){
+    inline float getStDev(const size_t& probe){
         return probeStats[probe].deviation;
     }
 
