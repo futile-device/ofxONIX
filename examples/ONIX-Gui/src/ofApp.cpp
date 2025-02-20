@@ -19,8 +19,6 @@ void ofApp::setup(){
     ofSetLogLevel(OF_LOG_VERBOSE);
     ofLogToConsole();
 
-    ofAddListener(ofGetWindowPtr()->events().keyPressed, this, &ofApp::keyPressed);
-
     fu::AddLogChannel((fu::LogChannel*)new fu::ConsoleLogChannel);
     fu::AddLogChannel((fu::LogChannel*)&fu::ImGuiConsole);
 
@@ -164,12 +162,7 @@ void ofApp::setup(){
     spikeProcessor->setup(bufferProcessor);
 
 
-
-
-    
-
     rhs2116StimProcessor->applyStagedStimuliToDevice();
-
 
     context.update();
 
@@ -218,50 +211,50 @@ void ofApp::exit(){
 
 }
 
+static bool bControlDown = false;
+
 //--------------------------------------------------------------
-void ofApp::keyPressed(ofKeyEventArgs& e){
+void ofApp::keyPressed(int key){
 
-    //using namespace std;
-    //cout << "KEY : " << e.key << endl;
-    //cout << "KEYCODE : " << e.keycode << endl;
-    //cout << "MODIFIERS : " << e.modifiers << endl;
-
-    if(e.modifiers != OF_KEY_CONTROL) return;
+    if(key == OF_KEY_CONTROL){
+        bControlDown = true;
+        return;
+    }
+    if(!bControlDown) return;
+    if(key == 3682) return; // wtf is this key! 
 
     ONI::Processor::Rhs2116StimProcessor* rhs2116StimProcessor = context.getRhs2116StimProcessor();
     ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 
-    if(e.keycode == 82){ // r
-         recordProcessor->record();
-        //oni.record();
+    if(key == 1){ // a     <=== and wtf are these keys
+        context.toggleAcquisition();
     }
 
-    if(e.keycode == 80){ // p
+    if(key == 18){ // r
+        recordProcessor->record();
+    }
+
+    if(key == 16){ // p
         recordProcessor->play();
-        //oni.play();
     }
 
-    if(e.keycode == 83){ // s
+    if(key == 19){ // s
         recordProcessor->stop();
-        //oni.play();
     }
 
-    if(e.keycode == 84){ // t
+    if(key == 20){ // t
         rhs2116StimProcessor->triggerStimulusSequence();
     }
 
 }
 
-
-void ofApp::keyPressed(int key){
-
-
-
-
-}
-
 //--------------------------------------------------------------
 void ofApp::keyReleased(int key){
+
+    if(key == OF_KEY_CONTROL){
+        bControlDown = false;
+        return;
+    }
 
 }
 

@@ -3119,7 +3119,7 @@
     <ClInclude Include="..\..\src\Interface\BufferPlotHelpers.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\src\Context.h">
+    <ClInclude Include="..\..\src\Device\Context.h">
       <Filter>addons\ofxONIX\src\Device</Filter>
     </ClInclude>
   </ItemGroup>

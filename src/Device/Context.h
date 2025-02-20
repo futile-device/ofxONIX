@@ -281,7 +281,15 @@ public:
 		if(recordProcessor != nullptr) recordProcessor->stop();
 		stopFrameRead();
 		stopContext();
-		//ONI::Global::model.bIsAcquiring = false;
+		ONI::Global::model.bIsAcquiring = false;
+	}
+
+	void toggleAcquisition(){
+		if(!ONI::Global::model.isAquiring()){
+			startAcquisition();
+		}else{
+			stopAcquisition();
+		}
 	}
 
 	void closeContext(){
@@ -289,7 +297,7 @@ public:
 
 		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
 		if(ctx == nullptr) return; // nothing to do
-		//ONI::Global::model.bIsAcquiring = false;
+		ONI::Global::model.bIsAcquiring = false;
 		stopFrameRead();
 		onixDeviceTypes.clear();
 		stopContext();
