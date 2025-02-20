@@ -22,7 +22,7 @@
 #include <syncstream>
 
 #include "../Interface/BaseInterface.h"
-#include "../Interface/PlotHelpers.h"
+#include "../Interface/BufferPlotHelpers.h"
 
 #include "../Processor/Rhs2116StimProcessor.h"
 

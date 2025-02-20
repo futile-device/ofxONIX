@@ -23,7 +23,6 @@
 
 #include "../Interface/BaseInterface.h"
 #include "../Interface/Rhs2116Interface.h"
-#include "../Type/DataBuffer.h"
 
 #include "ofxImGui.h"
 #include "ofxImPlot.h"

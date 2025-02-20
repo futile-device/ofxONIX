@@ -2966,9 +2966,6 @@
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\HeartBeatInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\PlotHelpers.h">
-      <Filter>addons\ofxONIX\src\Interface</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\RecordInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
@@ -3010,9 +3007,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Processor\SpikeProcessor.h">
       <Filter>addons\ofxONIX\src\Processor</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\DataBuffer.h">
-      <Filter>addons\ofxONIX\src\Type</Filter>
     </ClInclude>
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\FrameBuffer.h">
       <Filter>addons\ofxONIX\src\Type</Filter>
@@ -3124,6 +3118,9 @@
     </ClInclude>
     <ClInclude Include="..\..\..\ofxFutilities\libs\FontIcons\IconsMaterialSymbols.h">
       <Filter>addons\ofxFutilities\libs\FontIcons</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Interface\BufferPlotHelpers.h">
+      <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

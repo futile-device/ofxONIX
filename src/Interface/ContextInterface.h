@@ -66,7 +66,7 @@ public:
 		ImGui::Begin("ONI Context");
 		ImGui::PushID("ONI Context");
 
-		if(context.bIsContextSetup){
+		if(ONI::Global::model.isContextSetup()){
 
 			if(ImGui::Button("Setup Context")){
 				context.setupContext();
@@ -80,10 +80,10 @@ public:
 
 			ImGui::SameLine();
 
-			std::string acqString = (context.bIsAcquiring ? "Stop Acquisition" : "Start Acquisition");
+			std::string acqString = (ONI::Global::model.isAquiring() ? "Stop Acquisition" : "Start Acquisition");
 
 			if(ImGui::Button(acqString.c_str())){
-				if(context.bIsAcquiring){
+				if(ONI::Global::model.isAquiring()){
 					context.stopAcquisition();
 				}else{
 					context.startAcquisition();

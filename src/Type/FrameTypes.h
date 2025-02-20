@@ -69,80 +69,11 @@ struct acquisition_clock_compare {
 struct ProbeStatistics{
 	float sum = 0;
 	float mean = 0;
-	float ss = 0;
+	float std = 0;
 	float variance = 0;
 	float deviation = 0;
 };
 
-struct Rhs2116ProbeData{
-
-	inline void reset(){
-
-		size_t numProbes = acProbeVoltages.size();
-
-		if(numProbes == 0){
-			LOGERROR("ProbeData numProbes is not setup - can't reset");
-			return;
-		}
-
-		size_t numFrames = acProbeVoltages[0].size();
-
-		if(numFrames == 0){
-			LOGERROR("ProbeData numFrames is not setup - can't reset");
-			return;
-		}
-		
-		resize(numProbes, numFrames, true);
-
-	}
-
-	inline void resize(size_t numProbes, size_t numFrames, bool bForceReset = false){
-
-		if(bForceReset) clear();
-
-		if(acProbeVoltages.size() == numProbes){
-			if(acProbeVoltages[0].size() == numFrames){
-				return;
-			}
-		}
-
-		acProbeVoltages.resize(numProbes);
-		dcProbeVoltages.resize(numProbes);
-		acProbeStats.resize(numProbes);
-		dcProbeStats.resize(numProbes);
-		probeTimeStamps.resize(numProbes);
-		stimProbeData.resize(numProbes);
-
-		for(size_t probe = 0; probe < numProbes; ++probe){
-			acProbeVoltages[probe].resize(numFrames);
-			dcProbeVoltages[probe].resize(numFrames);
-			probeTimeStamps[probe].resize(numFrames);
-			stimProbeData[probe].resize(numFrames);
-			acProbeStats[probe].deviation = dcProbeStats[probe].deviation = 0;
-			acProbeStats[probe].mean = dcProbeStats[probe].mean = 0;
-			acProbeStats[probe].ss = dcProbeStats[probe].ss = 0;
-			acProbeStats[probe].sum = dcProbeStats[probe].sum = 0;
-			acProbeStats[probe].variance = dcProbeStats[probe].variance = 0;
-		}
-
-	}
-
-	void clear(){
-		acProbeStats.clear();
-		dcProbeStats.clear();
-		acProbeVoltages.clear();
-		dcProbeVoltages.clear();
-		probeTimeStamps.clear();
-	}
-
-	std::vector< std::vector<float> > acProbeVoltages;
-	std::vector< std::vector<float> > dcProbeVoltages;
-	std::vector< std::vector<float> > stimProbeData;
-	std::vector< std::vector<float> > probeTimeStamps;
-	std::vector<ProbeStatistics> acProbeStats;
-	std::vector<ProbeStatistics> dcProbeStats;
-	float millisPerStep = 0;
-};
 
 //// onix.h Frame type
 //typedef struct {

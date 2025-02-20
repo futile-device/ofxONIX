@@ -37,6 +37,8 @@ constexpr long double RHS2116_SAMPLE_FREQUENCY_NS = RHS2116_SAMPLE_FREQUENCY_HZ 
 constexpr long double RHS2116_SAMPLE_WAIT_TIME_NS = 1.0 / RHS2116_SAMPLE_FREQUENCY_HZ * nanos_to_seconds;
 constexpr long double RHS2116_NUM_DEVICE_PROBES = 16;
 
+constexpr long double framesPerMillis = 1.0 / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0;
+
 namespace ONI{
 
 class Context; // predeclare for friend access
@@ -266,6 +268,14 @@ public:
 		return rhs2116StimProcessor;
 	}
 
+	std::atomic_bool& isContextSetup(){
+		return bIsContextSetup;
+	}
+
+	std::atomic_bool& isAquiring(){
+		return bIsAcquiring;
+	}
+
 private:
 
 	volatile oni_ctx ctx = nullptr;
@@ -274,6 +284,9 @@ private:
 	uint32_t maxWriteSize = -1;
 	uint32_t acq_clock_khz = -1; // defulat is 250000000 ns
 	uint32_t sys_clock_khz = -1; // defulat is 250000000 ns
+
+	std::atomic_bool bIsContextSetup = false;
+	std::atomic_bool bIsAcquiring = false;
 
 	std::map<uint32_t, ONI::Device::BaseDevice*> devices;
 	std::map<ONI::Processor::TypeID, ONI::Processor::BaseProcessor*> processors; // for now just one instance of each?!

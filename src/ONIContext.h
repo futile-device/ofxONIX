@@ -21,7 +21,6 @@
 #include <mutex>
 #include <syncstream>
 
-#include "../Type/DataBuffer.h"
 #include "../Type/GlobalTypes.h"
 #include "../Type/FrameTypes.h"
 #include "../Type/RegisterTypes.h"
@@ -147,11 +146,11 @@ public:
 			}
 		}
 
-		//if(bIsRecording && !bIsAcquiring){
+		//if(bIsRecording && !ONI::Global::model.bIsAcquiring){
 		//	startAcquisition(); // this isn't elegant but necessary if we don't create proxy functions on the oni Context for starting a recording
 		//}
 
-		if(!bIsContextSetup) return;
+		if(!ONI::Global::model.bIsContextSetup) return;
 
 		bool bContextNeedsRestart = false;
 		bool bContextNeedsReset = false;
@@ -196,7 +195,7 @@ public:
 		}
 
 		if(bContextNeedsReset){
-			bool bResetAcquire = bIsAcquiring;
+			bool bResetAcquire = ONI::Global::model.bIsAcquiring;
 			if(bResetAcquire) stopAcquisition();
 			setContextOption(ONI::ContextOption::RESET, 1);
 			if(bResetAcquire) startAcquisition();
@@ -287,7 +286,7 @@ public:
 		startContext();
 		//ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 		//if(recordProcessor->isRecording()) recordProcessor->reset(); // redundant except we need to reset the recording starttime
-		bIsAcquiring = true;
+		ONI::Global::model.bIsAcquiring = true;
 	}
 
 	void stopAcquisition(){
@@ -295,7 +294,7 @@ public:
 		if(recordProcessor != nullptr) recordProcessor->stop();
 		stopFrameRead();
 		stopContext();
-		//bIsAcquiring = false;
+		//ONI::Global::model.bIsAcquiring = false;
 	}
 
 	void closeContext(){
@@ -307,7 +306,7 @@ public:
 
 		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
 		if(ctx == nullptr) return; // nothing to do
-		//bIsAcquiring = false;
+		//ONI::Global::model.bIsAcquiring = false;
 		stopFrameRead();
 		onixDeviceTypes.clear();
 		stopContext();
@@ -336,18 +335,18 @@ public:
 	}
 
 	inline const bool& isAcquiring(){
-		return bIsAcquiring;
+		return ONI::Global::model.bIsAcquiring;
 	}
 
 	void record(){
-		if(!bIsAcquiring) startAcquisition();
+		if(!ONI::Global::model.bIsAcquiring) startAcquisition();
 		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 		recordProcessor->_record();
 		
 	}
 
 	void play(){
-		if(bIsAcquiring) stopFrameRead();
+		if(ONI::Global::model.bIsAcquiring) stopFrameRead();
 		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 		recordProcessor->_play();
 	}
@@ -478,7 +477,7 @@ private:
 		if(!bThread) return;
 		bThread = false;
 		if(thread.joinable()) thread.join();
-		bIsAcquiring = false;
+		ONI::Global::model.bIsAcquiring = false;
 		//contextPlayStream.close();
 	}
 
@@ -486,12 +485,12 @@ private:
 
 		LOGINFO("Setting up ONI context");
 
-		if(bIsContextSetup){
+		if(ONI::Global::model.bIsContextSetup){
 			LOGDEBUG("Context already exists, destroying...");
 			closeContext();
 		}
 
-		bIsContextSetup = false; // TODO: check and warn/tear down if it's already setup?
+		ONI::Global::model.bIsContextSetup = false; // TODO: check and warn/tear down if it's already setup?
 
 		int rc = ONI_ESUCCESS;
 
@@ -553,7 +552,7 @@ private:
 		//if(blockReadBytes == -1) return false;
 		//if(blockWriteBytes == -1) return false;
 
-		bIsContextSetup = startContext(); // is this ok? or should the user do it!?
+		ONI::Global::model.bIsContextSetup = startContext(); // is this ok? or should the user do it!?
 
 		if(enumerateOnixDeviceTypes()){
 			createOnixDevices();
@@ -639,7 +638,7 @@ private:
 
 		onixDeviceTypes.clear();
 
-		if(!bIsContextSetup){
+		if(!ONI::Global::model.bIsContextSetup){
 			LOGERROR("Context and driver not setup!");
 			return false;
 		}
@@ -760,8 +759,7 @@ private:
 	uint32_t blockReadBytes = 0;
 	uint32_t blockWriteBytes = 0;
 
-	std::atomic_bool bIsContextSetup = false;
-	std::atomic_bool bIsAcquiring = false;
+
 
 	std::atomic_bool bThread = false;
 

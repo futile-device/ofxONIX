@@ -25,7 +25,6 @@
 #include <timeapi.h>
 
 #include "../Type/Log.h"
-#include "../Type/DataBuffer.h"
 #include "../Type/RegisterTypes.h"
 #include "../Type/SettingTypes.h"
 #include "../Type/FrameTypes.h"
@@ -45,78 +44,6 @@ class RecordInterface;
 };
 
 namespace Processor{
-
-//std::map<uint32_t, DeviceChannel*> deviceChannels;
-//class DeviceChannel{
-//
-//public:
-//
-//	~DeviceChannel(){};
-//
-//	void setup(ONI::Device::BaseDevice* device, const int& waitTimeNanos){
-//		this->device = device;
-//		this->waitTimeNanos = waitTimeNanos;
-//		bThread = true;
-//		thread = std::thread(&DeviceChannel::process, this);
-//	}
-//
-//	inline void push(ONI::Frame::Rhs2116DataRaw* frameRaw){
-//		const std::lock_guard<std::mutex> lock(mutex);
-//		frames.push(new ONI::Frame::Rhs2116DataRaw);
-//		std::memcpy(frames.back(), frameRaw, sizeof(ONI::Frame::Rhs2116DataRaw));
-//	}
-//
-//	inline void process(){
-//
-//		while(bThread){
-//
-//			mutex.lock();
-//
-//			if(frames.size() > 0){
-//
-//				ONI::Frame::Rhs2116DataRaw* frame_in = frames.front();
-//
-//				oni_frame_t* frame = reinterpret_cast<oni_frame_t*>(frame_in); // this is kinda nasty ==> will it always work
-//
-//				frame->data = new char[74];
-//				memcpy(frame->data, frame_in->data, 74);
-//
-//				device->process(frame);
-//
-//				delete[] frame->data;
-//				delete frame_in;
-//
-//				frames.pop();
-//
-//				using namespace std::chrono;
-//				uint64_t elapsed = 0;
-//				uint64_t start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-//				while(elapsed - start < waitTimeNanos){
-//					elapsed = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-//					std::this_thread::yield();
-//				}
-//
-//			}else{
-//				std::this_thread::yield();
-//			}
-//			
-//			mutex.unlock();
-//
-//		}
-//
-//	}
-//
-//	volatile uint64_t lastAcquireTimeStamp = 0;
-//	volatile int waitTimeNanos = 0;
-//
-//	ONI::Device::BaseDevice * device = nullptr;
-//	std::queue<ONI::Frame::Rhs2116DataRaw*> frames;
-//
-//	volatile bool bThread = false;
-//	std::mutex mutex;
-//	std::thread thread;
-//
-//};
 
 class RecordProcessor : public BaseProcessor{
 
@@ -185,7 +112,7 @@ public:
 
 	// this is annoying, but I need access to the 
 	// Conetxt when starting play and pause, so
-	// I'm doing this in a nasty update hoo way
+	// I'm doing this in a nasty update hohum anyway
 	// probably an event or signal would be better
 
 	void play(){
@@ -379,24 +306,11 @@ private:
 
 		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
 		for(auto& device : ONI::Global::model.getDevices()) device.second->reset();
-		//ONI::Global::model.getBufferProcessor()->reset();
+
 		bPlaybackNeedsRestart = false;
 		bPlaybackNeedsDependencyReset = true;
 		state = PLAYING;
 
-		//std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
-		//for(auto& it : devices){
-		//	auto dit = deviceChannels.find(it.first);
-		//	if(dit == deviceChannels.end()){
-		//		deviceChannels[it.first] = new DeviceChannel;
-		//		if(it.first == 256 || it.first == 257 || it.first == 512 || it.first == 513){
-		//			deviceChannels[it.first]->setup(it.second, RHS2116_SAMPLE_WAIT_TIME_NS); // 33119.999999863810560000560010977
-		//		} else{
-		//			deviceChannels[it.first]->setup(it.second, 0);
-		//		}
-		//		
-		//	}
-		//}
 
 
 		realHeartBeatTimer.start();
@@ -404,8 +318,6 @@ private:
 
 		bThread = true;
 		thread = std::thread(&RecordProcessor::playFrames, this);
-
-		//startAcquisition();
 	}
 	
 
@@ -414,9 +326,8 @@ private:
 		bPlaybackNeedsStart = bRecordNeedsStart = false;
 
 		if(state == PLAYING || state == RECORDING) stopStreams();
-		//if(bIsAcquiring) stopAcquisition();
+
 		LOGINFO("Start Recording");
-		//const std::lock_guard<std::mutex> lock(mutex);
 
 		settings.timeStamp = ONI::GetTimeStamp();
 		settings.fileTimeStamp = ONI::ReverseTimeStamp(settings.timeStamp);
@@ -455,8 +366,6 @@ private:
 			infostream << device.second->info() << "\n\n";
 		}
 
-		//infostream << ONI::Global::model.getRhs2116MultiProcessor()->info() << "\n\n";
-
 		infostream.close();
 
 		streamMutex.lock();
@@ -475,10 +384,10 @@ private:
 		settings.acquisitionStartTime = systemAcquisitionTimeStamp;
 
 		streamMutex.unlock();
-		//ONI::Global::model.getBufferProcessor()->reset();
+
 
 		state = RECORDING;
-		//startAcquisition();
+
 	}
 
 	void recordFrame(oni_frame_t* frame){
@@ -557,20 +466,6 @@ private:
 				}
 				streamMutex.unlock();
 
-
-				/*
-				auto it = deviceChannels.find((uint32_t)frame_in->dev_idx);
-
-				if(it == deviceChannels.end()){
-					LOGERROR("ONI DeviceChannel doesn't exist with idx: %i", frame_in->dev_idx);
-				}else{
-					it->second->push(frame_in);
-					//delete frame_in;
-				}
-
-				delete frame_in;
-				*/
-				
 				oni_frame_t* frame = reinterpret_cast<oni_frame_t*>(frame_in); // this is kinda nasty ==> will it always work
 
 				frame->data = new char[74];
@@ -678,4 +573,117 @@ protected:
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+		//std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
+		//for(auto& it : devices){
+		//	auto dit = deviceChannels.find(it.first);
+		//	if(dit == deviceChannels.end()){
+		//		deviceChannels[it.first] = new DeviceChannel;
+		//		if(it.first == 256 || it.first == 257 || it.first == 512 || it.first == 513){
+		//			deviceChannels[it.first]->setup(it.second, RHS2116_SAMPLE_WAIT_TIME_NS); // 33119.999999863810560000560010977
+		//		} else{
+		//			deviceChannels[it.first]->setup(it.second, 0);
+		//		}
+		//		
+		//	}
+		//}
+
+				/*
+				auto it = deviceChannels.find((uint32_t)frame_in->dev_idx);
+
+				if(it == deviceChannels.end()){
+					LOGERROR("ONI DeviceChannel doesn't exist with idx: %i", frame_in->dev_idx);
+				}else{
+					it->second->push(frame_in);
+					//delete frame_in;
+				}
+
+				delete frame_in;
+				*/
+
+
+//std::map<uint32_t, DeviceChannel*> deviceChannels;
+//class DeviceChannel{
+//
+//public:
+//
+//	~DeviceChannel(){};
+//
+//	void setup(ONI::Device::BaseDevice* device, const int& waitTimeNanos){
+//		this->device = device;
+//		this->waitTimeNanos = waitTimeNanos;
+//		bThread = true;
+//		thread = std::thread(&DeviceChannel::process, this);
+//	}
+//
+//	inline void push(ONI::Frame::Rhs2116DataRaw* frameRaw){
+//		const std::lock_guard<std::mutex> lock(mutex);
+//		frames.push(new ONI::Frame::Rhs2116DataRaw);
+//		std::memcpy(frames.back(), frameRaw, sizeof(ONI::Frame::Rhs2116DataRaw));
+//	}
+//
+//	inline void process(){
+//
+//		while(bThread){
+//
+//			mutex.lock();
+//
+//			if(frames.size() > 0){
+//
+//				ONI::Frame::Rhs2116DataRaw* frame_in = frames.front();
+//
+//				oni_frame_t* frame = reinterpret_cast<oni_frame_t*>(frame_in); // this is kinda nasty ==> will it always work
+//
+//				frame->data = new char[74];
+//				memcpy(frame->data, frame_in->data, 74);
+//
+//				device->process(frame);
+//
+//				delete[] frame->data;
+//				delete frame_in;
+//
+//				frames.pop();
+//
+//				using namespace std::chrono;
+//				uint64_t elapsed = 0;
+//				uint64_t start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+//				while(elapsed - start < waitTimeNanos){
+//					elapsed = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+//					std::this_thread::yield();
+//				}
+//
+//			}else{
+//				std::this_thread::yield();
+//			}
+//			
+//			mutex.unlock();
+//
+//		}
+//
+//	}
+//
+//	volatile uint64_t lastAcquireTimeStamp = 0;
+//	volatile int waitTimeNanos = 0;
+//
+//	ONI::Device::BaseDevice * device = nullptr;
+//	std::queue<ONI::Frame::Rhs2116DataRaw*> frames;
+//
+//	volatile bool bThread = false;
+//	std::mutex mutex;
+//	std::thread thread;
+//
+//};
 

@@ -23,7 +23,7 @@
 
 #include "../Interface/BaseInterface.h"
 #include "../Processor/BufferProcessor.h"
-#include "../Interface/PlotHelpers.h"
+#include "../Interface/BufferPlotHelpers.h"
 
 #include "ofxImGui.h"
 #include "ofxImPlot.h"
@@ -104,17 +104,20 @@ public:
 		ImGui::Separator();
 		
 		using namespace std::chrono;
-
-		double processorTimeUs =  (double)duration_cast<milliseconds>(duration<double>(1)).count() / (double)duration_cast<nanoseconds>(duration<double>(1)).count() * bp.processorTimeNs;
 		double interfaceTimeMs =  (double)duration_cast<milliseconds>(duration<double>(1)).count() / (double)duration_cast<nanoseconds>(duration<double>(1)).count() * interfaceTimeNs;
 
-		ImGui::Text("Processor Time %0.3f (mS)", processorTimeUs); ImGui::SameLine();
 		ImGui::Text("Interface Time %0.3f (mS)", interfaceTimeMs);
 
 		ImGui::Separator();
-		ImGui::InputInt("Probe Plot Height", &probePlotHeight);
-		ImGui::InputFloat("AC Voltage Range", &acVoltageRange);
-
+		ImGui::InputFloat("AC Voltage Range", &acVoltageRange); 
+		
+		if(ImGui::Button("Force Calculate Std")) bp.calculateThresholds();
+		ImGui::SameLine();
+		ImGui::Checkbox("Auto Calculate Std", &bp.settings.bUseAutoThreshold);
+		int t = bp.settings.autoThresholdMs;
+		ImGui::InputInt("Auto Refresh Time (ms)", &t); if(t < 0) t = 1;
+		bp.settings.autoThresholdMs = t;
+		
 		ImGui::Text("Select Probes to Plot");
 		ImGui::NewLine();
 
@@ -152,33 +155,14 @@ public:
 		volatile uint64_t startTime = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
 
 
-		plotCombinedLinePlot(bp, ONI::Interface::PLOT_AC_DATA);
-		plotIndividualLinePlot(bp, ONI::Interface::PLOT_AC_DATA);
-
 		//plotCombinedLinePlot(bp, ONI::Interface::PLOT_DC_DATA);
+		plotCombinedLinePlot(bp, ONI::Interface::PLOT_AC_DATA);
 
-/*#ifdef USE_FRAMEBUFFER
-		bp.processMutex[SPARSE_MUTEX].lock();
-		ONI::Frame::Rhs2116ProbeData& sparseProbeDataCopy = bp.sparseProbeData[FRONT_BUFFER];
-#else
-		bp.processMutex.lock();
-		ONI::Frame::Rhs2116ProbeData& sparseProbeDataCopy = bp.sparseProbeData[BACK_BUFFER];
-#endif
-
-
-		ONI::Interface::plotCombinedHeatMap("Electrode HeatMap", acVoltageRange, sparseProbeDataCopy);
-		//ONI::Interface::plotCombinedLinePlot("AC Combined", acVoltageRange, sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotIndividualLinePlot("AC Probes", acVoltageRange, sparseProbeDataCopy, allSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_AC_DATA);
-		ONI::Interface::plotCombinedLinePlot("DC Combined", acVoltageRange, sparseProbeDataCopy, channelSelect, ONI::Interface::PLOT_DC_DATA);
-		ONI::Interface::plotIndividualLinePlot("DC Probes", acVoltageRange, sparseProbeDataCopy, allSelect, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap(), probePlotHeight, ONI::Interface::PLOT_DC_DATA);
-
-#ifdef USE_FRAMEBUFFER
-		bp.processMutex[SPARSE_MUTEX].unlock();
-#else
-		bp.processMutex.unlock();
-#endif
-*/
+		plotIndividualLinePlot(bp, ONI::Interface::PLOT_DC_DATA);
+		plotIndividualLinePlot(bp, ONI::Interface::PLOT_AC_DATA);
 		
+		plotCombinedHeatMap(bp);
+
 
 		interfaceTimeNs = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - startTime;
 		
@@ -198,10 +182,105 @@ public:
 
 private:
 
-	// Plot Individual AC or DC probe data
-	inline void plotIndividualLinePlot(ONI::Processor::BufferProcessor& bp, const ONI::Interface::PlotType& plotType){
+	// Plot Combined AC or DC probe data
+	inline void plotCombinedHeatMap(ONI::Processor::BufferProcessor& bp){
 
 		//const std::lock_guard<std::mutex> lock(mutex);
+
+		std::string plotName = "Electrode HeatMap";
+		size_t numProbes = bp.numProbes;
+		size_t frameCount = bp.sparseBuffer.size();
+
+
+		if(frameCount == 0) return;
+
+		//ONI::Processor::Rhs2116StimProcessor* stim = ONI::Global::model.getRhs2116StimProcessor();
+
+
+
+		ImGui::Begin(plotName.c_str());
+		ImGui::PushID("##HeatMapProbePlot");
+
+		static ImPlotColormap map = ImPlotColormap_Cool; //ImPlotColormap_Plasma
+		if(ImPlot::ColormapButton(ImPlot::GetColormapName(map), ImVec2(225, 0), map)) {
+			map = (map + 1) % ImPlot::GetColormapCount();
+			// We bust the color cache of our plots so that item colors will
+			// resample the new colormap in the event that they have already
+			// been created. See documentation in implot.h.
+			//BustColorCache("AC Electrodes");
+			//BustColorCache("DC Electrodes");
+		}
+
+		static ImPlotAxisFlags axes_flags = ImPlotAxisFlags_Lock | ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoTickMarks;
+
+		ImPlot::PushColormap(map);
+
+		float scW = ImGui::GetWindowWidth() > ImGui::GetWindowHeight() ? 120 : 60;
+		//float divW = ImGui::GetWindowWidth() > ImGui::GetWindowHeight() ? 2 : 1;
+		float dimW = ImGui::GetWindowWidth() > ImGui::GetWindowHeight() ? ImGui::GetWindowWidth() : ImGui::GetWindowHeight();
+		float width = (dimW - scW) / 2; //std::min(ImGui::GetWindowWidth(), ImGui::GetWindowHeight())
+
+		static float hm[8][8]; // TODO: this should be calculated or passed in depending on actual num probes
+
+		static const char* ylabels[] = {"8","7","6","5","4","3","2","1"};
+		static const char* xlabels[] = {"A","B","C","D","E","F","G","H"};
+
+		for(size_t probe = 0; probe < numProbes; ++probe) {
+			size_t col = probe % 8;
+			size_t row = std::floor(probe / 8);
+			bp.dataMutex[SPARSE_MUTEX].lock();
+			float* voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex() - 1);
+			hm[row][col] = voltages[0];
+			bp.dataMutex[SPARSE_MUTEX].unlock();
+		}
+
+		float voltageRange = acVoltageRange;
+
+		if(ImPlot::BeginPlot("AC Electrodes", ImVec2(width, width), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+			ImPlot::SetupAxes(nullptr, nullptr, axes_flags, axes_flags);
+			ImPlot::SetupAxisTicks(ImAxis_X1, 0 + 1.0 / 16.0, 1 - 1.0 / 16.0, 8, xlabels);
+			ImPlot::SetupAxisTicks(ImAxis_Y1, 1 - 1.0 / 16.0, 0 + 1.0 / 16.0, 8, ylabels);
+			ImPlot::PlotHeatmap("AC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_None);
+			ImPlot::EndPlot();
+		}
+
+		ImGui::SameLine();
+		ImPlot::ColormapScale("mV", -voltageRange, voltageRange, ImVec2(60, width));
+
+		if(ImGui::GetWindowWidth() > ImGui::GetWindowHeight()) ImGui::SameLine();
+
+		for(size_t probe = 0; probe < numProbes; ++probe) {
+			size_t col = probe % 8;
+			size_t row = std::floor(probe / 8);
+			bp.dataMutex[SPARSE_MUTEX].lock();
+			float* voltages = bp.sparseBuffer.getDcmVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex() - 1);
+			hm[row][col] = voltages[0];
+			bp.dataMutex[SPARSE_MUTEX].unlock();
+		}
+
+		voltageRange = 5.0f;
+
+		if(ImPlot::BeginPlot("DC Electrodes", ImVec2(width, width), ImPlotFlags_NoLegend | ImPlotFlags_NoMouseText)) {
+			ImPlot::SetupAxes(nullptr, nullptr, axes_flags, axes_flags);
+			ImPlot::SetupAxisTicks(ImAxis_X1, 0 + 1.0 / 16.0, 1 - 1.0 / 16.0, 8, xlabels);
+			ImPlot::SetupAxisTicks(ImAxis_Y1, 1 - 1.0 / 16.0, 0 + 1.0 / 16.0, 8, ylabels);
+			ImPlot::PlotHeatmap("DC Voltages", hm[0], 8, 8, -voltageRange, voltageRange, "", ImPlotPoint(0, 0), ImPlotPoint(1, 1), ImPlotHeatmapFlags_None);
+			ImPlot::EndPlot();
+		}
+
+		ImGui::SameLine();
+		ImPlot::ColormapScale("V", -voltageRange, voltageRange, ImVec2(60, width));
+
+		ImPlot::PopColormap();
+
+		ImGui::PopID();
+		ImGui::End();
+
+	}
+
+
+	// Plot Individual AC or DC probe data
+	inline void plotIndividualLinePlot(ONI::Processor::BufferProcessor& bp, const ONI::Interface::PlotType& plotType){
 
 		std::string plotName = "";
 		size_t numProbes = bp.numProbes;
@@ -210,17 +289,9 @@ private:
 		std::string voltageStr = "";
 		float voltageRange = 0;
 
-
-		const std::vector<ONI::Frame::ProbeStatistics>* statistics = nullptr;
-
-
 		switch(plotType){
 		case PLOT_AC_DATA:
 		{
-			//numProbes = p.acProbeStats.size();
-			//frameCount = p.acProbeVoltages[0].size();
-			//voltages = &p.acProbeVoltages;
-			//statistics = &p.acProbeStats;
 			plotName = "AC Individual";
 			voltageRange = acVoltageRange;//6.0f;
 			voltageStr = "AC Voltages (mV)";
@@ -229,10 +300,6 @@ private:
 		}
 		case PLOT_DC_DATA:
 		{
-			//numProbes = p.dcProbeStats.size();
-			//frameCount = p.dcProbeVoltages[0].size();
-			//voltages = &p.dcProbeVoltages;
-			//statistics = &p.dcProbeStats;
 			plotName = "DC Individual";
 			voltageRange = 8.0f;
 			voltageStr = "DC Voltages (V)";
@@ -243,10 +310,6 @@ private:
 
 		if(frameCount == 0) return;
 
-		
-		//std::vector<ONI::Rhs2116StimulusData> stimData = stim->getStimuli();
-		//ONI::Rhs2116StimulusData defaultStimulus;
-
 		ImGui::Begin(plotName.c_str());
 		ImGui::PushID("##AllProbePlot");
 		static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg;
@@ -254,8 +317,6 @@ private:
 		static int offset = 0;
 
 		if(ImGui::BeginTable("##probetable", 3, flags, ImVec2(-1, 0))){
-
-
 
 			ImGui::TableSetupColumn("Probe", ImGuiTableColumnFlags_WidthFixed, 75.0f);
 			ImGui::TableSetupColumn("Metrics", ImGuiTableColumnFlags_WidthFixed, 75.0f);
@@ -268,17 +329,16 @@ private:
 
 				ImVec4 col = ImPlot::GetColormapColor(probe);
 
-				if(!channelSelect[probe]) continue; // only show selected probes
+				//if(!channelSelect[probe]) continue; // only show selected probes
 
 				ImGui::TableNextRow();
 
 				ImGui::TableSetColumnIndex(0);
 				ImGui::Text("Probe %d (%d)", probe, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap()[probe]);
 				ImGui::TableSetColumnIndex(1);
-
-
-				//ImGui::Text("%.3f %s \n%.3f avg \n%.3f dev \n%i N", (*voltages)[probe][offset], unitStr.c_str(), (*statistics)[probe].mean, (*statistics)[probe].deviation, frameCount);
-
+				bp.dataMutex[SPARSE_MUTEX].lock();
+				if(plotType == PLOT_AC_DATA) ImGui::Text("%.3f avg \n%.3f dev \n%i N", bp.probeStats[probe].mean, bp.probeStats[probe].deviation, frameCount);
+				bp.dataMutex[SPARSE_MUTEX].unlock();
 				ImGui::TableSetColumnIndex(2);
 
 				ImGui::PushID(probe);
@@ -290,9 +350,9 @@ private:
 				ONI::Processor::Rhs2116StimProcessor* stim = ONI::Global::model.getRhs2116StimProcessor();
 				if(stim->isStimulusOnDevice(probe)){
 					float* stimV = bp.sparseBuffer.getStimFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-					ONI::Interface::Sparkline2("##spark", voltages, stimV, frameCount, -voltageRange, voltageRange, offset, col, ImVec2(-1, probePlotHeight));
+					ONI::Interface::Sparkline2("##spark", voltages, stimV, frameCount, -voltageRange, voltageRange, offset, col, ImVec2(-1, 60));
 				} else{
-					ONI::Interface::Sparkline("##spark", voltages, frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, probePlotHeight));
+					ONI::Interface::Sparkline("##spark", voltages, frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 60));
 				}
 				bp.dataMutex[SPARSE_MUTEX].unlock();
 
@@ -301,7 +361,6 @@ private:
 
 			}
 
-			//ImPlot::PopColormap();
 			ImGui::EndTable();
 		}
 
@@ -342,7 +401,7 @@ private:
 				if(devP[0].size() != 2) for(size_t i = 0; i < numProbes; ++i) devP[i].resize(2);
 				if(devN[0].size() != 2) for(size_t i = 0; i < numProbes; ++i) devN[i].resize(2);
 
-				timeP[1] = frameCount * bp.sparseBuffer.millisPerStep;
+				timeP[1] = frameCount * bp.sparseBuffer.getMillisPerStep();
 				for(size_t probe = 0; probe < numProbes; ++probe) {
 					for(size_t frame = 0; frame < 2; ++frame){
 						devP[probe][frame] = ONI::Global::model.getSpikeProcessor()->getPosStDevMultiplied(probe);
@@ -437,7 +496,6 @@ protected:
 
 	bool bSelectAll = true;
 	
-	int probePlotHeight = 60;
 	float acVoltageRange = 0.06f;
 
 	int bufferSizeTimeMillis = -1;

@@ -625,8 +625,13 @@ public:
 		std::swap(sparseStepMillis, other.sparseStepMillis);
 		std::swap(bufferSizeSamples, other.bufferSizeSamples);
 		std::swap(sparseStepSamples, other.sparseStepSamples);
+		std::swap(bUseAutoThreshold, other.bUseAutoThreshold);
+		std::swap(autoThresholdMs, other.autoThresholdMs);
 		return *this;
 	}
+
+	bool bUseAutoThreshold = false;
+	int autoThresholdMs = 1000;
 
 protected:
 
@@ -635,6 +640,7 @@ protected:
 
 	size_t bufferSizeSamples = 5000.0f * RHS2116_SAMPLE_FREQUENCY_HZ;
 	size_t sparseStepSamples = 10.0f * RHS2116_SAMPLE_FREQUENCY_HZ;
+
 
 
 };

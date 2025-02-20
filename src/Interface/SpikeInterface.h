@@ -55,23 +55,27 @@ public:
 		ImGui::PushID(sp.getName().c_str());
 		ImGui::Text(sp.getName().c_str());
 		
-		static std::vector<float> timeStamps;
 		static std::vector< std::vector<float>> devP;
 		static std::vector< std::vector<float>> devN;
-		
-		if(frameCount != 0 && numProbes != 0){
-			
-			if(devP.size() != numProbes) devP.resize(numProbes);
-			if(devN.size() != numProbes) devN.resize(numProbes);
-			if(devP[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devP[i].resize(frameCount);
-			if(devN[0].size() != frameCount) for(size_t i = 0; i < numProbes; ++i) devN[i].resize(frameCount);
-			for(size_t probe = 0; probe < numProbes; ++probe) {
-				for(size_t frame = 0; frame < frameCount; ++frame){
-					devP[probe][frame] = ONI::Global::model.getSpikeProcessor()->getStDev(probe) * ONI::Global::model.getSpikeProcessor()->settings.positiveDeviationMultiplier;
-					devN[probe][frame] = -ONI::Global::model.getSpikeProcessor()->getStDev(probe) * ONI::Global::model.getSpikeProcessor()->settings.negativeDeviationMultiplier;
-				}
+		std::vector<float> timeP;
+
+		if(devP.size() != numProbes) devP.resize(numProbes);
+		if(devN.size() != numProbes) devN.resize(numProbes);
+		if(timeP.size() != 2) {
+			timeP.resize(2);
+			timeP[0] = 0;
+		}
+		if(devP[0].size() != 2) for(size_t i = 0; i < numProbes; ++i) devP[i].resize(2);
+		if(devN[0].size() != 2) for(size_t i = 0; i < numProbes; ++i) devN[i].resize(2);
+
+		timeP[1] = frameCount * sp.getMillisPerStep();
+		for(size_t probe = 0; probe < numProbes; ++probe) {
+			for(size_t frame = 0; frame < 2; ++frame){
+				devP[probe][frame] = sp.getPosStDevMultiplied(probe);
+				devN[probe][frame] = sp.getNegStDevMultiplied(probe);
 			}
 		}
+
 		static bool bNeedsUpdate = false;
 		static bool bFirstLoad = true;
 		if(bFirstLoad){
@@ -96,11 +100,7 @@ public:
 		if(ImGui::Checkbox("Align Falling Edges to Peak", &nextSettings.bFallingAlignMax)) bNeedsUpdate = true;
 		if(ImGui::Checkbox("Align Rising Edges to Trough", &nextSettings.bRisingAlignMin)) bNeedsUpdate = true;
 
-		if(ImGui::Button("Estimate Std Deviation")){
-			sp.estimateStats();
-			bNeedsUpdate = true;
-		}
-		//if(ImGui::Checkbox("Align Rising Edges to Peak", &sp.settings.bFallingAlignMax)){}
+		ImGui::InputFloat("Voltage Range", &voltageRange);
 
 		if(!bNeedsUpdate) ImGui::BeginDisabled();
 
@@ -130,30 +130,18 @@ public:
 		if(ImGui::BeginTable("##spiketable", 8, flags, ImVec2(-1, 0))){
 
 
-
-			//ImGui::TableSetupColumn("Probe", ImGuiTableColumnFlags_WidthFixed, 75.0f);
-			//ImGui::TableSetupColumn("Metrics", ImGuiTableColumnFlags_WidthFixed, 75.0f);
-			//ImGui::TableSetupColumn(voltageStr.c_str());
-
 			ImGui::TableHeadersRow();
-			//ImPlot::PushColormap(ImPlotColormap_Cool);
 
 			for(int probe = 0; probe < sp.numProbes; probe++){
 
 				ImVec4 col = ImPlot::GetColormapColor(probe);
 
-				//if(!channelSelect[probe]) continue; // only show selected probes
-
 				if(probe % 8 == 0) ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(probe % 8);
-				//ImGui::TableSetColumnIndex(0);
-				////ImGui::Text("Probe %d (%d)", probe, inverseChannelIDX[probe]);
-				//ImGui::TableSetColumnIndex(1);
-				////ImGui::Text("%.3f %s \n%.3f avg \n%.3f dev \n%i N", (*voltages)[probe][offset], unitStr.c_str(), (*statistics)[probe].mean, (*statistics)[probe].deviation, frameCount);
-				//ImGui::TableSetColumnIndex(2);
+
 
 				ImGui::PushID(probe);
-				float voltageRange = 0.02;
+				
 				
 				ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
 
@@ -173,10 +161,10 @@ public:
 						ImPlot::PlotLine("##spark", &sp.spikes[probe][j].rawWaveform[0], sp.spikes[probe][j].rawWaveform.size(), 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
 						
 						if(frameCount != 0 && numProbes != 0){
-							ImPlot::SetNextLineStyle(ImVec4(0.5, 0, 0, 0.2), 0.2);
-							ImPlot::PlotLine("##devP", &devP[probe][0], frameCount, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
-							ImPlot::SetNextLineStyle(ImVec4(0, 0.5, 0, 0.2), 0.2);
-							ImPlot::PlotLine("##devN", &devN[probe][0], frameCount, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+							ImPlot::SetNextLineStyle(ImVec4(1, 0, 0, 0.5));
+							ImPlot::PlotLine("##devP", &timeP[0], &devP[probe][0], 2, ImPlotLineFlags_None, offset);
+							ImPlot::SetNextLineStyle(ImVec4(0, 1, 0, 0.5));
+							ImPlot::PlotLine("##devN", &timeP[0], &devN[probe][0], 2, ImPlotLineFlags_None, offset);
 						}
 
 					}
@@ -184,27 +172,17 @@ public:
 				}
 
 				ImPlot::PopStyleVar();
-				//ONI::Interface::Sparkline("##spark", &sp.spikes[probe][j].rawWaveform[0], sp.spikes[probe][j].rawWaveform.size(), -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 60));
-
-				
-				
-
 
 				ImGui::PopID();
 
 			}
 
-			//ImPlot::PopColormap();
 			ImGui::EndTable();
 		}
 
 		ImGui::PopID();
 		ImGui::End();
 
-
-		for(size_t probe = 0; probe < sp.numProbes; ++probe){
-			
-		}
 		ImGui::PopID();
 
 	};
@@ -223,6 +201,7 @@ protected:
 
 	bool bUseFallingEdge = true;
 	bool bUseRisingEdge = false;
+	float voltageRange = 0.04;
 
 };
 

@@ -22,7 +22,6 @@
 #include <syncstream>
 
 #include "../Type/Log.h"
-#include "../Type/DataBuffer.h"
 #include "../Type/RegisterTypes.h"
 #include "../Type/SettingTypes.h"
 #include "../Type/FrameTypes.h"

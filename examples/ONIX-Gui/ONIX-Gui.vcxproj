@@ -193,6 +193,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\ofxFutilities\libs\FontIcons\IconsMaterialSymbols.h" />
+    <ClInclude Include="..\..\src\Interface\BufferPlotHelpers.h" />
     <ClInclude Include="src\ofApp.h" />
     <ClInclude Include="..\..\..\..\addons\ofxBoost1.81\src\BoostSerializer.h" />
     <ClInclude Include="..\..\..\..\addons\ofxOpenCv\src\ofxCvBlob.h" />
@@ -927,7 +928,6 @@
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\FilterInterface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\FmcInterface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\HeartBeatInterface.h" />
-    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\PlotHelpers.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\RecordInterface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\Rhs2116Interface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\Rhs2116MultiInterface.h" />
@@ -942,7 +942,6 @@
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Processor\Rhs2116MultiProcessor.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Processor\Rhs2116StimProcessor.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Processor\SpikeProcessor.h" />
-    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\DataBuffer.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\FrameBuffer.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\FrameTypes.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Type\GlobalTypes.h" />

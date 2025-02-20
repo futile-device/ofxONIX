@@ -22,7 +22,6 @@
 #include <syncstream>
 
 #include "../Type/Log.h"
-#include "../Type/DataBuffer.h"
 #include "../Type/RegisterTypes.h"
 #include "../Type/SettingTypes.h"
 #include "../Type/FrameTypes.h"
@@ -43,12 +42,6 @@ struct Spike{
     float minVoltage = INFINITY;
     float maxVoltage = -INFINITY;
 };
-
-//struct acquisition_spike_compare {
-//    inline bool operator() (const ONI::Spike& lhs, const ONI::Spike& rhs){
-//        return (lhs.acquisitionTime < rhs.acquisitionTime);
-//    }
-//};
 
 namespace Interface{
 class SpikeInterface;
@@ -88,10 +81,10 @@ public:
 
         settings.spikeEdgeDetectionType = ONI::Settings::SpikeEdgeDetectionType::EITHER;
 
-        settings.positiveDeviationMultiplier = 4.0f;
-        settings.negativeDeviationMultiplier = 4.0f;
+        settings.positiveDeviationMultiplier = 4.5f;
+        settings.negativeDeviationMultiplier = 4.5f;
 
-        settings.spikeWaveformLengthMs = 2;
+        settings.spikeWaveformLengthMs = 3;
         settings.spikeWaveformLengthSamples = settings.spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
         settings.spikeWaveformBufferSize = 10;
 
@@ -112,7 +105,7 @@ public:
         spikeCounts.clear();
         spikes.clear();
 
-        probeStats.resize(numProbes);
+        //probeStats.resize(numProbes);
         nextPeekDetectBufferCount.resize(numProbes);
         spikeIndexes.resize(numProbes);
         spikeCounts.resize(numProbes);
@@ -127,7 +120,7 @@ public:
                 spikes[probe][i].rawWaveform.resize(settings.spikeWaveformLengthSamples);
             }
         }
-
+        bFirstEstimate = true;
         bThread = true;
         thread = std::thread(&ONI::Processor::SpikeProcessor::processSpikes, this);
     };
@@ -138,12 +131,6 @@ public:
     void processSpikes() {
 
         while(bThread) {
-
-            // get the AC probe statistics including mean/std dev etc ]
-            // which are calculate on the sparse buffer
-            //bufferProcessor->processMutex[SPARSE_MUTEX].lock();
-            //probeStats = bufferProcessor->sparseProbeData[FRONT_BUFFER].acProbeStats;
-            //bufferProcessor->processMutex[SPARSE_MUTEX].unlock();
 
             // get a reference to the dense buffer (ie., all samples)
             bufferProcessor->dataMutex[DENSE_MUTEX].lock();
@@ -158,7 +145,7 @@ public:
 
                     if(bFirstEstimate) {
                         bFirstEstimate = false;
-                        estimateStats();
+                        bufferProcessor->calculateThresholds();
                     }
 
                     // we are going to search for spikes from the 'central' time point in the frame buffer
@@ -176,7 +163,7 @@ public:
                         using ONI::Settings::SpikeEdgeDetectionType;
 
 
-                        if(frame.ac_uV[probe] < -probeStats[probe].deviation * settings.negativeDeviationMultiplier &&
+                        if(frame.ac_uV[probe] < -bufferProcessor->getProbeStats()[probe].deviation * settings.negativeDeviationMultiplier &&
                            (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::FALLING || 
                             settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER ||
                             settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH)){
@@ -196,7 +183,7 @@ public:
                             }
 
                             if((settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::FALLING || settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER) ||
-                               (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && peakVoltage > probeStats[probe].deviation * settings.positiveDeviationMultiplier)){ // ...reject if max voltage is not over the threshold
+                               (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && peakVoltage > bufferProcessor->getProbeStats()[probe].deviation * settings.positiveDeviationMultiplier)){ // ...reject if max voltage is not over the threshold
                                 
                                 size_t halfLength = std::floor(settings.spikeWaveformLengthSamples / 2);
  
@@ -233,7 +220,7 @@ public:
                         }
                         
 
-                        if(frame.ac_uV[probe] > probeStats[probe].deviation * settings.positiveDeviationMultiplier &&
+                        if(frame.ac_uV[probe] > bufferProcessor->getProbeStats()[probe].deviation * settings.positiveDeviationMultiplier &&
                            (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::RISING || 
                             settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER ||
                             settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH)){
@@ -253,7 +240,7 @@ public:
 
 
                             if((settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::RISING || settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER) ||
-                               (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && troughVoltage < -probeStats[probe].deviation * settings.negativeDeviationMultiplier)){ // ...reject if min voltage is not under the threshold
+                               (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && troughVoltage < -bufferProcessor->getProbeStats()[probe].deviation * settings.negativeDeviationMultiplier)){ // ...reject if min voltage is not under the threshold
 
                                 size_t halfLength = std::floor(settings.spikeWaveformLengthSamples / 2);
 
@@ -304,54 +291,21 @@ public:
 
     }
 
-    inline void estimateStats(){
-
-        //probeStats.resize(numProbes);
-
-        bufferProcessor->bufferToProbeData(bufferProcessor->sparseBuffer, bufferProcessor->sparseProbeData, 1);
-
-        bufferProcessor->processMutex[SPARSE_MUTEX].lock();
-        probeStats = bufferProcessor->sparseProbeData[FRONT_BUFFER].acProbeStats;
-        bufferProcessor->processMutex[SPARSE_MUTEX].unlock();
-
-        //bufferProcessor->dataMutex[SPARSE_MUTEX].lock();
-        //ONI::FrameBuffer& buffer = bufferProcessor->sparseBuffer;
-        //size_t frameCount = buffer.size();
-        //for(size_t probe = 0; probe < numProbes; ++probe) {
-
-        //    float* acVoltages = buffer.getAcuVFloatRaw(probe, bufferProcessor->sparseBuffer.getCurrentIndex());
-
-        //    probeStats[probe].sum = 0;
-
-        //    for(size_t frame = 0; frame < frameCount; ++frame){
-        //        probeStats[probe].sum += acVoltages[frame];
-        //    }
-
-        //    LOGDEBUG("Sum: %i %0.3f", probe, probeStats[probe].sum);
-        //    probeStats[probe].mean = probeStats[probe].sum / frameCount;
-        //    probeStats[probe].ss = 0;
-        //    for(size_t frame = 0; frame < frameCount; ++frame) {
-        //        float acdiff = acVoltages[frame] - probeStats[probe].mean;
-        //        probeStats[probe].ss += acdiff * acdiff;
-        //    }
-        //    probeStats[probe].variance = probeStats[probe].ss / (frameCount - 1);  // use population (N) or sample (n-1) deviation?
-        //    LOGDEBUG("variance: %i %0.3f", probe, probeStats[probe].variance);
-        //}
-
-        //bufferProcessor->dataMutex[SPARSE_MUTEX].unlock();
+    inline float getMillisPerStep(){
+        return bufferProcessor->sparseBuffer.getMillisPerStep();
     }
 
     inline float getPosStDevMultiplied(const size_t& probe){
-        return probeStats[probe].deviation * settings.positiveDeviationMultiplier;
+        return bufferProcessor->getProbeStats()[probe].deviation * settings.positiveDeviationMultiplier;
     }
 
 
     inline float getNegStDevMultiplied(const size_t& probe){
-        return -probeStats[probe].deviation * settings.negativeDeviationMultiplier;
+        return -bufferProcessor->getProbeStats()[probe].deviation * settings.negativeDeviationMultiplier;
     }
 
     inline float getStDev(const size_t& probe){
-        return probeStats[probe].deviation;
+        return bufferProcessor->getProbeStats()[probe].deviation;
     }
 
 protected:
@@ -365,8 +319,6 @@ protected:
     std::vector<size_t> spikeCounts;
 
     std::vector< std::vector< ONI::Spike > > spikes;
-
-    std::vector<ONI::Frame::ProbeStatistics> probeStats;
 
     ONI::Processor::BufferProcessor* bufferProcessor;
 
