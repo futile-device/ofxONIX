@@ -48,8 +48,9 @@ public:
 	~HeartBeatDevice(){
 		LOGDEBUG("HeartBeat Device DTOR");
 	};
-
+	bool bReset = false;
 	void reset(){
+		bReset = true;
 		getFrequencyHz(true);
 	}
 

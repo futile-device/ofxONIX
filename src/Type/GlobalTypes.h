@@ -27,10 +27,15 @@
 
 #pragma once
 
-#define RHS2116_SAMPLE_FREQUENCY_HZ 30.1932367151e3
-#define RHS2116_SAMPLE_FREQUENCY_MS RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0
-#define RHS2116_SAMPLE_FREQUENCY_NS RHS2116_SAMPLE_FREQUENCY_HZ / 1000000000.0
-#define RHS2116_NUM_DEVICE_PROBES 16
+
+constexpr long double nanos_to_seconds = 1000000000.0; // conversion factor
+constexpr long double nanos_to_millis = 1000000.0;
+
+constexpr long double RHS2116_SAMPLE_FREQUENCY_HZ = 30.1932367151e3;
+constexpr long double RHS2116_SAMPLE_FREQUENCY_MS = RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0;
+constexpr long double RHS2116_SAMPLE_FREQUENCY_NS = RHS2116_SAMPLE_FREQUENCY_HZ / nanos_to_seconds;
+constexpr long double RHS2116_SAMPLE_WAIT_TIME_NS = 1.0 / RHS2116_SAMPLE_FREQUENCY_HZ * nanos_to_seconds;
+constexpr long double RHS2116_NUM_DEVICE_PROBES = 16;
 
 namespace ONI{
 
@@ -66,9 +71,6 @@ static std::string GetExecutableDataPath(){
 	path_string = path_string.substr(0, slash);
 	return path_string;
 }
-
-constexpr long double nanos_to_seconds = 1000000000.0; // conversion factor
-constexpr long double nanos_to_millis = 1000000.0;
 
 static inline std::string GetAcquisitionTimeStamp(const uint64_t& start, const uint64_t& end){
 	//if(start < end) return "00:00:00:000.000";
@@ -207,11 +209,15 @@ public:
 		return sys_clock_khz;
 	}
 
-	std::map<uint32_t, ONI::Device::BaseDevice*>& getDevices(){
+	inline ONI::Device::BaseDevice* getDevice(const uint32_t& id){
+		return devices[id];
+	}
+
+	inline std::map<uint32_t, ONI::Device::BaseDevice*>& getDevices(){
 		return devices;
 	}
 
-	std::map<ONI::Processor::TypeID, ONI::Processor::BaseProcessor*>& getProcessors(){
+	inline std::map<ONI::Processor::TypeID, ONI::Processor::BaseProcessor*>& getProcessors(){
 		return processors;
 	}
 

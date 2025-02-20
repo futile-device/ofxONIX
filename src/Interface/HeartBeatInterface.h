@@ -44,25 +44,26 @@ public:
 	};
 
 	void reset(){
-		
+		realTime.start();
+		realAvgHeartBeat = 0;
 	};
+
 	inline void process(oni_frame_t* frame){}; // nothing
-	bool bStart = true;
+
 	inline void process(ONI::Frame::BaseFrame& frame){
-		if(bStart){
-			bStart = false;
-			realTime.start();
-		}
 		bHeartBeat = !bHeartBeat;
 		deltaTime = frame.getDeltaTime();
-		cH = realTime.count<fu::millis>();
-		//realTime.count();
+		realAvgHeartBeat = realTime.count<fu::millis>();
 	};
-	fu::Timer realTime;
-	float cH = 0;
+
 	inline void gui(ONI::Processor::BaseProcessor& processor){
 
 		ONI::Device::HeartBeatDevice& hbd = *reinterpret_cast<ONI::Device::HeartBeatDevice*>(&processor);
+
+		if(hbd.bReset){ // hack shiz
+			hbd.bReset = false;
+			reset();
+		}
 
 		hbd.subscribeProcessor(processorName, ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
 
@@ -70,8 +71,8 @@ public:
 		ImGui::Text(hbd.getName().c_str());
 
 		ImGui::RadioButton("HeartBeat", bHeartBeat); ImGui::SameLine();
-		ImGui::Text(" %0.3f (ms)", deltaTime / 1000.0f);
-		ImGui::Text(" %0.3f (ms)", cH);
+		ImGui::Text(" %0.3f (ms)", deltaTime / 1000.0f); ImGui::SameLine();
+		ImGui::Text(" %0.3f (ms)", realAvgHeartBeat);
 		ImGui::Separator();
 		ImGui::Separator();
 
@@ -89,6 +90,9 @@ public:
 	}
 
 protected:
+
+	fu::Timer realTime;
+	float realAvgHeartBeat = 0;
 
 	std::atomic_bool bHeartBeat = false;
 	std::atomic_uint64_t deltaTime = 0;

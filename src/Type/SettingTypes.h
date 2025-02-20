@@ -778,6 +778,7 @@ struct RecordSettings{
 	std::string description = "";
 	std::string info = "";
 
+	uint32_t heartBeatRateHz = 1;
 	uint64_t acquisitionStartTime = 0;
 	uint64_t acquisitionEndTime = 0;
 	uint64_t acquisitionCurrentTime = 0;
@@ -793,6 +794,7 @@ struct RecordSettings{
 		std::swap(fileTimeStamp, other.fileTimeStamp);
 		std::swap(description, other.description);
 		std::swap(info, other.info);
+		std::swap(heartBeatRateHz, other.heartBeatRateHz);
 		std::swap(acquisitionStartTime, other.acquisitionStartTime);
 		std::swap(acquisitionEndTime, other.acquisitionEndTime);
 		std::swap(acquisitionCurrentTime, other.acquisitionCurrentTime);
@@ -812,6 +814,7 @@ inline bool operator==(const RecordSettings& lhs, const RecordSettings& rhs){
 			lhs.fileTimeStamp == rhs.fileTimeStamp &&
 			lhs.description == rhs.description &&
 			lhs.info == rhs.info &&
+			lhs.heartBeatRateHz == rhs.heartBeatRateHz &&
 			lhs.acquisitionStartTime == rhs.acquisitionStartTime &&
 			lhs.acquisitionEndTime == rhs.acquisitionEndTime &&
 			lhs.acquisitionCurrentTime == rhs.acquisitionCurrentTime);

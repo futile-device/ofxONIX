@@ -45,7 +45,7 @@ void ofApp::setup(){
     //oni.printDeviceTable();
 
     ONI::Device::HeartBeatDevice* heartBeatDevice = (ONI::Device::HeartBeatDevice*)oni.getDevice(0); // for some reason we need to do this before a context restart
-    heartBeatDevice->setFrequencyHz(1);
+    heartBeatDevice->setFrequencyHz(100);
 
     //oni.update(); // requires an update to set the heart beat frequency, could wait 
 

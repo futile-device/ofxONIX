@@ -46,6 +46,78 @@ class RecordInterface;
 
 namespace Processor{
 
+//std::map<uint32_t, DeviceChannel*> deviceChannels;
+//class DeviceChannel{
+//
+//public:
+//
+//	~DeviceChannel(){};
+//
+//	void setup(ONI::Device::BaseDevice* device, const int& waitTimeNanos){
+//		this->device = device;
+//		this->waitTimeNanos = waitTimeNanos;
+//		bThread = true;
+//		thread = std::thread(&DeviceChannel::process, this);
+//	}
+//
+//	inline void push(ONI::Frame::Rhs2116DataRaw* frameRaw){
+//		const std::lock_guard<std::mutex> lock(mutex);
+//		frames.push(new ONI::Frame::Rhs2116DataRaw);
+//		std::memcpy(frames.back(), frameRaw, sizeof(ONI::Frame::Rhs2116DataRaw));
+//	}
+//
+//	inline void process(){
+//
+//		while(bThread){
+//
+//			mutex.lock();
+//
+//			if(frames.size() > 0){
+//
+//				ONI::Frame::Rhs2116DataRaw* frame_in = frames.front();
+//
+//				oni_frame_t* frame = reinterpret_cast<oni_frame_t*>(frame_in); // this is kinda nasty ==> will it always work
+//
+//				frame->data = new char[74];
+//				memcpy(frame->data, frame_in->data, 74);
+//
+//				device->process(frame);
+//
+//				delete[] frame->data;
+//				delete frame_in;
+//
+//				frames.pop();
+//
+//				using namespace std::chrono;
+//				uint64_t elapsed = 0;
+//				uint64_t start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+//				while(elapsed - start < waitTimeNanos){
+//					elapsed = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+//					std::this_thread::yield();
+//				}
+//
+//			}else{
+//				std::this_thread::yield();
+//			}
+//			
+//			mutex.unlock();
+//
+//		}
+//
+//	}
+//
+//	volatile uint64_t lastAcquireTimeStamp = 0;
+//	volatile int waitTimeNanos = 0;
+//
+//	ONI::Device::BaseDevice * device = nullptr;
+//	std::queue<ONI::Frame::Rhs2116DataRaw*> frames;
+//
+//	volatile bool bThread = false;
+//	std::mutex mutex;
+//	std::thread thread;
+//
+//};
+
 class RecordProcessor : public BaseProcessor{
 
 public:
@@ -78,17 +150,6 @@ public:
 
 	void reset(){
 	
-		//if(state == RECORDING){ // reset and rewrite the system acquisition clock
-		//	LOGINFO("Actually start recording");
-		//	contextDataStream = std::fstream(ofToDataPath("data_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
-		//	contextTimeStream = std::fstream(ofToDataPath("time_stream.dat"), std::ios::binary | std::ios::in | std::ios::out | std::ios::app);
-		//	contextDataStream.seekg(0, ::std::ios::beg);
-		//	contextTimeStream.seekg(0, ::std::ios::beg);
-		//	using namespace std::chrono;
-		//	uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-		//	contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
-		//	if(contextTimeStream.bad()) LOGERROR("Bad init time frame write");
-		//}
 
 	};
 
@@ -221,6 +282,10 @@ public:
 			infostream.open(osI.str().c_str());
 			std::string line; std::ostringstream osInf;
 			while(std::getline(infostream, line)){
+				std::string hz = "HeartBeat Hz: ";
+				if(line.find(hz) != std::string::npos){
+					settings.heartBeatRateHz = std::atoi(line.substr(line.find(hz) + hz.size()).c_str());
+				}
 				osInf << line << "\n";
 			}
 			info = osInf.str();
@@ -261,6 +326,10 @@ public:
 			infostream.open(settings.infoFileName.c_str());
 			std::string line; std::ostringstream osInf;
 			while(std::getline(infostream, line)){
+				std::string hz = "HeartBeat Hz: ";
+				if(line.find(hz) != std::string::npos){
+					settings.heartBeatRateHz = std::atoi(line.substr(line.find(hz) + hz.size()).c_str());
+				}
 				osInf << line << "\n";
 			}
 			settings.info = osInf.str();
@@ -273,15 +342,11 @@ public:
 
 	}
 
-	std::string getInfoForFolder(const std::string& path){
-		
-	}
-
 private:
 
 	void _play(){
 
-		timeBeginPeriod(1);
+		//timeBeginPeriod(1);
 
 		bPlaybackNeedsStart = bRecordNeedsStart = false;
 
@@ -319,13 +384,30 @@ private:
 		bPlaybackNeedsDependencyReset = true;
 		state = PLAYING;
 
-		bThread = true;
+		//std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
+		//for(auto& it : devices){
+		//	auto dit = deviceChannels.find(it.first);
+		//	if(dit == deviceChannels.end()){
+		//		deviceChannels[it.first] = new DeviceChannel;
+		//		if(it.first == 256 || it.first == 257 || it.first == 512 || it.first == 513){
+		//			deviceChannels[it.first]->setup(it.second, RHS2116_SAMPLE_WAIT_TIME_NS); // 33119.999999863810560000560010977
+		//		} else{
+		//			deviceChannels[it.first]->setup(it.second, 0);
+		//		}
+		//		
+		//	}
+		//}
 
+
+		realHeartBeatTimer.start();
+		playBackSpeedFactor = 1.4; // hacky but helps
+
+		bThread = true;
 		thread = std::thread(&RecordProcessor::playFrames, this);
 
 		//startAcquisition();
 	}
-
+	
 
 	void _record(){
 
@@ -403,42 +485,43 @@ private:
 
 		if(state == RECORDING){
 
-			//if(frame->dev_idx == 256 || frame->dev_idx == 257){
+			using namespace std::chrono;
+			uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
 
-				using namespace std::chrono;
-				uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+			ONI::Frame::Rhs2116DataRaw* frame_out = new ONI::Frame::Rhs2116DataRaw;
 
-				ONI::Frame::Rhs2116DataRaw * frame_out = new ONI::Frame::Rhs2116DataRaw;
+			frame_out->time = frame->time;
+			frame_out->dev_idx = frame->dev_idx;
+			frame_out->data_sz = frame->data_sz;
 
-				frame_out->time = frame->time;
-				frame_out->dev_idx = frame->dev_idx;
-				frame_out->data_sz = frame->data_sz;
+			std::memcpy(frame_out->data, frame->data, frame->data_sz);
+			streamMutex.lock();
 
-				std::memcpy(frame_out->data, frame->data, frame->data_sz);
-				streamMutex.lock();
+			settings.acquisitionCurrentTime = systemAcquisitionTimeStamp;
 
-				settings.acquisitionCurrentTime = systemAcquisitionTimeStamp;
+			contextDataStream.write(reinterpret_cast<char*>(frame_out), sizeof(ONI::Frame::Rhs2116DataRaw));
+			if(contextDataStream.bad()){
+				LOGERROR("Bad data frame write");
+			}
 
-				contextDataStream.write(reinterpret_cast<char*>(frame_out), sizeof(ONI::Frame::Rhs2116DataRaw));
-				if(contextDataStream.bad()){
-					LOGERROR("Bad data frame write");
-				}
+			contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
+			if(contextTimeStream.bad()){
+				LOGERROR("Bad time frame write");
+			}
+			streamMutex.unlock();
+			delete frame_out;
 
-				contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
-				if(contextTimeStream.bad()){
-					LOGERROR("Bad time frame write");
-				}
-				streamMutex.unlock();
-				delete frame_out;
-				settings.fileLengthTimeStamp = ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
-				
-			//}
+			settings.fileLengthTimeStamp = ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
 
 		}else{
 			std::this_thread::yield();
 		}
 
 	}
+
+	fu::Timer realHeartBeatTimer;
+	double realHeartBeatAvg = 1;
+	float playBackSpeedFactor = 1.4;
 
 	void playFrames(){
 
@@ -447,8 +530,8 @@ private:
 			if(state == PLAYING){
 
 				using namespace std::chrono;
-				uint64_t elapsed = 0;
-				uint64_t start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+				int elapsed = 0;
+				int start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
 
 				streamMutex.lock();
 				contextTimeStream.read(reinterpret_cast<char*>(&systemAcquisitionTimeStamp),  sizeof(uint64_t));
@@ -474,19 +557,52 @@ private:
 				}
 				streamMutex.unlock();
 
+
+				/*
+				auto it = deviceChannels.find((uint32_t)frame_in->dev_idx);
+
+				if(it == deviceChannels.end()){
+					LOGERROR("ONI DeviceChannel doesn't exist with idx: %i", frame_in->dev_idx);
+				}else{
+					it->second->push(frame_in);
+					//delete frame_in;
+				}
+
+				delete frame_in;
+				*/
+				
 				oni_frame_t* frame = reinterpret_cast<oni_frame_t*>(frame_in); // this is kinda nasty ==> will it always work
 
 				frame->data = new char[74];
 				memcpy(frame->data, frame_in->data, 74);
 
 				std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
-
+				
 				auto it = devices.find((uint32_t)frame->dev_idx);
 
 				if(it == devices.end()){
 					LOGERROR("ONI Device doesn't exist with idx: %i", frame->dev_idx);
 				}else{
+
 					//LOGDEBUG("Play device frame: %i", frame->dev_idx);
+
+					// This is HORRIBLE but it works - for various reasons
+					// (clock drift, load variation, thread locks), the system
+					// timestamps are drifting badly out of time, so this hack
+					// compares the heartbeat Hz to the real time between decoding
+					// the heartbeat frames and adjusts a multiplier for the 
+					// elapsed time between frames - like I said it's HORRIBLE
+					// 
+					// TODO: use a lower resolution clock to buffer frames???
+
+					if(frame->dev_idx == 0){ 
+						realHeartBeatAvg = (double)(realHeartBeatTimer.stop() / nanos_to_seconds * settings.heartBeatRateHz);
+						realHeartBeatTimer.start();
+						if(realHeartBeatAvg > 1) playBackSpeedFactor += (realHeartBeatAvg - 1) / 2.0;
+						if(realHeartBeatAvg < 1) playBackSpeedFactor -= (1 - realHeartBeatAvg) / 2.0;
+						//LOGDEBUG("Heartbeat Acq: %I64u %0.3f %0.3f", frame->time, realHeartBeatAvg, mFactor);
+					}
+					
 					auto device = it->second;
 					device->process(frame);	
 
@@ -495,31 +611,29 @@ private:
 				delete [] frame->data;
 				delete frame_in;
 
-				int64_t deltaTimeStamp = systemAcquisitionTimeStamp - lastAcquireTimeStamp;
+				int deltaTimeStamp = systemAcquisitionTimeStamp - lastAcquireTimeStamp;
 
 				if(deltaTimeStamp < 0){
 					LOGALERT("Playback delta time negative: %i", deltaTimeStamp);
 					deltaTimeStamp = 0;
 				}
+
 				
-				while(elapsed <= deltaTimeStamp){ // hmmm this is a total hack for now
+
+				while(deltaTimeStamp - elapsed * playBackSpeedFactor  > 0){ // hmmm this is a total HORRIBLE hack for now
 					elapsed = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - start;
 					std::this_thread::yield();
-					//std::this_thread::sleep_for(1ns);
 				}
 
 				//LOGDEBUG("delta: %i || actual: %i", deltaTimeStamp, elapsed);
 
 				lastAcquireTimeStamp = systemAcquisitionTimeStamp;
-
+				
 
 			}else{
 				LOGDEBUG("Should never have to break playback here??!");
 				break;
 			}
-
-			
-
 
 
 		}

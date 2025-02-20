@@ -130,7 +130,7 @@ public:
 
 			if(recordProcessor->bPlaybackNeedsStart) play();
 			if(recordProcessor->bRecordNeedsStart) record();
-
+			
 			bIsPlaying = recordProcessor->isPlaying() || recordProcessor->isPaused();
 			bIsRecording = recordProcessor->isRecording();
 		}
