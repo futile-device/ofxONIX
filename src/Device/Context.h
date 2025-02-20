@@ -49,20 +49,19 @@
 #include "../Interface/Rhs2116StimInterface.h"
 #include "../Interface/FilterInterface.h"
 
-// TODO:: Finish off recorder interface: time, play, pause, load, save, export, meta data, auto name with datetime
 
-// TODO:: add freeze/pause/zoom/scroll for waveforms
-// TODO:: add options for windowed std dev calculations
-// TODO:: Implement spike detector using basic std dev
-// TODO:: Implmenet simple spike classifier view
-
-
-// TODO:: Refactor ONIContext to Context and ofxOnix.h
-// TODO:: Finesse Add BurstFrequency type to the stimulus settings
 // TODO:: Implment audio output of frame buffers
+// TODO:: add freeze/pause/zoom/scroll for waveforms
+// TODO:: Finesse Add BurstFrequency type to the stimulus settings
 
 
 
+
+// DONE:: add options for windowed std dev calculations
+// DONE:: Implement spike detector using basic std dev
+// DONE:: Implmenet simple spike classifier view
+// DONE:: Refactor ONIContext to Context and ofxOnix.h
+// DONE:: Finish off recorder interface: time, play, pause, load, save, export, meta data, auto name with datetime
 // DONE:: Visualise/and functionilise suppressing spike detection during stimulation
 // DONE:: Refactor Processor and Device base classes
 // DONE:: Implement global/model for ctx, clocks, sample rates, channel map etc
@@ -146,10 +145,6 @@ public:
 			}
 		}
 
-		//if(bIsRecording && !ONI::Global::model.bIsAcquiring){
-		//	startAcquisition(); // this isn't elegant but necessary if we don't create proxy functions on the oni Context for starting a recording
-		//}
-
 		if(!ONI::Global::model.bIsContextSetup) return;
 
 		bool bContextNeedsRestart = false;
@@ -199,10 +194,8 @@ public:
 			if(bResetAcquire) stopAcquisition();
 			setContextOption(ONI::ContextOption::RESET, 1);
 			if(bResetAcquire) startAcquisition();
-			//deviceRequestedChange->reset();
 		}
 
-		//if(bStopPlaybackThread) stopPlaying();
 
 	}
 
@@ -274,18 +267,12 @@ public:
 		return val;
 	}
 
-	//volatile oni_ctx* getContext(){
-	//	return &ctx;
-	//}
-
 	void startAcquisition(){
 		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 		if(recordProcessor != nullptr) recordProcessor->stop();
 		ONI::Global::model.getBufferProcessor()->reset();
 		startFrameRead();
 		startContext();
-		//ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
-		//if(recordProcessor->isRecording()) recordProcessor->reset(); // redundant except we need to reset the recording starttime
 		ONI::Global::model.bIsAcquiring = true;
 	}
 
@@ -299,10 +286,6 @@ public:
 
 	void closeContext(){
 		LOGDEBUG("Closing ONIX Context...");
-		//ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
-		//if(recordProcessor != nullptr) recordProcessor->stop();
-		// lets set 0 voltage on exit??
-
 
 		volatile oni_ctx* ctx = ONI::Global::model.getOnixContext();
 		if(ctx == nullptr) return; // nothing to do
@@ -472,13 +455,10 @@ private:
 
 	void stopFrameRead(){
 		LOGDEBUG("Stopping frame read thread");
-		//ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
-		//if(recordProcessor != nullptr) recordProcessor->stop();
 		if(!bThread) return;
 		bThread = false;
 		if(thread.joinable()) thread.join();
 		ONI::Global::model.bIsAcquiring = false;
-		//contextPlayStream.close();
 	}
 
 	bool setupContext(){
@@ -545,12 +525,6 @@ private:
 		if(ONI::Global::model.maxWriteSize == -1) return false;
 		if(ONI::Global::model.acq_clock_khz == -1) return false;
 		if(ONI::Global::model.sys_clock_khz == -1) return false;
-
-		//blockReadBytes = setContextOption(BLOCKREADSIZE, blockReadSize);
-		//blockWriteBytes = setContextOption(BLOCKWRITESIZE, blockWriteSize);
-
-		//if(blockReadBytes == -1) return false;
-		//if(blockWriteBytes == -1) return false;
 
 		ONI::Global::model.bIsContextSetup = startContext(); // is this ok? or should the user do it!?
 
@@ -722,63 +696,21 @@ private:
 
 	}
 
-	//void clearDevices(){
-
-	//	onixDeviceTypes.clear();
-
-	//	for(auto device : oniDevices){
-	//		delete device.second;
-	//	}
-
-	//	oniDevices.clear();
-
-	//	delete frameProcessor;
-	//	frameProcessor = nullptr;
-
-	//	delete spikeProcessor;
-	//	spikeProcessor = nullptr;
-
-	//	delete rhs2116StimDevice;
-	//	rhs2116StimDevice = nullptr;
-
-	//	delete rhs2116MultiDevice;
-	//	rhs2116MultiDevice = nullptr;
-
-	//}
 
 private:
 
-	//ONI::Processor::Rhs2116MultiProcessor * rhs2116MultiDevice = nullptr; // TODO: this better!!
-	//ONI::Processor::Rhs2116StimProcessor * rhs2116StimDevice = nullptr;
-
-	//ONI::Processor::BufferProcessor * frameProcessor = nullptr;
-	//ONI::Processor::SpikeProcessor * spikeProcessor = nullptr;
-
-	
-
 	uint32_t blockReadBytes = 0;
 	uint32_t blockWriteBytes = 0;
-
-
 
 	std::atomic_bool bThread = false;
 
 	std::thread thread;
 	std::mutex mutex;
 
-	//volatile oni_ctx ctx = NULL;
-
-	//std::map<uint32_t, ONI::Device::BaseDevice*> oniDevices;
 	std::vector<oni_device_t> onixDeviceTypes = {};
 
 	int host_idx = -1;
 	std::string driverName = "riffa";
-
-	//uint32_t maxReadSize = -1;
-	//uint32_t maxWriteSize = -1;
-	//uint32_t acq_clock_khz = -1;
-	//uint32_t sys_clock_khz = -1;
-
 
 };
 

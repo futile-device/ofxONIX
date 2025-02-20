@@ -2,11 +2,11 @@
 
 
 #define ONI_LOG_FU 1
-#include "ONIContext.h"
+#include "Context.h"
 #include "ContextInterface.h"
 
-ONI::Context oni;
-
+ONI::Context context;
+ONI::Interface::ContextInterface oni;
 
 //--------------------------------------------------------------
 void ofApp::setup(){
@@ -32,33 +32,33 @@ void ofApp::setup(){
     fu::setupGui();
     plt.setup();
 
-    oni.setup();
-    oni.printDeviceTable();
+    context.setup();
+    context.printDeviceTable();
 
-    ONI::Device::FmcDevice* fmc1 = (ONI::Device::FmcDevice*)oni.getDevice(1);
+    ONI::Device::FmcDevice* fmc1 = (ONI::Device::FmcDevice*)context.getDevice(1);
     fmc1->setPortVoltage(6.9); // 4.33v // 49.2C
 
-    ONI::Device::FmcDevice* fmc2 = (ONI::Device::FmcDevice*)oni.getDevice(2);
+    ONI::Device::FmcDevice* fmc2 = (ONI::Device::FmcDevice*)context.getDevice(2);
     fmc2->setPortVoltage(6.9); // 4.30v // 44.6C
     
-    oni.update(); // requires an update to implement the port voltage settings
+    context.update(); // requires an update to implement the port voltage settings
     //oni.printDeviceTable();
 
-    ONI::Device::HeartBeatDevice* heartBeatDevice = (ONI::Device::HeartBeatDevice*)oni.getDevice(0); // for some reason we need to do this before a context restart
+    ONI::Device::HeartBeatDevice* heartBeatDevice = (ONI::Device::HeartBeatDevice*)context.getDevice(0); // for some reason we need to do this before a context restart
     heartBeatDevice->setFrequencyHz(100);
 
     //oni.update(); // requires an update to set the heart beat frequency, could wait 
 
-    ONI::Device::Rhs2116Device* rhs2116Device1 = (ONI::Device::Rhs2116Device*)oni.getDevice(256);
-    ONI::Device::Rhs2116Device* rhs2116Device2 = (ONI::Device::Rhs2116Device*)oni.getDevice(257);
-    ONI::Device::Rhs2116Device* rhs2116Device3 = (ONI::Device::Rhs2116Device*)oni.getDevice(512);
-    ONI::Device::Rhs2116Device* rhs2116Device4 = (ONI::Device::Rhs2116Device*)oni.getDevice(513);
+    ONI::Device::Rhs2116Device* rhs2116Device1 = (ONI::Device::Rhs2116Device*)context.getDevice(256);
+    ONI::Device::Rhs2116Device* rhs2116Device2 = (ONI::Device::Rhs2116Device*)context.getDevice(257);
+    ONI::Device::Rhs2116Device* rhs2116Device3 = (ONI::Device::Rhs2116Device*)context.getDevice(512);
+    ONI::Device::Rhs2116Device* rhs2116Device4 = (ONI::Device::Rhs2116Device*)context.getDevice(513);
 
     //rhs2116Device1->readRegister(ONI::Register::Rhs2116::MAXDELTAS);
 
     //fu::debug << rhs2116Device1->getFormat() << fu::endl;
 
-    ONI::Processor::Rhs2116MultiProcessor* multi = oni.createRhs2116MultiProcessor();
+    ONI::Processor::Rhs2116MultiProcessor* multi = context.createRhs2116MultiProcessor();
 
     multi->setup();
 
@@ -75,7 +75,7 @@ void ofApp::setup(){
 
     //fu::debug << rhs2116Device1->getSettings().info() << fu::endl;
 
-    ONI::Processor::ChannelMapProcessor* channelProcessor = oni.createChannelMapProcessor();
+    ONI::Processor::ChannelMapProcessor* channelProcessor = context.createChannelMapProcessor();
     channelProcessor->setup(multi);
 
     std::vector<size_t> channelMap = {59, 34, 33, 32, 63, 16, 17, 11, 58, 35, 60, 61, 14, 13, 18, 10, 57, 36, 19, 62, 15, 12, 20, 9, 56, 38, 37, 39, 23, 21, 22, 8, 40, 54, 53, 55, 7, 5, 6, 24, 41, 52, 44, 47, 0, 28, 4, 25, 42, 51, 45, 46, 1, 2, 3, 26, 43, 50, 49, 48, 31, 30, 29, 27};
@@ -115,11 +115,11 @@ void ofApp::setup(){
     s2.interStimulusIntervalSamples = 362;
     s2.numberOfStimuli = 2;
 
-    ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = oni.createRhs2116StimProcessor(); // make sure to call this after multi device is initialized with devices!
+    ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = context.createRhs2116StimProcessor(); // make sure to call this after multi device is initialized with devices!
     rhs2116StimProcessor->setup();
 
-    ONI::Device::Rhs2116StimDevice * rhs2116StimDevice1 = (ONI::Device::Rhs2116StimDevice*)oni.getDevice(258);
-    ONI::Device::Rhs2116StimDevice * rhs2116StimDevice2 = (ONI::Device::Rhs2116StimDevice*)oni.getDevice(514);
+    ONI::Device::Rhs2116StimDevice * rhs2116StimDevice1 = (ONI::Device::Rhs2116StimDevice*)context.getDevice(258);
+    ONI::Device::Rhs2116StimDevice * rhs2116StimDevice2 = (ONI::Device::Rhs2116StimDevice*)context.getDevice(514);
 
     rhs2116StimDevice1->getTriggerSource();
     rhs2116StimDevice1->setTriggerSource(true);
@@ -151,16 +151,16 @@ void ofApp::setup(){
         }
     }
 
-    ONI::Processor::RecordProcessor* recordProcessor = oni.createRecordProcessor();
+    ONI::Processor::RecordProcessor* recordProcessor = context.createRecordProcessor();
     recordProcessor->setup();
 
-    ONI::Processor::FilterProcessor* filterProcessor = oni.createFilterProcessor();
+    ONI::Processor::FilterProcessor* filterProcessor = context.createFilterProcessor();
     filterProcessor->setup(rhs2116StimProcessor);
 
-    ONI::Processor::BufferProcessor* bufferProcessor = oni.createBufferProcessor();
+    ONI::Processor::BufferProcessor* bufferProcessor = context.createBufferProcessor();
     bufferProcessor->setup(filterProcessor);
 
-    ONI::Processor::SpikeProcessor* spikeProcessor = oni.createSpikeProcessor();
+    ONI::Processor::SpikeProcessor* spikeProcessor = context.createSpikeProcessor();
     spikeProcessor->setup(bufferProcessor);
 
 
@@ -171,7 +171,7 @@ void ofApp::setup(){
     rhs2116StimProcessor->applyStagedStimuliToDevice();
 
 
-    oni.update();
+    context.update();
 
     //oni.startAcquisition();
     
@@ -182,7 +182,7 @@ fu::Timer processTimer;
 //--------------------------------------------------------------
 void ofApp::update(){
 
-    oni.update();
+    context.update();
 
     ofDisableArbTex();
     fu::gui.begin();
@@ -193,9 +193,9 @@ void ofApp::update(){
         fu::ImGuiConsole.gui();
 
         //ImPlot::ShowDemoWindow();
-        ImGui::ShowDemoWindow();
+        //ImGui::ShowDemoWindow();
 
-        ONIGui.gui(oni);
+        oni.gui(context);
         
 
     }
@@ -212,7 +212,7 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::exit(){
-    oni.close();
+    context.close();
     plt.exit();
     fu::gui.exit();
 
@@ -228,7 +228,7 @@ void ofApp::keyPressed(ofKeyEventArgs& e){
 
     if(e.modifiers != OF_KEY_CONTROL) return;
 
-    ONI::Processor::Rhs2116StimProcessor* rhs2116StimProcessor = oni.getRhs2116StimProcessor();
+    ONI::Processor::Rhs2116StimProcessor* rhs2116StimProcessor = context.getRhs2116StimProcessor();
     ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 
     if(e.keycode == 82){ // r

@@ -2981,9 +2981,6 @@
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\SpikeInterface.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\ONIContext.h">
-      <Filter>addons\ofxONIX\src</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Processor\BaseProcessor.h">
       <Filter>addons\ofxONIX\src\Processor</Filter>
     </ClInclude>
@@ -3121,6 +3118,9 @@
     </ClInclude>
     <ClInclude Include="..\..\src\Interface\BufferPlotHelpers.h">
       <Filter>addons\ofxONIX\src\Interface</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src\Context.h">
+      <Filter>addons\ofxONIX\src\Device</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -21,7 +21,7 @@
 #include <mutex>
 #include <syncstream>
 
-#include "../ONIContext.h"
+#include "../Device/Context.h"
 
 #include "../Interface/BaseInterface.h"
 #include "../Interface/FmcInterface.h"
@@ -192,29 +192,6 @@ public:
 			}
 		}
 
-		//if(ONI::Global::model.getRhs2116MultiProcessor() == nullptr){
-		//	ONI::Global::model.getRhs2116MultiProcessor() = new Rhs2116MultiProcessor;
-		//	ONI::Global::model.getRhs2116MultiProcessor()->setup(&context.ctx, context.acq_clock_khz);
-		//	for(auto device : context.oniDevices){
-		//		if(device.second->getDeviceTypeID() == RHS2116){
-		//			ONI::Global::model.getRhs2116MultiProcessor()->addDevice(reinterpret_cast<Rhs2116Device*>(device.second));
-		//			//rhs2116MultiDevice->devices[device.second->getOnixDeviceTableIDX()] = reinterpret_cast<Rhs2116Device*>(device.second);
-		//		}
-		//	}
-		//	//rhs2116MultiDevice->setDspCutOff(Rhs2116DspCutoff::Dsp308Hz);
-		//	//rhs2116MultiDevice->setAnalogLowCutoff(Rhs2116AnalogLowCutoff::Low100mHz);
-		//	//rhs2116MultiDevice->setAnalogLowCutoffRecovery(Rhs2116AnalogLowCutoff::Low250Hz);
-		//	//rhs2116MultiDevice->setAnalogHighCutoff(Rhs2116AnalogHighCutoff::High10000Hz);
-		//	//rhs2116MultiDevice->saveConfig("default");
-		//	//ONI::Global::model.getRhs2116MultiProcessor()->loadConfig("default");
-		//	std::vector<size_t> t = {31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,6,7,5,4,3,2,1,0};
-		//	//ONI::Global::model.getRhs2116MultiProcessor()->resetChannelMap();
-		//	ONI::Global::model.getRhs2116MultiProcessor()->setChannelMap(t);
-		//	//rhs2116MultiDevice->saveConfig("default");
-		//	//startAcquisition();
-		//}
-		
-		
 		if(ONI::Global::model.getRhs2116MultiProcessor() != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*ONI::Global::model.getRhs2116MultiProcessor());
@@ -283,8 +260,8 @@ protected:
 } // namespace Interface
 } // namespace ONI
 
-typedef Singleton<ONI::Interface::ContextInterface> ContextInterfaceSingleton;
-static ONI::Interface::ContextInterface& ONIGui = ContextInterfaceSingleton::Instance();
+//typedef Singleton<ONI::Interface::ContextInterface> ContextInterfaceSingleton;
+//static ONI::Interface::ContextInterface& ONIGui = ContextInterfaceSingleton::Instance();
 
 /*
 class _ContextConfig : public ONIContextConfig<ContextSettings> {

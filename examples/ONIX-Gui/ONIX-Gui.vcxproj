@@ -933,7 +933,7 @@
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\Rhs2116MultiInterface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\Rhs2116StimInterface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\SpikeInterface.h" />
-    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\ONIContext.h" />
+    <ClInclude Include="..\..\src\Context.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Processor\BaseProcessor.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Processor\BufferProcessor.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Processor\ChannelMapProcessor.h" />
