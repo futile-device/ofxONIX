@@ -67,51 +67,88 @@ public:
 
 		BaseProcessor::numProbes = source->getNumProbes();
 
-		filters.resize(numProbes);
+		bandstopFilters.resize(numProbes);
 
 		for(size_t probe = 0; probe < numProbes; ++probe){
-			filters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::BandPass    // design type
-														  <2>,                                   // order
-														  1,                                     // number of channels (must be const)
-														  Dsp::DirectFormII>(1);               // realization
+			bandstopFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::BandStop    // design type
+																  <4>,                                   // order
+																  1,                                     // number of channels (must be const)
+																  Dsp::DirectFormII>(1);                 // realization
 		}
 
+		setBandStop(50, 4);
+
+		lowpassFilters.resize(numProbes);
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			lowpassFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::LowPass     // design type
+																 <4>,                                   // order
+																 1,                                     // number of channels (must be const)
+																 Dsp::DirectFormII>(1);                 // realization
+		}
+
+		setLowPass(25, 1.25);
+
+
+		highpassFilters.resize(numProbes);
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			highpassFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::HighPass    // design type
+																  <4>,                                   // order
+																  1,                                     // number of channels (must be const)
+																  Dsp::DirectFormII>(1);                 // realization
+		}
+
+		setHighPass(4, 1.25);
+
+
+		bandpassFilters.resize(numProbes);
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			bandpassFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::BandPass    // design type
+																  <4>,                                   // order
+																  1,                                     // number of channels (must be const)
+																  Dsp::DirectFormII>(1);                 // realization
+		}
 
 		setBandPass(100, 3000);
 
     }
 
-	void reset(){
-	
-	};
+	void reset(){};
 
-	void setBandPass(const int& lowCut, const int& highCut){
-
-		settings.lowCut = lowCut;
-		settings.highCut = highCut;
-
-		Dsp::Params params;
-		params[0] = RHS2116_SAMPLE_FREQUENCY_HZ;    // sample rate
-		params[1] = 2;								// order
-		params[2] = (highCut + lowCut) / 2;			// center frequency
-		params[3] = highCut - lowCut;				// bandwidth
-
-		for(size_t probe = 0; probe < numProbes; ++probe){
-			filters[probe]->setParams(params);
-		}
-		
-
-	}
 
 	inline void process(oni_frame_t* frame){};
 	inline void process(ONI::Frame::BaseFrame& frame){
 		
 		ONI::Frame::Rhs2116MultiFrame* f = reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame);
 
-		if(bUseFilter){
+
+		if(settings.bUseBandStopFilter){
 			for(size_t probe = 0; probe < numProbes; ++probe){
 				float* ptr = &f->ac_uV[probe];
-				filters[probe]->process(1, &ptr);
+				bandstopFilters[probe]->process(1, &ptr);
+			}
+		}
+
+		if(settings.bUseLowPass){
+			for(size_t probe = 0; probe < numProbes; ++probe){
+				float* ptr = &f->ac_uV[probe];
+				lowpassFilters[probe]->process(1, &ptr);
+			}
+		}
+
+		if(settings.bUseHighPass){
+			for(size_t probe = 0; probe < numProbes; ++probe){
+				float* ptr = &f->ac_uV[probe];
+				highpassFilters[probe]->process(1, &ptr);
+			}
+		}
+
+		if(settings.bUseBandPassFilter){
+			for(size_t probe = 0; probe < numProbes; ++probe){
+				float* ptr = &f->ac_uV[probe];
+				bandpassFilters[probe]->process(1, &ptr);
 			}
 		}
 
@@ -121,17 +158,86 @@ public:
 
 	}
 
+	void setBandStop(const int& frequency, const int& width){
+
+		settings.bandStopFrequency = frequency;
+		settings.bandStopWidth = width;
+
+		Dsp::Params params;
+		params[0] = RHS2116_SAMPLE_FREQUENCY_HZ;	// sample rate
+		params[1] = 4;								// order
+		params[2] = frequency;						// center frequency
+		params[3] = width;							// band width
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			bandstopFilters[probe]->setParams(params);
+		}
+
+	}
+
+	void setLowPass(const int& frequency, const float& Q){
+
+		settings.lowPassFrequency = frequency;
+		settings.lowPassQ = Q;
+
+		Dsp::Params params;
+		params[0] = RHS2116_SAMPLE_FREQUENCY_HZ;	// sample rate
+		params[1] = 4;								// order
+		params[2] = frequency;						// center frequency
+		params[3] = Q;							// band width
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			lowpassFilters[probe]->setParams(params);
+		}
+
+	}
+
+	void setHighPass(const int& frequency, const float& Q){
+
+		settings.highPassFrequency = frequency;
+		settings.highPassQ = Q;
+
+		Dsp::Params params;
+		params[0] = RHS2116_SAMPLE_FREQUENCY_HZ;	// sample rate
+		params[1] = 4;								// order
+		params[2] = frequency;						// center frequency
+		params[3] = Q;							// band width
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			highpassFilters[probe]->setParams(params);
+		}
+
+	}
+
+	void setBandPass(const int& lowCutFrequency, const int& highCutFrequency){
+
+		settings.lowBandPassFrequency = lowCutFrequency;
+		settings.highBandPassFrequency = highCutFrequency;
+
+		Dsp::Params params;
+		params[0] = RHS2116_SAMPLE_FREQUENCY_HZ;    // sample rate
+		params[1] = 4;								// order
+		params[2] = (highCutFrequency + lowCutFrequency) / 2;			// center frequency
+		params[3] = highCutFrequency - lowCutFrequency;				// bandwidth
+
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			bandpassFilters[probe]->setParams(params);
+		}
+
+	}
+
 
 private:
 
 protected:
 
-	bool bUseFilter = true;
-
 	ONI::Settings::FilterSettings settings;
 	ONI::Processor::BaseProcessor* source;
 
-	std::vector<Dsp::Filter*> filters;
+	std::vector<Dsp::Filter*> bandstopFilters;
+	std::vector<Dsp::Filter*> lowpassFilters;
+	std::vector<Dsp::Filter*> highpassFilters;
+	std::vector<Dsp::Filter*> bandpassFilters;
 
 };
 

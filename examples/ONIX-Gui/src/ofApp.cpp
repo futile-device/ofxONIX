@@ -38,7 +38,7 @@ void ofApp::setup(){
 
     ONI::Device::FmcDevice* fmc2 = (ONI::Device::FmcDevice*)context.getDevice(2);
     fmc2->setPortVoltage(6.9); // 4.30v // 44.6C
-    
+
     context.update(); // requires an update to implement the port voltage settings
     //oni.printDeviceTable();
 
@@ -76,10 +76,13 @@ void ofApp::setup(){
     ONI::Processor::ChannelMapProcessor* channelProcessor = context.createChannelMapProcessor();
     channelProcessor->setup(multi);
 
-    std::vector<size_t> channelMap = {59, 34, 33, 32, 63, 16, 17, 11, 58, 35, 60, 61, 14, 13, 18, 10, 57, 36, 19, 62, 15, 12, 20, 9, 56, 38, 37, 39, 23, 21, 22, 8, 40, 54, 53, 55, 7, 5, 6, 24, 41, 52, 44, 47, 0, 28, 4, 25, 42, 51, 45, 46, 1, 2, 3, 26, 43, 50, 49, 48, 31, 30, 29, 27};
+    std::vector<size_t> channelMapUpsideDown = {59, 34, 33, 32, 63, 16, 17, 11, 58, 35, 60, 61, 14, 13, 18, 10, 57, 36, 19, 62, 15, 12, 20, 9, 56, 38, 37, 39, 23, 21, 22, 8, 40, 54, 53, 55, 7, 5, 6, 24, 41, 52, 44, 47, 0, 28, 4, 25, 42, 51, 45, 46, 1, 2, 3, 26, 43, 50, 49, 48, 31, 30, 29, 27};
+
+    std::vector<size_t> channelMapRightWayUp = {57, 36, 19, 62, 15, 12, 20, 9, 56, 38, 37, 39, 23, 21, 22, 8, 59, 34, 33, 32, 63, 16, 17, 11, 58, 35, 60, 61, 14, 13, 18, 10, 42, 51, 45, 46, 1, 2, 3, 26, 43, 50, 49, 48, 31, 30, 29, 27, 40, 54, 53, 55, 7, 5, 6, 24, 41, 52, 44, 47, 0, 28, 4, 25};
+    
     //std::vector<size_t> inversechannelMap = {44, 52, 53, 54, 46, 37, 38, 36, 31, 23, 15, 7, 21, 13, 12, 20, 5, 6, 14, 18, 22, 29, 30, 28, 39, 47, 55, 63, 45, 62, 61, 60, 3, 2, 1, 9, 17, 26, 25, 27, 32, 40, 48, 56, 42, 50, 51, 43, 59, 58, 57, 49, 41, 34, 33, 35, 24, 16, 8, 0, 10, 11, 19, 4};
     //std::vector<size_t> channelMap = {59, 34, 33, 32, 63, 16, 17, 11, 58, 35, 60, 61, 14, 13, 18, 10, 57, 36, 19, 62, 15, 12, 20, 9, 56, 38, 37, 39, 23, 21, 22, 8};
-    channelProcessor->setChannelMap(channelMap);
+    channelProcessor->setChannelMap(channelMapUpsideDown);
 
     //const std::vector<size_t>& chi = oni.getChannelMapProcessor()->getInverseChannelMap();
 
@@ -97,7 +100,7 @@ void ofApp::setup(){
     s1.dwellSamples = 1;
     s1.interStimulusIntervalSamples = 1;
     s1.numberOfStimuli = 10;
-
+    
     ONI::Rhs2116StimulusData s2;
     s2.requestedAnodicAmplitudeMicroAmps = 18.1;
     s2.requestedCathodicAmplitudeMicroAmps = 99.3;

@@ -79,7 +79,9 @@ public:
 		static bool bNeedsUpdate = false;
 		static bool bFirstLoad = true;
 		if(bFirstLoad){
+			sp.spikeMutex.lock();
 			nextSettings = sp.settings;
+			sp.spikeMutex.unlock();
 			bFirstLoad = false;
 		}
 		
@@ -106,8 +108,9 @@ public:
 
 		bool bAppliedSettings = false;
 		if(ImGui::Button("Apply Settings")){
-
+			sp.spikeMutex.lock();
 			sp.settings = nextSettings;
+			sp.spikeMutex.unlock();
 			sp.reset();
 			bNeedsUpdate = false;
 			bAppliedSettings = true;
@@ -150,15 +153,15 @@ public:
 					static ImPlotAxisFlags flags = ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels;
 					
 					ImPlot::SetupAxes(nullptr, nullptr, flags, flags);
-					ImPlot::SetupAxesLimits(0, sp.spikes[probe][0].rawWaveform.size(), -voltageRange, voltageRange, ImGuiCond_Always);
+					ImPlot::SetupAxesLimits(0, sp.probeSpikes[probe][0].rawWaveform.size(), -voltageRange, voltageRange, ImGuiCond_Always);
 					ImVec4 col = ImPlot::GetColormapColor(probe);
 					
-					for(size_t j = 0; j < sp.spikes[probe].size(); ++j){
+					for(size_t j = 0; j < sp.probeSpikes[probe].size(); ++j){
 
-						col.w = (float)(j + 1) / (sp.spikeCounts[probe] % sp.spikes[probe].size());
+						col.w = (float)(j + 1) / (sp.spikeCounts[probe] % sp.probeSpikes[probe].size());
 						ImPlot::SetNextLineStyle(col);
 
-						ImPlot::PlotLine("##spark", &sp.spikes[probe][j].rawWaveform[0], sp.spikes[probe][j].rawWaveform.size(), 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+						ImPlot::PlotLine("##spark", &sp.probeSpikes[probe][j].rawWaveform[0], sp.probeSpikes[probe][j].rawWaveform.size(), 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
 						
 						if(frameCount != 0 && numProbes != 0){
 							ImPlot::SetNextLineStyle(ImVec4(1, 0, 0, 0.5));

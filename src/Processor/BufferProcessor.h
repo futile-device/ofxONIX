@@ -175,7 +175,7 @@ private:
 
     }
 
-    inline const std::vector<ONI::Frame::ProbeStatistics>& calculateThresholds(){
+    inline void calculateThresholds(){
 
         //LOGDEBUG("Check thresholds");
 
@@ -206,11 +206,10 @@ private:
 
         dataMutex[SPARSE_MUTEX].unlock();
 
-        return probeStats;
-
     }
 
     inline const std::vector<ONI::Frame::ProbeStatistics>& getProbeStats(){
+        const std::lock_guard<std::mutex> lock(dataMutex[SPARSE_MUTEX]);
         return probeStats;
     }
 

@@ -748,13 +748,37 @@ inline bool operator!=(const SpikeSettings& lhs, const SpikeSettings& rhs) { ret
 
 struct FilterSettings{
 
-	int lowCut = 300;
-	int highCut = 3000;
+	bool bUseBandStopFilter = false;
+	bool bUseLowPass = false;
+	bool bUseHighPass = false;
+	bool bUseBandPassFilter = true;
+
+	int lowBandPassFrequency = 300;
+	int highBandPassFrequency = 3000;
+
+	int bandStopFrequency = 45;
+	int bandStopWidth = 10;
+
+	int lowPassFrequency = 25;
+	float lowPassQ = 1.2;
+
+	int highPassFrequency = 4;
+	float highPassQ = 1.2;
 
 	// copy assignment (copy-and-swap idiom)
 	FilterSettings& FilterSettings::operator=(FilterSettings other) noexcept{
-		std::swap(highCut, other.highCut);
-		std::swap(lowCut, other.lowCut);
+		std::swap(highBandPassFrequency, other.highBandPassFrequency);
+		std::swap(lowBandPassFrequency, other.lowBandPassFrequency);
+		std::swap(bandStopFrequency, other.bandStopFrequency);
+		std::swap(bandStopWidth, other.bandStopWidth);
+		std::swap(bUseBandStopFilter, other.bUseBandStopFilter);
+		std::swap(bUseBandPassFilter, other.bUseBandPassFilter);
+		std::swap(lowPassFrequency, other.lowPassFrequency);
+		std::swap(lowPassQ, other.lowPassQ);
+		std::swap(highPassFrequency, other.highPassFrequency);
+		std::swap(highPassQ, other.highPassQ);
+		std::swap(bUseLowPass, other.bUseLowPass);
+		std::swap(bUseHighPass, other.bUseHighPass);
 		return *this;
 	}
 
@@ -762,8 +786,18 @@ struct FilterSettings{
 
 
 inline bool operator==(const FilterSettings& lhs, const FilterSettings& rhs){
-	return (lhs.highCut == rhs.highCut &&
-			lhs.lowCut == rhs.lowCut);
+	return (lhs.highBandPassFrequency == rhs.highBandPassFrequency &&
+			lhs.lowBandPassFrequency == rhs.lowBandPassFrequency &&
+			lhs.bandStopFrequency == rhs.bandStopFrequency &&
+			lhs.bandStopWidth == rhs.bandStopWidth &&
+			lhs.bUseBandStopFilter == rhs.bUseBandStopFilter &&
+			lhs.bUseBandPassFilter == rhs.bUseBandPassFilter &&
+			lhs.bUseLowPass == rhs.bUseLowPass &&
+			lhs.bUseHighPass == rhs.bUseHighPass &&
+			lhs.lowPassFrequency == rhs.lowPassFrequency &&
+			lhs.highPassFrequency == rhs.highPassFrequency &&
+			lhs.lowPassQ == rhs.lowPassQ &&
+			lhs.highPassQ == rhs.highPassQ);
 }
 inline bool operator!=(const FilterSettings& lhs, const FilterSettings& rhs) { return !(lhs == rhs); }
 

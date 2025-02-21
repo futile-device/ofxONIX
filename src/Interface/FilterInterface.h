@@ -54,16 +54,82 @@ public:
 		ImGui::PushID(fp.getName().c_str());
 		ImGui::Text(fp.getName().c_str());
 		
-		lowCut = fp.settings.lowCut;
-		highCut = fp.settings.highCut;
+		///////////////////////////////////////////////
+		/// BAND STOP FILTER
+		///////////////////////////////////////////////
 
-		ImGui::Checkbox("Use Band Pass", &fp.bUseFilter);
+		ImGui::Checkbox("Use Band Stop", &fp.settings.bUseBandStopFilter);
 
-		ImGui::InputInt("Low Cut", &lowCut);
-		ImGui::InputInt("High Cut", &highCut);
+		int bandStopFrequency = fp.settings.bandStopFrequency;
+		int bandStopWidth = fp.settings.bandStopWidth;
 
-		if(fp.settings.lowCut != lowCut || fp.settings.highCut != highCut){
-			fp.setBandPass(lowCut, highCut);
+		ImGui::InputInt("Band Frequency", &bandStopFrequency);
+		ImGui::InputInt("Width", &bandStopWidth);
+
+		if(bandStopFrequency < 1) bandStopFrequency = 1;
+		if(bandStopWidth < 1) bandStopWidth = 1;
+
+		if(fp.settings.lowBandPassFrequency != bandStopFrequency || fp.settings.highBandPassFrequency != bandStopWidth){
+			fp.setBandStop(bandStopFrequency, bandStopWidth);
+		}
+
+		/*
+		///////////////////////////////////////////////
+		/// LOW PASS FILTER
+		///////////////////////////////////////////////
+
+		ImGui::Checkbox("Use Low Pass", &fp.settings.bUseLowPass);
+
+		int lowPassFrequency = fp.settings.lowPassFrequency;
+		float lowPassQ = fp.settings.lowPassQ;
+
+		ImGui::InputInt("LowPass", &lowPassFrequency);
+		ImGui::InputFloat("LowQ", &lowPassQ);
+
+		if(lowPassFrequency < 1) lowPassFrequency = 1;
+		if(lowPassQ < 0.1) lowPassQ = 0.1;
+
+		if(fp.settings.lowPassFrequency != lowPassFrequency || fp.settings.lowPassQ != lowPassQ){
+			fp.setLowPass(lowPassFrequency, lowPassQ);
+		}
+
+		///////////////////////////////////////////////
+		/// HIGH PASS FILTER
+		///////////////////////////////////////////////
+
+		ImGui::Checkbox("Use High Pass", &fp.settings.bUseHighPass);
+
+		int highPassFrequency = fp.settings.highPassFrequency;
+		float highPassQ = fp.settings.highPassQ;
+
+		ImGui::InputInt("HighPass", &highPassFrequency);
+		ImGui::InputFloat("HighQ", &highPassQ);
+
+		if(highPassFrequency < 1) highPassFrequency = 1;
+		if(highPassQ < 0.1) highPassQ = 0.1;
+
+		if(fp.settings.highPassFrequency != highPassFrequency || fp.settings.highPassQ != highPassQ){
+			fp.setHighPass(highPassFrequency, highPassQ);
+		}
+		*/
+
+		///////////////////////////////////////////////
+		/// BAND PASS FILTER
+		///////////////////////////////////////////////
+
+		ImGui::Checkbox("Use Band Pass", &fp.settings.bUseBandPassFilter);
+
+		int lowBandPassFrequency = fp.settings.lowBandPassFrequency;
+		int highBandPassFrequency = fp.settings.highBandPassFrequency;
+
+		ImGui::InputInt("Low Cut", &lowBandPassFrequency);
+		ImGui::InputInt("High Cut", &highBandPassFrequency);
+
+		if(lowBandPassFrequency < 1) lowBandPassFrequency = 1;
+		if(highBandPassFrequency < 1) highBandPassFrequency = 1;
+
+		if(fp.settings.lowBandPassFrequency != lowBandPassFrequency || fp.settings.highBandPassFrequency != highBandPassFrequency){
+			fp.setBandPass(lowBandPassFrequency, highBandPassFrequency);
 		}
 
 		ImGui::PopID();
@@ -79,9 +145,6 @@ public:
 	}
 
 protected:
-
-	int lowCut = -1;
-	int highCut = -1;
 
 };
 
