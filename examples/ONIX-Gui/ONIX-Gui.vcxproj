@@ -192,9 +192,6 @@
     <ClCompile Include="..\..\..\..\addons\ofxONIX\libs\DSPFilters\include\DspFilters\State.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\ofxFutilities\libs\FontIcons\IconsMaterialSymbols.h" />
-    <ClInclude Include="..\..\src\Device\Context.h" />
-    <ClInclude Include="..\..\src\Interface\BufferPlotHelpers.h" />
     <ClInclude Include="src\ofApp.h" />
     <ClInclude Include="..\..\..\..\addons\ofxBoost1.81\src\BoostSerializer.h" />
     <ClInclude Include="..\..\..\..\addons\ofxOpenCv\src\ofxCvBlob.h" />
@@ -913,17 +910,20 @@
     <ClInclude Include="..\..\..\..\addons\ofxFutilities\src\Visual\Syphon\SyphonOutput.h" />
     <ClInclude Include="..\..\..\..\addons\ofxFutilities\libs\FontIcons\IconsFontAwesome5.h" />
     <ClInclude Include="..\..\..\..\addons\ofxFutilities\libs\FontIcons\IconsMaterialDesign.h" />
+    <ClInclude Include="..\..\..\..\addons\ofxFutilities\libs\FontIcons\IconsMaterialSymbols.h" />
     <ClInclude Include="..\..\..\..\addons\ofxFutilities\libs\SRDelegate\SRDelegate.hpp" />
     <ClInclude Include="..\..\..\..\addons\ofxImPlot\src\ofxImPlot.h" />
     <ClInclude Include="..\..\..\..\addons\ofxImPlot\libs\implot\implot.h" />
     <ClInclude Include="..\..\..\..\addons\ofxImPlot\libs\implot\implot_internal.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Device\BaseDevice.h" />
+    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Device\Context.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Device\FmcDevice.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Device\HeartBeatDevice.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Device\Rhs2116Device.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Device\Rhs2116StimDevice.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\BaseInterface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\BufferInterface.h" />
+    <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\BufferPlotHelpers.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\ChannelMapInterface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\ContextInterface.h" />
     <ClInclude Include="..\..\..\..\addons\ofxONIX\src\Interface\FilterInterface.h" />

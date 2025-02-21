@@ -311,7 +311,6 @@ public:
 
             }
 
-            
             bufferProcessor->dataMutex[DENSE_MUTEX].unlock();
 
             if(allSpikes.size() >= spikeSampleSize){
