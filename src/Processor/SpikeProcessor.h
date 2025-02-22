@@ -3,7 +3,7 @@
 //
 //  Created by Matt Gingold on 13.09.2024.
 //
-
+#include <Eigen/Dense>
 #include "oni.h"
 #include "onix.h"
 
@@ -317,6 +317,13 @@ public:
                 LOGDEBUG("Let's analyse the spikes %i", allSpikes.size());
                 allSpikes.clear();
                 allWaveforms.clear();
+                using Eigen::MatrixXd;
+                MatrixXd m(2, 2);
+                m(0, 0) = 3;
+                m(1, 0) = 2.5;
+                m(0, 1) = -1;
+                m(1, 1) = m(1, 0) + m(0, 1);
+                std::cout << m << std::endl;
             }
 
             spikeMutex.unlock();

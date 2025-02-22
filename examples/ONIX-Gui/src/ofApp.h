@@ -1,5 +1,5 @@
 #pragma once
-
+#include <Eigen/Dense> // for whatever reason I need to include eigen before ofxFutilities (maybe a boost conflict?)
 #include "ofxFutilities.h"
 
 
