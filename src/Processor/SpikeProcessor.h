@@ -204,7 +204,7 @@ public:
                                     break; // stop searching!
                                 }
                             }
-
+                            
                             if((settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::FALLING || settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER) ||
                                (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && peakVoltage > bufferProcessor->getProbeStats()[probe].deviation * settings.positiveDeviationMultiplier)){ // ...reject if max voltage is not over the threshold
                                 
@@ -221,7 +221,7 @@ public:
                                     spike.acquisitionTime = buffer.getFrameAt(centralSampleIDX + peakOffsetIndex).getAcquisitionTime();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength + peakOffsetIndex);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    addSpikeForAnalysis(spike);
+                                    //addSpikeForAnalysis(spike);
                                 }else{
                                     spike.minVoltage = frame.ac_uV[probe];
                                     spike.minSampleIndex = halfLength;
@@ -230,7 +230,7 @@ public:
                                     spike.acquisitionTime = buffer.getFrameAt(centralSampleIDX).getAcquisitionTime();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    addSpikeForAnalysis(spike);
+                                    //addSpikeForAnalysis(spike);
                                 }
 
                                 // cache this spike detection buffer count (so we can suppress re-detecting the same spike)
@@ -280,7 +280,7 @@ public:
                                     spike.acquisitionTime = frame.getAcquisitionTime();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    addSpikeForAnalysis(spike);
+                                    //addSpikeForAnalysis(spike);
                                 }else{
                                     ONI::Spike& spike = probeSpikes[probe][spikeIndexes[probe]];
                                     spike.minVoltage = troughVoltage;
@@ -290,7 +290,7 @@ public:
                                     spike.acquisitionTime = frame.getAcquisitionTime();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - troughOffsetIndex - halfLength);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    addSpikeForAnalysis(spike);
+                                    //addSpikeForAnalysis(spike);
                                 }
                                 
                                 
@@ -313,106 +313,7 @@ public:
 
             bufferProcessor->dataMutex[DENSE_MUTEX].unlock();
 
-            if(allSpikes.size() >= maxSpikeSampleSize){
-
-                LOGDEBUG("Let's analyse the spikes %i", allSpikes.size());
-
-                //using Eigen::MatrixXf;
-                fu::Timer svdTimer;
-                svdTimer.start();
-                Eigen::MatrixXf mat(allWaveforms.size(), allWaveforms[0].size());
-
-                for(size_t i = 0; i < allWaveforms.size(); ++i){
-                    mat.row(i) = Eigen::Map<Eigen::VectorXf>(allWaveforms[i].data(), allWaveforms[i].size());
-                }
-
-                //mat.conservativeResize(maxSpikeSampleSize, maxSpikeSampleSize);
-                //mat.normalize();
-
-                Eigen::JacobiSVD<Eigen::MatrixXf> svd(mat, Eigen::ComputeFullU | Eigen::ComputeFullV);
-
-                auto PCA = mat * svd.matrixV();
-
-                Eigen::MatrixXf U =svd.matrixU();
-                Eigen::MatrixXf V =svd.matrixV();
-                Eigen::MatrixXf sigma = Eigen::MatrixXf::Zero(U.cols(), svd.singularValues().size());// = svd.singularValues().asDiagonal().toDenseMatrix();
-                for(int i = 0; i < svd.singularValues().size(); ++i){
-                    sigma(i, i) = svd.singularValues()(i);
-                }
-
-
-
-                int N = 15;
-                Eigen::MatrixXf sigma_NN = sigma;
-                sigma_NN.conservativeResize(N, N);
-                Eigen::MatrixXf U_NN =svd.matrixU();
-                U_NN.conservativeResize(U_NN.rows(), N);
-                Eigen::MatrixXf V_NN =svd.matrixV();
-                V_NN.conservativeResize(V_NN.rows(), N);
-
-                Eigen::MatrixXf recovered = U * sigma * V.transpose();
-                Eigen::MatrixXf reduced = U_NN * sigma_NN * V_NN.transpose();
-
-
-
-                LOGDEBUG("S: %i %i || U: %i %i || V: %i %i", sigma_NN.rows(), sigma_NN.cols(), U_NN.rows(), U_NN.cols(), V_NN.rows(), V_NN.cols());
-                LOGDEBUG("SVD Time: %0.3f [%i, %i]", svdTimer.stop<fu::millis>(), mat.rows(), mat.cols());
-                
-                int idx = 2;
-                for(int i = 0; i < recovered.cols(); ++i){
-                    LOGDEBUG("%0.6f => %0.6f == %0.6f =~ %0.6f", allWaveforms[idx][i], mat(idx, i), recovered(idx, i), reduced(idx, i));
-                }
-                idx = 42;
-                for(int i = 0; i < recovered.cols(); ++i){
-                    LOGDEBUG("%0.6f => %0.6f == %0.6f =~ %0.6f", allWaveforms[idx][i], mat(idx, i), recovered(idx, i), reduced(idx, i));
-                }
-
-                std::cout << "sigma\n" << svd.singularValues() << std::endl;
-                Eigen::VectorXf  wtf = svd.singularValues();
-                wtf.normalize();
-                std::cout << "sigma norm\n" << wtf << std::endl;
-
-                Eigen::VectorXf cum = wtf;
-
-                for(int i = 0; i < wtf.size(); ++i){
-                    if(i > 0) cum[i] = cum[i - 1] + wtf[i];
-                }
-
-                std::cout << "cum \n" << cum << std::endl;
-
-                Eigen::VectorXf sigsq = wtf;
-                Eigen::VectorXf cumsq = wtf;
-                cumsq[0] = wtf[0] * wtf[0];
-
-                for(int i = 0; i < wtf.size(); ++i){
-                    sigsq[i] = wtf[i] * wtf[i];
-                    if(i > 0) cumsq[i] = cumsq[i - 1] + sigsq[i];
-                }
-                
-                std::cout << "nsig2\n" << sigsq << std::endl;
-                //std::cout << "NSIG\n" << wtf * wtf << std::endl;
-                std::cout << "cims2\n" << cumsq << std::endl;
-
-                Eigen::VectorXf nexp = sigsq;
-                Eigen::VectorXf cexp = sigsq;
-                cexp[0] = sigsq[0] / cumsq[cumsq.size() - 1];
-                int idx95 = -1;
-                for(int i = 0; i < wtf.size(); ++i){
-                    nexp[i] = sigsq[i] / cumsq[cumsq.size() - 1];
-                    if(i > 0) cexp[i] = cexp[i - 1] + nexp[i];
-                    if(cexp[i] > 0.95 && idx95 == -1) idx95 = i;
-                }
-
-                std::cout << "idx95: " << idx95 << std::endl;
-                std::cout << "nexp\n" << nexp << std::endl;
-                std::cout << "cexp\n" << cexp << std::endl;
-
-
-
-                allSpikes.clear();
-                allWaveforms.clear();
-
-            }
+            
 
             spikeMutex.unlock();
 
@@ -425,6 +326,111 @@ public:
             allSpikes.push_back(spike);
             allWaveforms.push_back(spike.rawWaveform);
         }
+    }
+
+    void processSVD(){
+
+        if(allSpikes.size() >= maxSpikeSampleSize){
+
+            LOGDEBUG("Let's analyse the spikes %i", allSpikes.size());
+
+            //using Eigen::MatrixXf;
+            fu::Timer svdTimer;
+            svdTimer.start();
+            Eigen::MatrixXf mat(allWaveforms.size(), allWaveforms[0].size());
+
+            for(size_t i = 0; i < allWaveforms.size(); ++i){
+                mat.row(i) = Eigen::Map<Eigen::VectorXf>(allWaveforms[i].data(), allWaveforms[i].size());
+            }
+
+            //mat.conservativeResize(maxSpikeSampleSize, maxSpikeSampleSize);
+            //mat.normalize();
+
+            Eigen::JacobiSVD<Eigen::MatrixXf> svd(mat, Eigen::ComputeFullU | Eigen::ComputeFullV);
+
+            auto PCA = mat * svd.matrixV();
+
+            Eigen::MatrixXf U =svd.matrixU();
+            Eigen::MatrixXf V =svd.matrixV();
+            Eigen::MatrixXf sigma = Eigen::MatrixXf::Zero(U.cols(), svd.singularValues().size());// = svd.singularValues().asDiagonal().toDenseMatrix();
+            for(int i = 0; i < svd.singularValues().size(); ++i){
+                sigma(i, i) = svd.singularValues()(i);
+            }
+
+
+
+            int N = 15;
+            Eigen::MatrixXf sigma_NN = sigma;
+            sigma_NN.conservativeResize(N, N);
+            Eigen::MatrixXf U_NN =svd.matrixU();
+            U_NN.conservativeResize(U_NN.rows(), N);
+            Eigen::MatrixXf V_NN =svd.matrixV();
+            V_NN.conservativeResize(V_NN.rows(), N);
+
+            Eigen::MatrixXf recovered = U * sigma * V.transpose();
+            Eigen::MatrixXf reduced = U_NN * sigma_NN * V_NN.transpose();
+
+
+
+            LOGDEBUG("S: %i %i || U: %i %i || V: %i %i", sigma_NN.rows(), sigma_NN.cols(), U_NN.rows(), U_NN.cols(), V_NN.rows(), V_NN.cols());
+            LOGDEBUG("SVD Time: %0.3f [%i, %i]", svdTimer.stop<fu::millis>(), mat.rows(), mat.cols());
+
+            int idx = 2;
+            for(int i = 0; i < recovered.cols(); ++i){
+                LOGDEBUG("%0.6f => %0.6f == %0.6f =~ %0.6f", allWaveforms[idx][i], mat(idx, i), recovered(idx, i), reduced(idx, i));
+            }
+            idx = 42;
+            for(int i = 0; i < recovered.cols(); ++i){
+                LOGDEBUG("%0.6f => %0.6f == %0.6f =~ %0.6f", allWaveforms[idx][i], mat(idx, i), recovered(idx, i), reduced(idx, i));
+            }
+
+            std::cout << "sigma\n" << svd.singularValues() << std::endl;
+            Eigen::VectorXf  wtf = svd.singularValues();
+            wtf.normalize();
+            std::cout << "sigma norm\n" << wtf << std::endl;
+
+            Eigen::VectorXf cum = wtf;
+
+            for(int i = 0; i < wtf.size(); ++i){
+                if(i > 0) cum[i] = cum[i - 1] + wtf[i];
+            }
+
+            std::cout << "cum \n" << cum << std::endl;
+
+            Eigen::VectorXf sigsq = wtf;
+            Eigen::VectorXf cumsq = wtf;
+            cumsq[0] = wtf[0] * wtf[0];
+
+            for(int i = 0; i < wtf.size(); ++i){
+                sigsq[i] = wtf[i] * wtf[i];
+                if(i > 0) cumsq[i] = cumsq[i - 1] + sigsq[i];
+            }
+
+            std::cout << "nsig2\n" << sigsq << std::endl;
+            //std::cout << "NSIG\n" << wtf * wtf << std::endl;
+            std::cout << "cims2\n" << cumsq << std::endl;
+
+            Eigen::VectorXf nexp = sigsq;
+            Eigen::VectorXf cexp = sigsq;
+            cexp[0] = sigsq[0] / cumsq[cumsq.size() - 1];
+            int idx95 = -1;
+            for(int i = 0; i < wtf.size(); ++i){
+                nexp[i] = sigsq[i] / cumsq[cumsq.size() - 1];
+                if(i > 0) cexp[i] = cexp[i - 1] + nexp[i];
+                if(cexp[i] > 0.95 && idx95 == -1) idx95 = i;
+            }
+
+            std::cout << "idx95: " << idx95 << std::endl;
+            std::cout << "nexp\n" << nexp << std::endl;
+            std::cout << "cexp\n" << cexp << std::endl;
+
+
+
+            allSpikes.clear();
+            allWaveforms.clear();
+
+        }
+
     }
 
     inline float getMillisPerStep(){
