@@ -19,11 +19,13 @@
 #include <mutex>
 #include <syncstream>
 #include <filesystem>
+#include <timeapi.h>
 #include <limits.h>
 #include <windows.h>     ////GetModuleFileNameW
 
 //#include "../Processor/BaseProcessor.h"
 //#include "../Device/BaseDevice.h"
+//#include "ofMain.h"
 
 #pragma once
 
@@ -40,6 +42,42 @@ constexpr long double RHS2116_NUM_DEVICE_PROBES = 16;
 constexpr long double framesPerMillis = 1.0 / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0;
 
 namespace ONI{
+
+struct Spike{
+
+	size_t probe = 0;
+	std::vector<float> rawWaveform;
+	size_t acquisitionTime = 0;
+	size_t maxSampleIndex = 0;
+	size_t minSampleIndex = 0;
+	float minVoltage = INFINITY;
+	float maxVoltage = -INFINITY;
+
+		// copy assignment (copy-and-swap idiom)
+	Spike& Spike::operator=(Spike other) noexcept{
+		std::swap(probe, other.probe);
+		std::swap(rawWaveform, other.rawWaveform);
+		std::swap(acquisitionTime, other.acquisitionTime);
+		std::swap(maxSampleIndex, other.maxSampleIndex);
+		std::swap(minSampleIndex, other.minSampleIndex);
+		std::swap(minVoltage, other.minVoltage);
+		std::swap(maxVoltage, other.maxVoltage);
+		return *this;
+	}
+
+};
+
+inline bool operator==(const Spike& lhs, const Spike& rhs){
+	return (lhs.probe == rhs.probe &&
+			lhs.rawWaveform == rhs.rawWaveform &&
+			lhs.acquisitionTime == rhs.acquisitionTime &&
+			lhs.maxSampleIndex == rhs.maxSampleIndex &&
+			lhs.minSampleIndex == rhs.minSampleIndex &&
+			lhs.minVoltage == rhs.minVoltage &&
+			lhs.maxVoltage == rhs.maxVoltage);
+}
+inline bool operator!=(const Spike& lhs, const Spike& rhs) { return !(lhs == rhs); }
+
 
 class Context; // predeclare for friend access
 
@@ -102,6 +140,7 @@ class SpikeProcessor;
 class Rhs2116MultiProcessor;
 class Rhs2116StimProcessor;
 class FilterProcessor;
+class AudioProcessor;
 
 
 enum TypeID{
@@ -115,6 +154,7 @@ enum TypeID{
 	RECORD_PROCESSOR		= 602,
 	SPIKE_PROCESSOR			= 603,
 	FILTER_PROCESSOR		= 604,
+	AUDIO_PROCESSOR		= 605,
 	RHS2116_MULTI_PROCESSOR	= 666,
 	RHS2116_STIM_PROCESSOR	= 667,
 };
@@ -131,6 +171,7 @@ static std::string toString(const ONI::Processor::TypeID& typeID){
 	case RECORD_PROCESSOR: {return "RECORD Processor"; break;}
 	case SPIKE_PROCESSOR: {return "SPIKE Processor"; break;}
 	case FILTER_PROCESSOR: { return "FILTER Processor"; break; }
+	case AUDIO_PROCESSOR: { return "AUDIO Processor"; break; }
 	case RHS2116_MULTI_PROCESSOR: {return "RHS2116MULTI Processor"; break;}
 	case RHS2116_STIM_PROCESSOR: {return "RHS2116STIM Processor"; break;}
 	default: {assert(false, "UNKNOWN TYPE"); return "UNKNOWN Processor"; break; }
@@ -260,6 +301,10 @@ public:
 		return spikeProcessor;
 	}
 
+	ONI::Processor::AudioProcessor* getAudioProcessor(){
+		return audioProcessor;
+	}
+
 	ONI::Processor::Rhs2116MultiProcessor* getRhs2116MultiProcessor(){
 		return rhs2116MultiProcessor;
 	}
@@ -304,10 +349,14 @@ private:
 	ONI::Processor::Rhs2116MultiProcessor * rhs2116MultiProcessor = nullptr;
 	ONI::Processor::Rhs2116StimProcessor * rhs2116StimProcessor = nullptr;
 	ONI::Processor::FilterProcessor* filterProcessor = nullptr;
+	ONI::Processor::AudioProcessor* audioProcessor = nullptr;
 
 };
 
-static Model model;
+//static Model model;
+
+typedef Singleton<Model> ModelSingleton;
+static Model& model = ModelSingleton::Instance();
 
 } // namespace Global
 

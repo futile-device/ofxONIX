@@ -356,7 +356,7 @@ private:
 	std::vector<ONI::Frame::Rhs2116DataExtended> multiFrameBufferRaw;
 
 	ONI::Frame::Rhs2116DataExtended errorFrameRaw;
-	std::map<uint32_t, ONI::Frame::Rhs2116DataExtended> lastMultiFrameRawMap;
+	//std::map<uint32_t, ONI::Frame::Rhs2116DataExtended> lastMultiFrameRawMap;
 	std::map<uint32_t, ONI::Frame::Rhs2116DataExtended> multiFrameRawMap;
 	bool bBadFrame = false; // for tracking out of order frame idx with multiple rhs2116 devices
 

@@ -204,6 +204,12 @@ public:
 			if(ImGui::Button("Refresh List", ImVec2(120, 0))) {
 				listFiles(rp);
 			}
+			ImGui::SameLine();
+			if(ImGui::Button("Export Audio", ImVec2(120, 0))) {
+				rp.getStreamNamesFromFolder(folders[fileIDX]);
+				rp.exportToAudio();
+				ImGui::CloseCurrentPopup();
+			}
 
 			ImGui::SameLine();
 			if(ImGui::Button("Cancel", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }

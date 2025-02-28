@@ -34,41 +34,6 @@
 
 namespace ONI{
 
-struct Spike{
-
-    size_t probe = 0;
-    std::vector<float> rawWaveform;
-    size_t acquisitionTime = 0;
-    size_t maxSampleIndex = 0;
-    size_t minSampleIndex = 0;
-    float minVoltage = INFINITY;
-    float maxVoltage = -INFINITY;
-
-        // copy assignment (copy-and-swap idiom)
-    Spike& Spike::operator=(Spike other) noexcept{
-        std::swap(probe, other.probe);
-        std::swap(rawWaveform, other.rawWaveform);
-        std::swap(acquisitionTime, other.acquisitionTime);
-        std::swap(maxSampleIndex, other.maxSampleIndex);
-        std::swap(minSampleIndex, other.minSampleIndex);
-        std::swap(minVoltage, other.minVoltage);
-        std::swap(maxVoltage, other.maxVoltage);
-        return *this;
-    }
-
-};
-
-inline bool operator==(const Spike& lhs, const Spike& rhs){
-    return (lhs.probe == rhs.probe &&
-            lhs.rawWaveform == rhs.rawWaveform &&
-            lhs.acquisitionTime == rhs.acquisitionTime &&
-            lhs.maxSampleIndex == rhs.maxSampleIndex &&
-            lhs.minSampleIndex == rhs.minSampleIndex &&
-            lhs.minVoltage == rhs.minVoltage &&
-            lhs.maxVoltage == rhs.maxVoltage);
-}
-inline bool operator!=(const Spike& lhs, const Spike& rhs) { return !(lhs == rhs); }
-
 namespace Interface{
 class SpikeInterface;
 };
@@ -221,7 +186,7 @@ public:
                                     spike.acquisitionTime = buffer.getFrameAt(centralSampleIDX + peakOffsetIndex).getAcquisitionTime();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength + peakOffsetIndex);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    //addSpikeForAnalysis(spike);
+                                    processSpike(spike);
                                 }else{
                                     spike.minVoltage = frame.ac_uV[probe];
                                     spike.minSampleIndex = halfLength;
@@ -230,7 +195,7 @@ public:
                                     spike.acquisitionTime = buffer.getFrameAt(centralSampleIDX).getAcquisitionTime();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    //addSpikeForAnalysis(spike);
+                                    processSpike(spike);
                                 }
 
                                 // cache this spike detection buffer count (so we can suppress re-detecting the same spike)
@@ -280,7 +245,7 @@ public:
                                     spike.acquisitionTime = frame.getAcquisitionTime();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    //addSpikeForAnalysis(spike);
+                                    processSpike(spike);
                                 }else{
                                     ONI::Spike& spike = probeSpikes[probe][spikeIndexes[probe]];
                                     spike.minVoltage = troughVoltage;
@@ -290,7 +255,7 @@ public:
                                     spike.acquisitionTime = frame.getAcquisitionTime();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - troughOffsetIndex - halfLength);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    //addSpikeForAnalysis(spike);
+                                    processSpike(spike);
                                 }
                                 
                                 
@@ -321,7 +286,10 @@ public:
 
     }
 
-    inline void addSpikeForAnalysis(const Spike& spike){
+    inline void processSpike(Spike& spike){
+
+        spikeEvent.notify(spike);
+
         if(allSpikes.size() < maxSpikeSampleSize){
             allSpikes.push_back(spike);
             allWaveforms.push_back(spike.rawWaveform);
@@ -452,7 +420,6 @@ public:
 
     fu::Event<ONI::Spike> spikeEvent;
      
-
 protected:
 
     ONI::Settings::SpikeSettings settings;

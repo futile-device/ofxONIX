@@ -113,6 +113,10 @@ public:
         sparseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame));
         dataMutex[SPARSE_MUTEX].unlock();
 
+        for(auto& it : postProcessors){
+            it.second->process(frame);
+        }
+
 	}
 
     void resetBuffers(){ // const bool& bUseSamplesForSize = true // Should we give user the choice?
@@ -199,7 +203,7 @@ private:
                 probeStats[probe].std += acdiff * acdiff;
             }
 
-            probeStats[probe].variance = probeStats[probe].std / (sparseBuffer.size() - 1);  // use population (N) or sample (n-1) deviation?
+            probeStats[probe].variance = probeStats[probe].std / (sparseBuffer.size());  // use population (N) or sample (n-1) deviation?
             probeStats[probe].deviation = sqrt(probeStats[probe].variance);
 
         }

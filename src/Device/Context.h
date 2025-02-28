@@ -40,6 +40,7 @@
 #include "../Processor/Rhs2116MultiProcessor.h"
 #include "../Processor/Rhs2116StimProcessor.h"
 #include "../Processor/FilterProcessor.h"
+#include "../Processor/AudioProcessor.h"
 
 #include "../Interface/BaseInterface.h"
 #include "../Interface/FmcInterface.h"
@@ -355,7 +356,7 @@ public:
 		auto it = processors.find(typeID);
 		if(it != processors.end()){
 			LOGINFO("Deleting old %s", name.c_str());
-			delete processors[typeID];
+			delete processors[typeID]; // TODO:  just remove from the list, not delete!!!!
 		}
 		LOGINFO("Created new %s", name.c_str());
 		processors[typeID] = std::move(processor);
@@ -385,6 +386,11 @@ public:
 	ONI::Processor::SpikeProcessor* createSpikeProcessor(){
 		ONI::Global::model.spikeProcessor = createProcessor<ONI::Processor::SpikeProcessor>();
 		return ONI::Global::model.spikeProcessor;
+	}
+
+	ONI::Processor::AudioProcessor* createAudioProcessor(){
+		ONI::Global::model.audioProcessor = createProcessor<ONI::Processor::AudioProcessor>();
+		return ONI::Global::model.audioProcessor;
 	}
 
 	ONI::Processor::Rhs2116MultiProcessor* createRhs2116MultiProcessor(){
