@@ -25,6 +25,7 @@
 
 #include "../Processor/BaseProcessor.h"
 #include "../Processor/Rhs2116MultiProcessor.h"
+#include "../Processor/RecordProcessor.h"
 
 #pragma once
 
@@ -36,7 +37,7 @@ class Rhs2116StimulusInterface;
 
 namespace Processor{
 
-
+class RecordProcessor;
 
 
 class Rhs2116StimProcessor : public ONI::Processor::BaseProcessor {
@@ -47,7 +48,7 @@ public:
         STAGED,
         DEVICE
     };
-
+    friend class ONI::Processor::RecordProcessor;
 	friend class ONI::Interface::Rhs2116StimulusInterface;
 
 	Rhs2116StimProcessor(){
@@ -97,12 +98,31 @@ public:
         deviceSettings.stimuli = defaultStimuli;
         deviceSettings.stepSize = ONI::Settings::Step10nA;
     }
-
+    bool bAnnoyingMe = false;
     inline void process(oni_frame_t* frame){};
     inline void process(ONI::Frame::BaseFrame& frame){
+
+        ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+
+        if(recordProcessor->isPlaying()){
+            const int& stimulusID = recordProcessor->getStimID();
+            const std::vector<ONI::Settings::Rhs2116StimulusSettings>& allStimSettings = recordProcessor->getAllStimulusSettings();
+            if(stimulusID != -1){
+                reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)->stim = true;
+                if(stagedSettings != allStimSettings[stimulusID]){ //  // is this too inefficient
+                    //reset();
+                    stagedSettings = allStimSettings[stimulusID]; // don't apply them??
+                    syncStagedAndDevice();
+                    bAnnoyingMe = true;
+                }
+            }
+
+        }
         if(stimulusSampleCountRemaining > 0) {
             reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)->stim = true;
+            if(recordProcessor->isRecording()) recordProcessor->setStimRecording(true);
             --stimulusSampleCountRemaining;
+            if(recordProcessor->isRecording() && stimulusSampleCountRemaining <= 0) recordProcessor->setStimRecording(false);
         }
         for(auto& it : postProcessors){
             it.second->process(frame);
@@ -243,8 +263,7 @@ public:
         return bOK;
     }
 
-    bool applyStagedStimuliToDevice(const bool& bSetWithoutCheck = true){
-
+    void syncStagedAndDevice(){
         // conform stepsize just in case
         ONI::Settings::Rhs2116StimulusStep ss = stagedSettings.stepSize;
         stagedSettings.stepSize = getRequiredStepSize(stagedSettings.stimuli);
@@ -253,7 +272,7 @@ public:
             LOGALERT("Step size not sync'd - better to check this before sending to device");
         }
 
-        conformStepSize(SettingType::STAGED); 
+        conformStepSize(SettingType::STAGED);
 
         for(size_t i = 0; i < stagedSettings.stimuli.size(); ++i){
             size_t probeIDX = getInverseChannelMap()[i];
@@ -264,6 +283,11 @@ public:
         lastAppliedInverseChannelMap = getInverseChannelMap();
 
         deviceSettings.stepSize = stagedSettings.stepSize; // conformStepSize(SettingType::DEVICE);
+    }
+
+    bool applyStagedStimuliToDevice(const bool& bSetWithoutCheck = true){
+
+        syncStagedAndDevice();
         
         for(size_t deviceIDX = 0; deviceIDX < rhs2116Devices.size(); ++deviceIDX){
 
@@ -366,13 +390,17 @@ public:
 
     }
 
-    inline bool isStimulousPlaying(){
+    inline bool isStimulusPlaying(){
         return stimulusSampleCountRemaining > 0;
     }
 
     inline void triggerStimulusSequence(){ // maybe proved a bAutoApply func?
 
-        
+        ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
+        if(recordProcessor->isRecording()){
+
+            recordProcessor->setStimTriggerDevices(stagedSettings); // hmm we should double check these are the same as the device ones???
+        }
 
         for(auto& it : rhs2116StimDevices){
             ONI::Device::Rhs2116StimDevice* device = it.second;
@@ -650,9 +678,11 @@ protected:
 
     //Rhs2116MultiProcessor* multi;
 
-    volatile bool bIsStimulusActive = false;
-    volatile size_t stimulusSampleCountRemaining = 0;
-    volatile size_t stimulusSampleCountTotal = 0;
+    //int lastStimulusID = -1;
+
+    std::atomic_bool bIsStimulusActive = false;
+    std::atomic_uint64_t stimulusSampleCountRemaining = 0;
+    std::atomic_uint64_t stimulusSampleCountTotal = 0;
 
     std::map<uint32_t, ONI::Device::Rhs2116Device*> rhs2116Devices;
     std::map<uint32_t, ONI::Device::Rhs2116StimDevice*> rhs2116StimDevices;

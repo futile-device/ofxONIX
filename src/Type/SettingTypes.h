@@ -556,7 +556,12 @@ inline bool operator!=(const Rhs2116DeviceSettings& lhs, const Rhs2116DeviceSett
 
 
 
+struct Rhs2116StimulusSettingsRaw64{
 
+	ONI::Rhs2116StimulusData stimuli[64];
+	ONI::Settings::Rhs2116StimulusStep stepSize =  ONI::Settings::Step10nA;
+
+};
 
 struct Rhs2116StimulusSettings{
 
@@ -814,6 +819,8 @@ struct RecordSettings{
 	std::string recordFolder ="";
 	std::string dataFileName = "";
 	std::string timeFileName = "";
+	std::string stimTypesFileName = "";
+	std::string stimFileName = "";
 	std::string infoFileName = "";
 	std::string timeStamp = "";      // "normal"
 	std::string version = "";
@@ -839,6 +846,8 @@ struct RecordSettings{
 		std::swap(version, other.version);
 		std::swap(channelMap, other.channelMap);
 		std::swap(fileTimeStamp, other.fileTimeStamp);
+		std::swap(stimTypesFileName, other.stimTypesFileName);
+		std::swap(stimFileName, other.stimFileName);
 		std::swap(description, other.description);
 		std::swap(info, other.info);
 		std::swap(heartBeatRateHz, other.heartBeatRateHz);
@@ -861,6 +870,8 @@ inline bool operator==(const RecordSettings& lhs, const RecordSettings& rhs){
 			lhs.channelMap == rhs.channelMap &&
 			lhs.version == rhs.version &&
 			lhs.fileTimeStamp == rhs.fileTimeStamp &&
+			lhs.stimTypesFileName == rhs.stimTypesFileName &&
+			lhs.stimFileName == rhs.stimFileName &&
 			lhs.description == rhs.description &&
 			lhs.info == rhs.info &&
 			lhs.heartBeatRateHz == rhs.heartBeatRateHz &&

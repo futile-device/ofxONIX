@@ -32,9 +32,11 @@
 
 #include "../Processor/BaseProcessor.h"
 #include "../Processor/Rhs2116MultiProcessor.h"
+//#include "../Processor/Rhs2116StimProcessor.h"
 
 #pragma once
 
+#define FILE_VERSION 2
 
 namespace ONI{
 
@@ -78,12 +80,16 @@ class RecordInterface;
 
 namespace Processor{
 
+class Rhs2116StimProcessor;
+
 class RecordProcessor : public BaseProcessor{
 
 public:
 
-	friend class ONI::Interface::RecordInterface;
 	friend class ONI::Context;
+	friend class ONI::Processor::Rhs2116StimProcessor;
+	friend class ONI::Interface::RecordInterface;
+	
 
 	enum State{
 		PLAYING = 0,
@@ -181,6 +187,8 @@ public:
 		streamMutex.lock();
 		contextDataStream.close();
 		contextTimeStream.close();
+		contextStimStream.close();
+		contextStimTypes.close();
 		streamMutex.unlock();
 	}
 
@@ -245,16 +253,9 @@ public:
 			infostream.close();
 			info = osInf.str();
 
-			//std::string version = getStringSetting("Version: ", info); // do the update on load
-			//if(version == "")
-			//	upgradeToVersion(1);
-			//	std::ifstream infostream;
-			//	infostream.open(settings.infoFileName.c_str());
-			//	std::string line; std::ostringstream osInf;
-			//	while(std::getline(infostream, line)) osInf << line << "\n";
-			//	infostream.close();
-			//	info = osInf.str();
-			//}
+			//std::string version = getStringSetting("Version: ", info); // do the update on load DONT DO THIS HERE
+			//if(version == "") upgradeToVersion(1);
+			//if(version == "1") upgradeToVersion(2);
 
 		}else{
 			LOGERROR("Path for info not valid: %s", path.c_str());
@@ -281,15 +282,10 @@ public:
 			settings.timeStamp = ONI::ReverseTimeStamp(settings.fileTimeStamp);
 
 			// load the info metadata first
-			std::ostringstream osI; osI << path << "\\info_" << settings.fileTimeStamp << ".txt";
+			std::ostringstream osI; osI << settings.recordFolder << "\\info_" << settings.fileTimeStamp << ".txt";
 			settings.infoFileName = osI.str();
 
-			std::ifstream infostream;
-			infostream.open(settings.infoFileName.c_str());
-			std::string line; std::ostringstream osInf;
-			while(std::getline(infostream, line))osInf << line << "\n";
-			infostream.close();
-			settings.info = osInf.str();
+			loadInfoSettings();
 
 			// set heartbeat setting
 			std::string hz = getStringSetting("HeartBeat Hz: ", settings.info);
@@ -307,17 +303,24 @@ public:
 			ONI::Global::model.getChannelMapProcessor()->setChannelMap(channelMap);
 			ONI::Global::model.getChannelMapProcessor()->updateChannelMaps();
 
+			std::ostringstream osD; osD << settings.recordFolder << "\\data_stream_" << settings.fileTimeStamp << ".dat";
+			std::ostringstream osT; osT << settings.recordFolder << "\\time_stream_" << settings.fileTimeStamp << ".dat";
+			std::ostringstream osS; osS << settings.recordFolder << "\\stim_stream_" << settings.fileTimeStamp << ".dat";
+			std::ostringstream osP; osP << settings.recordFolder << "\\stim_types_" << settings.fileTimeStamp << ".dat";
+
+			settings.dataFileName = osD.str();
+			settings.timeFileName = osT.str();
+			settings.stimFileName = osS.str();
+			settings.stimTypesFileName = osP.str();
+
 			// always check version at the end so we can just redo saving 
 			// a new file metadata header with already loaded values
 			// [if you want to force some of this we can do it in the getFileInfo function above]
 			std::string version = getStringSetting("Version: ", settings.info);
 			if(version == "") upgradeToVersion(1);
+			if(version == "1") upgradeToVersion(2);
 
-			std::ostringstream osD; osD << path << "\\data_stream_" << settings.fileTimeStamp << ".dat";
-			std::ostringstream osT; osT << path << "\\time_stream_" << settings.fileTimeStamp << ".dat";
-
-			settings.dataFileName = osD.str();
-			settings.timeFileName = osT.str();
+			
 
 			return true;
 		} else{
@@ -327,7 +330,19 @@ public:
 
 	}
 
+	void loadInfoSettings(){
+		assert(settings.infoFileName != "");
+		std::ifstream infostream;
+		infostream.open(settings.infoFileName.c_str());
+		std::string line; std::ostringstream osInf;
+		while(std::getline(infostream, line))osInf << line << "\n";
+		infostream.close();
+		settings.info = osInf.str();
+	}
+
 	void saveInfoSettings(){
+		
+		assert(settings.infoFileName != "");
 
 		std::ofstream infostream;
 		infostream.open(settings.infoFileName.c_str());
@@ -346,7 +361,7 @@ public:
 		for(size_t probe = 0; probe < channelMap.size(); ++probe){
 			infostream << std::to_string(channelMap[probe]) << (probe == channelMap.size() - 1 ? "" : ",");
 		}
-		size_t t = infostream.tellp();
+		//size_t t = infostream.tellp();
 		infostream.close();
 
 	}
@@ -361,9 +376,63 @@ public:
 
 			// add version number
 			// add channel map
-			// add spike stream
 
 			saveInfoSettings();
+			loadInfoSettings();
+		}
+
+		if(toVersionNumber == 2){
+
+			// add spike and stim streams
+
+			streamMutex.lock();
+
+			contextTimeStream = std::fstream(settings.timeFileName, std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
+			contextTimeStream.seekg(0, ::std::ios::end);
+			int length = contextTimeStream.tellg();
+			int nFrames = length / sizeof(uint64_t);
+			contextTimeStream.close();
+
+			contextStimTypes = std::fstream(settings.stimTypesFileName, std::ios::binary | std::ios::out);
+			contextStimStream = std::fstream(settings.stimFileName, std::ios::binary | std::ios::out);
+			contextStimTypes.seekg(0, ::std::ios::beg);
+			contextStimStream.seekg(0, ::std::ios::beg);
+
+			int stimID = -1; // every frame of the spike stream contains a number refering to the stim settings applied during that frame -> -1 means no stim
+			for(size_t frame = 0; frame < nFrames; ++frame) contextStimStream.write(reinterpret_cast<char*>(&stimID), sizeof(int));
+			contextStimTypes.close();
+			contextStimStream.close();
+
+			streamMutex.unlock();
+
+			settings.version = std::to_string(toVersionNumber);
+			saveInfoSettings();
+			loadInfoSettings();
+
+			/*ONI::Settings::Rhs2116StimulusSettings& stagedSettings = ONI::Global::model.getRhs2116StimProcessor()->stagedSettings; // remember to do it with actual device settngs
+			ONI::Settings::Rhs2116StimulusSettingsRaw64 saveSettings; 
+			saveSettings.stepSize = stagedSettings.stepSize;
+			std::memcpy(saveSettings.stimuli, stagedSettings.stimuli.data(), 64 * sizeof(ONI::Rhs2116StimulusData));
+			contextStimStream.write(reinterpret_cast<char*>(&saveSettings), sizeof(ONI::Settings::Rhs2116StimulusSettingsRaw64));
+			contextStimStream.close();
+
+
+
+			contextStimStream = std::fstream(settings.stimFileName.c_str(), std::ios::binary | std::ios::in);
+			contextStimTypes.seekg(0, ::std::ios::beg);
+
+			ONI::Settings::Rhs2116StimulusSettingsRaw64 loadSettings;
+			contextStimStream.read(reinterpret_cast<char*>(&loadSettings), sizeof(ONI::Settings::Rhs2116StimulusSettingsRaw64));
+
+			stagedSettings.stimuli.clear();
+			stagedSettings.stepSize = loadSettings.stepSize;
+			std::memcpy(stagedSettings.stimuli.data(), loadSettings.stimuli, 64 * sizeof(ONI::Rhs2116StimulusData));
+			contextStimStream.close();
+			//ONI::Global::model.getRhs2116StimProcessor()->applyStagedStimuliToDevice();
+			*/
+			
+
+
 
 		}
 	}
@@ -382,13 +451,354 @@ public:
 
 private:
 
-	bool bBadFrame = false;
-	int nextDeviceCounter = 0;
 
-	ONI::Frame::Rhs2116DataExtended errorFrameRaw;
-	std::map<uint32_t, ONI::Frame::Rhs2116DataExtended> lastMultiFrameRawMap;
-	std::map<uint32_t, ONI::Frame::Rhs2116DataExtended> multiFrameRawMap;
-	std::vector<ONI::Frame::Rhs2116DataExtended> multiFrameBufferRaw;
+
+	void _play(){
+
+		//timeBeginPeriod(1);
+
+		bPlaybackNeedsStart = bRecordNeedsStart = false;
+
+		if(state == PLAYING || state == RECORDING) stopStreams();
+		//if(bIsAcquiring) stopAcquisition();
+		//const std::lock_guard<std::mutex> lock(mutex);
+		LOGINFO("Start Playing");
+
+		if(settings.dataFileName == "" || settings.timeFileName == ""){
+			LOGINFO("No file set, attempt to play last recorded...");
+			std::vector<std::string> folders = getAllRecordingFolders();
+			if(folders.size() == 0) return;
+			if(!getStreamNamesFromFolder(folders[0])) return;
+		}
+
+		
+		streamMutex.lock();
+
+		// open all the file streams for reading
+		contextStimStream = std::fstream(settings.stimFileName, std::ios::binary | std::ios::in);
+		contextStimTypes = std::fstream(settings.stimTypesFileName, std::ios::binary | std::ios::in);
+		contextDataStream = std::fstream(settings.dataFileName, std::ios::binary | std::ios::in);
+		contextTimeStream = std::fstream(settings.timeFileName, std::ios::binary | std::ios::in);
+
+		// seek time and data streams to the beginning
+		contextStimStream.seekg(0, ::std::ios::beg);
+		contextDataStream.seekg(0, ::std::ios::beg);
+
+		// get the first acquire time stamp and set up the clock
+		contextTimeStream.seekg(0, ::std::ios::end);
+		int tlength = contextTimeStream.tellg();
+		contextTimeStream.seekg(tlength - sizeof(uint64_t), ::std::ios::beg); 
+		contextTimeStream.read(reinterpret_cast<char*>(&settings.acquisitionEndTime), sizeof(uint64_t));
+		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
+		contextTimeStream.seekg(0, ::std::ios::beg);
+		contextTimeStream.read(reinterpret_cast<char*>(&lastAcquireTimeStamp), sizeof(uint64_t));
+		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
+		settings.acquisitionStartTime = settings.acquisitionCurrentTime = systemAcquisitionTimeStamp = lastAcquireTimeStamp;
+		settings.fileLengthTimeStamp = ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionEndTime);
+
+		// load all the device stimili types
+		contextStimTypes.seekg(0, ::std::ios::end);
+		int slength = contextStimTypes.tellg();
+		int numStimTypes = slength / sizeof(ONI::Settings::Rhs2116StimulusSettingsRaw64);
+		contextStimTypes.seekg(0, ::std::ios::beg);
+		
+		allStimSettings.clear();
+		allStimSettings.resize(numStimTypes);
+		for(size_t t = 0; t < numStimTypes; ++t){
+			ONI::Settings::Rhs2116StimulusSettingsRaw64 settingType;
+			contextStimTypes.read(reinterpret_cast<char*>(&settingType), sizeof(ONI::Settings::Rhs2116StimulusSettingsRaw64));
+			allStimSettings[t].stepSize = settingType.stepSize;
+			allStimSettings[t].stimuli.resize(64);
+			std::memcpy(allStimSettings[t].stimuli.data(), settingType.stimuli, 64 * sizeof(ONI::Rhs2116StimulusData));
+		}
+
+		stimulusID = -1;
+
+		streamMutex.unlock();
+
+		for(auto& device : ONI::Global::model.getDevices()) device.second->reset();
+
+		bPlaybackNeedsRestart = false;
+		bPlaybackNeedsDependencyReset = true;
+		state = PLAYING;
+
+		realHeartBeatTimer.start();
+		playBackSpeedFactor = 1.4; // hacky but helps
+
+		bThread = true;
+		thread = std::thread(&RecordProcessor::playFrames, this);
+	}
+	
+
+	void _record(){
+
+		bPlaybackNeedsStart = bRecordNeedsStart = false;
+
+		if(state == PLAYING || state == RECORDING) stopStreams();
+
+		LOGINFO("Start Recording");
+
+		settings.version = std::to_string(FILE_VERSION);
+
+		settings.timeStamp = ONI::GetTimeStamp();
+		settings.fileTimeStamp = ONI::ReverseTimeStamp(settings.timeStamp);
+
+		if(settings.executableDataPath == "") settings.executableDataPath = ONI::GetExecutableDataPath();
+
+		std::ostringstream osPR; osPR << settings.executableDataPath << "\\data\\recordings\\experiment_" <<  settings.fileTimeStamp;
+
+		settings.recordFolder = osPR.str();
+
+		std::ostringstream osD; osD << settings.recordFolder << "\\data_stream_" << settings.fileTimeStamp << ".dat";
+		std::ostringstream osT; osT << settings.recordFolder << "\\time_stream_" << settings.fileTimeStamp << ".dat";
+		std::ostringstream osS; osS << settings.recordFolder << "\\stim_stream_" << settings.fileTimeStamp << ".dat";
+		std::ostringstream osP; osP << settings.recordFolder << "\\stim_types_" << settings.fileTimeStamp << ".dat";
+		std::ostringstream osI; osI << settings.recordFolder << "\\info_" << settings.fileTimeStamp << ".txt";
+
+		settings.dataFileName = osD.str();
+		settings.timeFileName = osT.str();
+		settings.stimFileName = osS.str();
+		settings.stimTypesFileName = osP.str();
+		settings.infoFileName = osI.str();
+
+		bool bFolder = std::filesystem::create_directories(settings.recordFolder.c_str());
+
+		if(!bFolder){
+			LOGERROR("Could not create folder: %s", settings.recordFolder.c_str());
+			return;
+		} else{
+			LOGINFO("Created recording folder: %s", settings.recordFolder.c_str())
+		}
+
+		saveInfoSettings();
+
+		streamMutex.lock();
+
+		contextStimStream = std::fstream(settings.stimFileName, std::ios::binary | std::ios::out);
+		contextStimTypes = std::fstream(settings.stimTypesFileName, std::ios::binary | std::ios::out);
+		contextDataStream = std::fstream(settings.dataFileName, std::ios::binary | std::ios::out);
+		contextTimeStream = std::fstream(settings.timeFileName, std::ios::binary | std::ios::out);
+
+		
+		contextStimStream.seekg(0, ::std::ios::beg);
+		contextStimTypes.seekg(0, ::std::ios::beg);
+		contextDataStream.seekg(0, ::std::ios::beg);
+		contextTimeStream.seekg(0, ::std::ios::beg);
+
+		
+
+		using namespace std::chrono;
+		uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+
+		contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
+
+		if(contextTimeStream.bad()) LOGERROR("Bad init time frame write");
+		settings.acquisitionStartTime = systemAcquisitionTimeStamp;
+
+		bIsStimulating = false;
+		stimulusID = -1;
+		allStimSettings.clear();
+
+		streamMutex.unlock();
+
+		state = RECORDING;
+
+	}
+
+	
+	bool bIsStimulating = false;
+	int stimulusID = -1;
+	std::vector<ONI::Settings::Rhs2116StimulusSettings> allStimSettings;
+	ONI::Settings::Rhs2116StimulusSettings defaultStimDeviceSettings;
+
+	inline void setStimTriggerDevices(const ONI::Settings::Rhs2116StimulusSettings& deviceSettings){
+		const std::lock_guard<std::mutex> lock(streamMutex);
+
+		stimulusID = -1;
+		for(size_t s = 0; s < allStimSettings.size(); ++s){
+			if(allStimSettings[s] == deviceSettings){
+				stimulusID = s;
+				break;
+			}
+		}
+
+		if(stimulusID == -1){
+			stimulusID = allStimSettings.size();
+			allStimSettings.push_back(deviceSettings);
+			ONI::Settings::Rhs2116StimulusSettingsRaw64 saveSettings;
+			saveSettings.stepSize = deviceSettings.stepSize;
+			std::memcpy(saveSettings.stimuli, deviceSettings.stimuli.data(), 64 * sizeof(ONI::Rhs2116StimulusData));
+			contextStimTypes.write(reinterpret_cast<char*>(&saveSettings), sizeof(ONI::Settings::Rhs2116StimulusSettingsRaw64));
+		}
+
+	}
+
+	inline const std::vector<ONI::Settings::Rhs2116StimulusSettings>& getAllStimulusSettings(){
+		return allStimSettings;
+	}
+
+	inline const int& getStimID(){
+		return stimulusID;
+	}
+
+	inline void setStimRecording(const bool& b){
+		const std::lock_guard<std::mutex> lock(streamMutex);
+		bIsStimulating = b;
+	}
+
+	void recordFrame(oni_frame_t* frame){
+
+		if(state == RECORDING){
+
+			using namespace std::chrono;
+			uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+
+			ONI::Frame::Rhs2116DataRaw* frame_out = new ONI::Frame::Rhs2116DataRaw;
+
+			frame_out->time = frame->time;
+			frame_out->dev_idx = frame->dev_idx;
+			frame_out->data_sz = frame->data_sz;
+
+			std::memcpy(frame_out->data, frame->data, frame->data_sz);
+			streamMutex.lock();
+
+			settings.acquisitionCurrentTime = systemAcquisitionTimeStamp;
+
+			contextDataStream.write(reinterpret_cast<char*>(frame_out), sizeof(ONI::Frame::Rhs2116DataRaw));
+			if(contextDataStream.bad()){
+				LOGERROR("Bad data frame write");
+			}
+
+			contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
+			if(contextTimeStream.bad()){
+				LOGERROR("Bad time frame write");
+			}
+
+			int stimID = bIsStimulating ? stimulusID : -1;
+			contextStimStream.write(reinterpret_cast<char*>(&stimID), sizeof(int));
+			if(contextStimStream.bad()){
+				LOGERROR("Bad stim frame write");
+			}
+
+			streamMutex.unlock();
+			delete frame_out;
+
+			settings.fileLengthTimeStamp = ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
+
+		}else{
+			std::this_thread::yield();
+		}
+
+	}
+
+	
+	void playFrames(){
+
+		while(bThread){
+
+			if(state == PLAYING){
+
+				using namespace std::chrono;
+				int elapsed = 0;
+				int start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
+
+				streamMutex.lock();
+				contextTimeStream.read(reinterpret_cast<char*>(&systemAcquisitionTimeStamp),  sizeof(uint64_t));
+				if(contextTimeStream.bad()) LOGERROR("Bad time frame read");
+
+				settings.acquisitionCurrentTime = systemAcquisitionTimeStamp;
+
+				contextStimStream.read(reinterpret_cast<char*>(&stimulusID), sizeof(int));
+				if(contextStimStream.bad()){
+					LOGERROR("Bad stim frame write");
+				}
+
+				ONI::Frame::Rhs2116DataRaw * frame_in = new ONI::Frame::Rhs2116DataRaw;
+
+				contextDataStream.read(reinterpret_cast<char*>(frame_in),  sizeof(ONI::Frame::Rhs2116DataRaw));
+				if(contextDataStream.bad()) LOGERROR("Bad data frame read");
+
+				if(contextDataStream.eof()){
+					if(bLoopPlayback){
+						LOGINFO("Playback reached LOOP");
+						bPlaybackNeedsRestart = true;
+						streamMutex.unlock();
+						break;
+					}else{
+						LOGINFO("Playback reached EOF");
+						stop(); // ? or do we just pause?
+					}
+				}
+				streamMutex.unlock();
+
+				oni_frame_t* frame = reinterpret_cast<oni_frame_t*>(frame_in); // this is kinda nasty ==> will it always work
+
+				frame->data = new char[74];
+				memcpy(frame->data, frame_in->data, 74);
+
+				std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
+				
+				auto it = devices.find((uint32_t)frame->dev_idx);
+
+				if(it == devices.end()){
+					LOGERROR("ONI Device doesn't exist with idx: %i", frame->dev_idx);
+				}else{
+
+					//LOGDEBUG("Play device frame: %i", frame->dev_idx);
+
+					// This is HORRIBLE but it works - for various reasons
+					// (clock drift, load variation, thread locks), the system
+					// timestamps are drifting badly out of time, so this hack
+					// compares the heartbeat Hz to the real time between decoding
+					// the heartbeat frames and adjusts a multiplier for the 
+					// elapsed time between frames - like I said it's HORRIBLE
+					// 
+					// TODO: use a lower resolution clock to buffer frames???
+
+					if(frame->dev_idx == 0){ 
+						realHeartBeatAvg = (double)(realHeartBeatTimer.stop() / nanos_to_seconds * settings.heartBeatRateHz);
+						realHeartBeatTimer.start();
+						if(realHeartBeatAvg > 1) playBackSpeedFactor += (realHeartBeatAvg - 1) / 2.0;
+						if(realHeartBeatAvg < 1) playBackSpeedFactor -= (1 - realHeartBeatAvg) / 2.0;
+						//LOGDEBUG("Heartbeat Acq: %I64u %0.3f %0.3f", frame->time, realHeartBeatAvg, mFactor);
+					}
+					
+					auto device = it->second;
+					device->process(frame);	
+
+				}
+
+				delete [] frame->data;
+				delete frame_in;
+
+				int deltaTimeStamp = systemAcquisitionTimeStamp - lastAcquireTimeStamp;
+
+				if(deltaTimeStamp < 0){
+					LOGALERT("Playback delta time negative: %i", deltaTimeStamp);
+					deltaTimeStamp = 0;
+				}
+
+				
+
+				while(deltaTimeStamp - elapsed * playBackSpeedFactor  > 0){ // hmmm this is a total HORRIBLE hack for now
+					elapsed = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - start;
+					std::this_thread::yield();
+				}
+
+				//LOGDEBUG("delta: %i || actual: %i", deltaTimeStamp, elapsed);
+
+				lastAcquireTimeStamp = systemAcquisitionTimeStamp;
+				
+
+			}else{
+				LOGDEBUG("Should never have to break playback here??!");
+				break;
+			}
+
+
+		}
+
+	}
 
 	void exportToAudio(){
 
@@ -400,12 +810,12 @@ private:
 
 		contextDataStream = std::fstream(settings.dataFileName, std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
 		contextDataStream.seekg(0, ::std::ios::beg);
-		
+
 
 		std::vector<float> samples;
 		size_t probe = 50;
 
-		
+
 
 
 		while(!contextDataStream.eof()){
@@ -500,277 +910,27 @@ private:
 
 	}
 
-	void _play(){
-
-		//timeBeginPeriod(1);
-
-		bPlaybackNeedsStart = bRecordNeedsStart = false;
-
-		if(state == PLAYING || state == RECORDING) stopStreams();
-		//if(bIsAcquiring) stopAcquisition();
-		//const std::lock_guard<std::mutex> lock(mutex);
-		LOGINFO("Start Playing");
-
-		if(settings.dataFileName == "" || settings.timeFileName == ""){
-			LOGINFO("No file set, attempt to play last recorded...");
-			std::vector<std::string> folders = getAllRecordingFolders();
-			if(folders.size() == 0) return;
-			if(!getStreamNamesFromFolder(folders[0])) return;
-		}
-
-		
-		streamMutex.lock();
-		contextDataStream = std::fstream(settings.dataFileName, std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
-		contextTimeStream = std::fstream(settings.timeFileName, std::ios::binary | std::ios::in);// | std::ios::out);// | std::ios::app);
-		contextDataStream.seekg(0, ::std::ios::beg);
-		contextTimeStream.seekg(0, ::std::ios::end);
-		int length = contextTimeStream.tellg();
-		contextTimeStream.seekg(length - sizeof(uint64_t), ::std::ios::beg); 
-		contextTimeStream.read(reinterpret_cast<char*>(&settings.acquisitionEndTime), sizeof(uint64_t));
-		contextTimeStream.seekg(0, ::std::ios::beg);
-		contextTimeStream.read(reinterpret_cast<char*>(&lastAcquireTimeStamp), sizeof(uint64_t));
-		settings.acquisitionStartTime = settings.acquisitionCurrentTime = systemAcquisitionTimeStamp = lastAcquireTimeStamp;
-		settings.fileLengthTimeStamp = ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionEndTime);
-		streamMutex.unlock();
-
-		if(contextTimeStream.bad()) LOGERROR("Bad init time frame read");
-		for(auto& device : ONI::Global::model.getDevices()) device.second->reset();
-
-		bPlaybackNeedsRestart = false;
-		bPlaybackNeedsDependencyReset = true;
-		state = PLAYING;
-
-
-
-		realHeartBeatTimer.start();
-		playBackSpeedFactor = 1.4; // hacky but helps
-
-		bThread = true;
-		thread = std::thread(&RecordProcessor::playFrames, this);
-	}
-	
-
-	void _record(){
-
-		bPlaybackNeedsStart = bRecordNeedsStart = false;
-
-		if(state == PLAYING || state == RECORDING) stopStreams();
-
-		LOGINFO("Start Recording");
-
-		settings.timeStamp = ONI::GetTimeStamp();
-		settings.fileTimeStamp = ONI::ReverseTimeStamp(settings.timeStamp);
-
-		if(settings.executableDataPath == "") settings.executableDataPath = ONI::GetExecutableDataPath();
-
-		std::ostringstream osP; osP << settings.executableDataPath << "\\data\\recordings\\experiment_" <<  settings.fileTimeStamp;
-
-		settings.recordFolder = osP.str();
-
-		std::ostringstream osD; osD << osP.str() << "\\data_stream_" << settings.fileTimeStamp << ".dat";
-		std::ostringstream osT; osT << osP.str() << "\\time_stream_" << settings.fileTimeStamp << ".dat";
-		std::ostringstream osI; osI << osP.str() << "\\info_" << settings.fileTimeStamp << ".txt";
-
-		settings.dataFileName = osD.str();
-		settings.timeFileName = osT.str();
-		settings.infoFileName = osI.str();
-
-		bool bFolder = std::filesystem::create_directories(settings.recordFolder.c_str());
-
-		if(!bFolder){
-			LOGERROR("Could not create folder: %s", settings.recordFolder.c_str());
-			return;
-		} else{
-			LOGINFO("Created recording folder: %s", settings.recordFolder.c_str())
-		}
-
-		saveInfoSettings();
-		//std::ofstream infostream;
-		//infostream.open(settings.infoFileName.c_str());
-
-		//infostream << "Time: " << settings.timeStamp << "\n\n";
-		//infostream << "Description: " << settings.description << "\n\n";
-
-		//for(auto& device : ONI::Global::model.getDevices()) {
-		//	device.second->reset();
-		//	infostream << device.second->info() << "\n\n";
-		//}
-
-		//infostream.close();
-
-		streamMutex.lock();
-
-		contextDataStream = std::fstream(settings.dataFileName.c_str(), std::ios::binary | std::ios::out);// | std::ios::out);// | std::ios::app);
-		contextTimeStream = std::fstream(settings.timeFileName.c_str(), std::ios::binary | std::ios::out);// | std::ios::out);// | std::ios::app);
-		contextDataStream.seekg(0, ::std::ios::beg);
-		contextTimeStream.seekg(0, ::std::ios::beg);
-
-		using namespace std::chrono;
-		uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-
-		contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
-
-		if(contextTimeStream.bad()) LOGERROR("Bad init time frame write");
-		settings.acquisitionStartTime = systemAcquisitionTimeStamp;
-
-		streamMutex.unlock();
-
-
-		state = RECORDING;
-
-	}
-
-	void recordFrame(oni_frame_t* frame){
-
-		if(state == RECORDING){
-
-			using namespace std::chrono;
-			uint64_t systemAcquisitionTimeStamp = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-
-			ONI::Frame::Rhs2116DataRaw* frame_out = new ONI::Frame::Rhs2116DataRaw;
-
-			frame_out->time = frame->time;
-			frame_out->dev_idx = frame->dev_idx;
-			frame_out->data_sz = frame->data_sz;
-
-			std::memcpy(frame_out->data, frame->data, frame->data_sz);
-			streamMutex.lock();
-
-			settings.acquisitionCurrentTime = systemAcquisitionTimeStamp;
-
-			contextDataStream.write(reinterpret_cast<char*>(frame_out), sizeof(ONI::Frame::Rhs2116DataRaw));
-			if(contextDataStream.bad()){
-				LOGERROR("Bad data frame write");
-			}
-
-			contextTimeStream.write(reinterpret_cast<char*>(&systemAcquisitionTimeStamp), sizeof(uint64_t));
-			if(contextTimeStream.bad()){
-				LOGERROR("Bad time frame write");
-			}
-			streamMutex.unlock();
-			delete frame_out;
-
-			settings.fileLengthTimeStamp = ONI::GetAcquisitionTimeStamp(settings.acquisitionStartTime, settings.acquisitionCurrentTime);
-
-		}else{
-			std::this_thread::yield();
-		}
-
-	}
+protected:
 
 	fu::Timer realHeartBeatTimer;
 	double realHeartBeatAvg = 1;
 	float playBackSpeedFactor = 1.4;
+	bool bBadFrame = false;
+	int nextDeviceCounter = 0;
 
-	void playFrames(){
+	ONI::Frame::Rhs2116DataExtended errorFrameRaw;
+	std::map<uint32_t, ONI::Frame::Rhs2116DataExtended> lastMultiFrameRawMap;
+	std::map<uint32_t, ONI::Frame::Rhs2116DataExtended> multiFrameRawMap;
+	std::vector<ONI::Frame::Rhs2116DataExtended> multiFrameBufferRaw;
 
-		while(bThread){
-
-			if(state == PLAYING){
-
-				using namespace std::chrono;
-				int elapsed = 0;
-				int start = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count();
-
-				streamMutex.lock();
-				contextTimeStream.read(reinterpret_cast<char*>(&systemAcquisitionTimeStamp),  sizeof(uint64_t));
-				if(contextTimeStream.bad()) LOGERROR("Bad time frame read");
-
-				settings.acquisitionCurrentTime = systemAcquisitionTimeStamp;
-
-				ONI::Frame::Rhs2116DataRaw * frame_in = new ONI::Frame::Rhs2116DataRaw;
-
-				contextDataStream.read(reinterpret_cast<char*>(frame_in),  sizeof(ONI::Frame::Rhs2116DataRaw));
-				if(contextDataStream.bad()) LOGERROR("Bad data frame read");
-
-				if(contextDataStream.eof()){
-					if(bLoopPlayback){
-						LOGINFO("Playback reached LOOP");
-						bPlaybackNeedsRestart = true;
-						streamMutex.unlock();
-						break;
-					}else{
-						LOGINFO("Playback reached EOF");
-						stop(); // ? or do we just pause?
-					}
-				}
-				streamMutex.unlock();
-
-				oni_frame_t* frame = reinterpret_cast<oni_frame_t*>(frame_in); // this is kinda nasty ==> will it always work
-
-				frame->data = new char[74];
-				memcpy(frame->data, frame_in->data, 74);
-
-				std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
-				
-				auto it = devices.find((uint32_t)frame->dev_idx);
-
-				if(it == devices.end()){
-					LOGERROR("ONI Device doesn't exist with idx: %i", frame->dev_idx);
-				}else{
-
-					//LOGDEBUG("Play device frame: %i", frame->dev_idx);
-
-					// This is HORRIBLE but it works - for various reasons
-					// (clock drift, load variation, thread locks), the system
-					// timestamps are drifting badly out of time, so this hack
-					// compares the heartbeat Hz to the real time between decoding
-					// the heartbeat frames and adjusts a multiplier for the 
-					// elapsed time between frames - like I said it's HORRIBLE
-					// 
-					// TODO: use a lower resolution clock to buffer frames???
-
-					if(frame->dev_idx == 0){ 
-						realHeartBeatAvg = (double)(realHeartBeatTimer.stop() / nanos_to_seconds * settings.heartBeatRateHz);
-						realHeartBeatTimer.start();
-						if(realHeartBeatAvg > 1) playBackSpeedFactor += (realHeartBeatAvg - 1) / 2.0;
-						if(realHeartBeatAvg < 1) playBackSpeedFactor -= (1 - realHeartBeatAvg) / 2.0;
-						//LOGDEBUG("Heartbeat Acq: %I64u %0.3f %0.3f", frame->time, realHeartBeatAvg, mFactor);
-					}
-					
-					auto device = it->second;
-					device->process(frame);	
-
-				}
-
-				delete [] frame->data;
-				delete frame_in;
-
-				int deltaTimeStamp = systemAcquisitionTimeStamp - lastAcquireTimeStamp;
-
-				if(deltaTimeStamp < 0){
-					LOGALERT("Playback delta time negative: %i", deltaTimeStamp);
-					deltaTimeStamp = 0;
-				}
-
-				
-
-				while(deltaTimeStamp - elapsed * playBackSpeedFactor  > 0){ // hmmm this is a total HORRIBLE hack for now
-					elapsed = duration_cast<nanoseconds>(high_resolution_clock::now().time_since_epoch()).count() - start;
-					std::this_thread::yield();
-				}
-
-				//LOGDEBUG("delta: %i || actual: %i", deltaTimeStamp, elapsed);
-
-				lastAcquireTimeStamp = systemAcquisitionTimeStamp;
-				
-
-			}else{
-				LOGDEBUG("Should never have to break playback here??!");
-				break;
-			}
-
-
-		}
-
-	}
-
-protected:
+	
 
 	ONI::Settings::RecordSettings settings;
 
 	std::fstream contextDataStream;
 	std::fstream contextTimeStream;
+	std::fstream contextStimTypes;
+	std::fstream contextStimStream;
 
 	uint64_t systemAcquisitionTimeStamp = 0;
 	uint64_t lastAcquireTimeStamp = 0;
