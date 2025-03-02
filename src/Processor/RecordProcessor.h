@@ -291,10 +291,25 @@ public:
 			infostream.close();
 			settings.info = osInf.str();
 
-			// Find Heartbeat setting
+			// set heartbeat setting
 			std::string hz = getStringSetting("HeartBeat Hz: ", settings.info);
 			settings.heartBeatRateHz = std::atoi(hz.c_str());
+			ONI::Device::HeartBeatDevice* heartBeatDevice = (ONI::Device::HeartBeatDevice*)ONI::Global::model.getDevice(0); 
+			heartBeatDevice->setFrequencyHz(settings.heartBeatRateHz);
 
+			// set channel map
+			std::string strChannelMap = getStringSetting("Channel Map: ", settings.info);
+			std::vector<std::string> strChannelVector = ofSplitString(strChannelMap, ",", true, true);
+			std::vector<size_t> channelMap; channelMap.resize(strChannelVector.size());
+			for(size_t probe = 0; probe < strChannelVector.size(); ++probe){
+				channelMap[probe] = std::atoi(strChannelVector[probe].c_str());
+			}
+			ONI::Global::model.getChannelMapProcessor()->setChannelMap(channelMap);
+			ONI::Global::model.getChannelMapProcessor()->updateChannelMaps();
+
+			// always check version at the end so we can just redo saving 
+			// a new file metadata header with already loaded values
+			// [if you want to force some of this we can do it in the getFileInfo function above]
 			std::string version = getStringSetting("Version: ", settings.info);
 			if(version == "") upgradeToVersion(1);
 
