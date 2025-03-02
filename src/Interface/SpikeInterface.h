@@ -94,7 +94,7 @@ public:
 
 		if(ImGui::InputFloat("Spike Wave Length (ms)", &nextSettings.spikeWaveformLengthMs)) bNeedsUpdate = true;;
 		nextSettings.spikeWaveformLengthMs = std::clamp(nextSettings.spikeWaveformLengthMs, 0.02f, 1000.0f);
-		nextSettings.spikeWaveformLengthSamples = nextSettings.spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
+		nextSettings.spikeWaveformLengthSamples = nextSettings.spikeWaveformLengthMs * RHS2116_SAMPLES_PER_MS;
 
 		if(ImGui::InputInt("Spike Detection Buffer Size", &nextSettings.spikeWaveformBufferSize)) bNeedsUpdate = true;
 		if(ImGui::InputInt("Spike Min Search Offset (samples)", &nextSettings.minSampleOffset)) bNeedsUpdate = true;
@@ -142,24 +142,29 @@ public:
 				if(probe % 8 == 0) ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(probe % 8);
 
+				if(ONI::Global::model.getChannelSelect().size()){
+					bool b = ONI::Global::model.getChannelSelect()[probe];
+					//ImGui::Selectable("###probeid", &b);
+					ImU32 cell_bg_color = ImGui::GetColorU32(ImVec4(col.x, col.y, col.z, 0.3f));
+					if(b) ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, cell_bg_color);
+				}
 
 				ImGui::PushID(probe);
-				
-				
+
 				ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
 
 				if(ImPlot::BeginPlot("##spark", ImVec2(-1, 240), ImPlotFlags_CanvasOnly)){
-					
+
 					static ImPlotAxisFlags flags = ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels;
 					
 					ImPlot::SetupAxes(nullptr, nullptr, flags, flags);
 					ImPlot::SetupAxesLimits(0, sp.probeSpikes[probe][0].rawWaveform.size(), -voltageRange, voltageRange, ImGuiCond_Always);
-					ImVec4 col = ImPlot::GetColormapColor(probe);
-					
-					for(size_t j = 0; j < sp.probeSpikes[probe].size(); ++j){
+					//ImVec4 col = ImPlot::GetColormapColor(probe);
 
-						col.w = (float)(j + 1) / (sp.spikeCounts[probe] % sp.probeSpikes[probe].size());
-						ImPlot::SetNextLineStyle(col);
+					for(size_t j = 0; j < sp.probeSpikes[probe].size(); ++j){
+						ImVec4 colf = col;
+						colf.w = (float)(j + 1) / (sp.spikeCounts[probe] % sp.probeSpikes[probe].size());
+						ImPlot::SetNextLineStyle(colf);
 
 						ImPlot::PlotLine("##spark", &sp.probeSpikes[probe][j].rawWaveform[0], sp.probeSpikes[probe][j].rawWaveform.size(), 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
 						
@@ -171,6 +176,17 @@ public:
 						}
 
 					}
+
+					if(ImGui::IsItemClicked()){
+						ONI::Global::model.clickChannelSelect(probe, ImGui::IsKeyDown(ImGuiKey::ImGuiKey_LeftShift));
+						
+						if(ImGui::IsKeyDown(ImGuiKey::ImGuiKey_LeftShift)){
+							LOGDEBUG("Spike shift clicked: ", probe);
+						} else{
+							LOGDEBUG("Spike clicked: ", probe);
+						}
+					}
+					
 					ImPlot::EndPlot();
 				}
 

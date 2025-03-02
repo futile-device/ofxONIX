@@ -270,11 +270,11 @@ public:
 		ImGui::InputInt("Number of Stimuli", &numberOfStimuli, 1, 512);
 		if(bUseBurstFrequency) ImGui::EndDisabled();
 
-		currentStimulus.delaySamples = std::round(delaySamplesMs *RHS2116_SAMPLE_FREQUENCY_MS);
-		currentStimulus.anodicWidthSamples = std::round(anodicWidthSamplesMs * RHS2116_SAMPLE_FREQUENCY_MS);
-		currentStimulus.cathodicWidthSamples = std::round(cathodicWidthSamplesMs * RHS2116_SAMPLE_FREQUENCY_MS);
-		currentStimulus.dwellSamples = std::round(dwellSamplesMs * RHS2116_SAMPLE_FREQUENCY_MS);
-		currentStimulus.interStimulusIntervalSamples = std::round(interStimulusIntervalSamplesMs * RHS2116_SAMPLE_FREQUENCY_MS);
+		currentStimulus.delaySamples = std::round(delaySamplesMs *RHS2116_SAMPLES_PER_MS);
+		currentStimulus.anodicWidthSamples = std::round(anodicWidthSamplesMs * RHS2116_SAMPLES_PER_MS);
+		currentStimulus.cathodicWidthSamples = std::round(cathodicWidthSamplesMs * RHS2116_SAMPLES_PER_MS);
+		currentStimulus.dwellSamples = std::round(dwellSamplesMs * RHS2116_SAMPLES_PER_MS);
+		currentStimulus.interStimulusIntervalSamples = std::round(interStimulusIntervalSamplesMs * RHS2116_SAMPLES_PER_MS);
 		currentStimulus.numberOfStimuli = std::clamp(numberOfStimuli, 1, 256);
 
 		//if(currentStimulus.delaySamples == 0) currentStimulus.delaySamples = 1;

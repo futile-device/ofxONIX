@@ -34,8 +34,8 @@ constexpr long double nanos_to_seconds = 1000000000.0; // conversion factor
 constexpr long double nanos_to_millis = 1000000.0;
 
 constexpr long double RHS2116_SAMPLE_FREQUENCY_HZ = 30.1932367151e3;
-constexpr long double RHS2116_SAMPLE_FREQUENCY_MS = RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0;
-constexpr long double RHS2116_SAMPLE_FREQUENCY_NS = RHS2116_SAMPLE_FREQUENCY_HZ / nanos_to_seconds;
+constexpr long double RHS2116_SAMPLES_PER_MS = RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0;
+constexpr long double RHS2116_SAMPLES_PER_NS = RHS2116_SAMPLE_FREQUENCY_HZ / nanos_to_seconds;
 constexpr long double RHS2116_SAMPLE_WAIT_TIME_NS = 1.0 / RHS2116_SAMPLE_FREQUENCY_HZ * nanos_to_seconds;
 constexpr long double RHS2116_NUM_DEVICE_PROBES = 16;
 
@@ -321,6 +321,22 @@ public:
 		return bIsAcquiring;
 	}
 
+	void clickChannelSelect(const size_t& probe, const bool& bShiftDown){
+
+		if(!bShiftDown){ // deselect everything except what's clicked
+			for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = false;
+			channelSelect[probe] = true;
+			return;
+		}else{
+			channelSelect[probe] = !channelSelect[probe];
+		}
+		
+	}
+
+	std::vector<bool>& getChannelSelect(){
+		return channelSelect;
+	}
+
 private:
 
 	volatile oni_ctx ctx = nullptr;
@@ -341,6 +357,8 @@ private:
 
 	const std::vector<uint32_t> rhs2116DeviceOrderIDX = {256, 257, 512, 513};
 	const std::vector<uint32_t> rhs2116StimDeviceOrderIDX = {258, 514};
+
+	std::vector<bool> channelSelect;
 
 	ONI::Processor::BufferProcessor * bufferProcessor = nullptr;
 	ONI::Processor::ChannelMapProcessor * channelMapProcessor = nullptr;

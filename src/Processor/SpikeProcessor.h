@@ -74,7 +74,7 @@ public:
         settings.negativeDeviationMultiplier = 4.5f;
 
         settings.spikeWaveformLengthMs = 3;
-        settings.spikeWaveformLengthSamples = settings.spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
+        settings.spikeWaveformLengthSamples = settings.spikeWaveformLengthMs * RHS2116_SAMPLES_PER_MS;
         settings.spikeWaveformBufferSize = 10;
 
         reset();

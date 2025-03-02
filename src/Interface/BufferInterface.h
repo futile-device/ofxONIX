@@ -64,9 +64,9 @@ public:
 			sparseStepSizeMillis = bp.settings.getSparseStepMillis();
 		}
 
-		int step = std::floor(sparseStepSizeMillis * RHS2116_SAMPLE_FREQUENCY_MS);
+		int step = std::floor(sparseStepSizeMillis * RHS2116_SAMPLES_PER_MS);
 		if(step == 0) step = 1;
-		int szfine = std::floor(bufferSizeTimeMillis * RHS2116_SAMPLE_FREQUENCY_MS);
+		int szfine = std::floor(bufferSizeTimeMillis * RHS2116_SAMPLES_PER_MS);
 		int szstep = std::floor((float)szfine / (float)step);
 		
 
@@ -126,16 +126,15 @@ public:
 
 		ImGui::Checkbox("Select All", &bSelectAll); //ImGui::SameLine();
 
+		std::vector<bool>& channelSelect = ONI::Global::model.getChannelSelect();
+
 		if(bLastSelectAll != bSelectAll && bSelectAll) for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = true;
 		if(bLastSelectAll != bSelectAll && !bSelectAll) for(size_t i = 0; i < channelSelect.size(); ++i) channelSelect[i] = false;
 
 		if(channelSelect.size() != bp.getNumProbes()){
 			channelSelect.resize(bp.getNumProbes());
-			allSelect.resize(bp.getNumProbes());
-			for (size_t i = 0; i < bp.getNumProbes(); ++i) {
-				channelSelect[i] = true;
-				allSelect[i] = true;
-			}
+			for (size_t i = 0; i < bp.getNumProbes(); ++i) channelSelect[i] = false;
+			channelSelect[0] = true; // startup wth just one channel selected
 		}
 
 		for(size_t i = 0; i < bp.getNumProbes(); ++i){
@@ -337,12 +336,19 @@ private:
 				ImGui::Text("Probe %d (%d)", probe, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap()[probe]);
 				ImGui::TableSetColumnIndex(1);
 				bp.dataMutex[SPARSE_MUTEX].lock();
-				if(plotType == PLOT_AC_DATA) ImGui::Text("%.3f avg \n%.3f dev \n%i N", bp.probeStats[probe].mean, bp.probeStats[probe].deviation, frameCount);
+				if(plotType == PLOT_AC_DATA) ImGui::Text("%.3f avg \n%.3f dev \n%i N", bp.getProbeStats()[probe].mean, bp.getProbeStats()[probe].deviation, frameCount);
 				bp.dataMutex[SPARSE_MUTEX].unlock();
 				ImGui::TableSetColumnIndex(2);
 
-				ImGui::PushID(probe);
+				if(ONI::Global::model.getChannelSelect().size()){
+					bool b = ONI::Global::model.getChannelSelect()[probe];
+					//ImGui::Selectable("###probeid", &b);
+					ImU32 cell_bg_color = ImGui::GetColorU32(ImVec4(col.x, col.y, col.z, 0.3f));
+					if(b) ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, cell_bg_color);
+				}
 
+				ImGui::PushID(probe);
+				
 				bp.dataMutex[SPARSE_MUTEX].lock();
 				float* voltages = nullptr;
 				if(plotType == PLOT_AC_DATA) voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
@@ -354,6 +360,18 @@ private:
 				} else{
 					ONI::Interface::Sparkline("##spark", voltages, frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 60));
 				}
+
+				// do selections for the combined view and audio preview
+				if(ImGui::IsItemClicked()){
+					ONI::Global::model.clickChannelSelect(probe, ImGui::IsKeyDown(ImGuiKey::ImGuiKey_LeftShift));
+					if(ImGui::IsKeyDown(ImGuiKey::ImGuiKey_LeftShift)){
+						LOGDEBUG("Plot shift clicked: ", probe);
+
+					}else{
+						LOGDEBUG("Plot clicked: ", probe);
+					}
+				}
+
 				bp.dataMutex[SPARSE_MUTEX].unlock();
 
 
@@ -435,7 +453,7 @@ private:
 
 			for(int probe = 0; probe < numProbes; probe++) {
 
-				if(!channelSelect[probe]) continue; // only show selected probes
+				if(!ONI::Global::model.getChannelSelect()[probe]) continue; // only show selected probes
 
 				ImGui::PushID(probe);
 				ImVec4 col = ImPlot::GetColormapColor(probe);
@@ -491,17 +509,12 @@ protected:
 
 	std::atomic_uint64_t interfaceTimeNs = 0;
 
-	std::vector<bool> channelSelect;
-	std::vector<bool> allSelect;
-
 	bool bSelectAll = true;
 	
 	float acVoltageRange = 0.06f;
 
 	int bufferSizeTimeMillis = -1;
 	int sparseStepSizeMillis = -1;
-
-	//ONI::Settings::BufferProcessorSettings nextSettings; // inherited from base Rhs2116Interface
 
 	const std::string processorName = "FrameProcessorGui";
 

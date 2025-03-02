@@ -51,12 +51,14 @@ class BufferInterface;
 namespace Processor{
 
 class SpikeProcessor;
+class AudioProcessor;
 
 class BufferProcessor : public BaseProcessor{
 
 public:
 
     friend class SpikeProcessor;
+    friend class AudioProcessor;
     friend class ONI::Interface::BufferInterface;
 
     BufferProcessor(){
@@ -102,8 +104,15 @@ public:
     }
 
 	inline void process(oni_frame_t* frame){}; // nothing
-
+    float phase = 0;
 	inline void process(ONI::Frame::BaseFrame& frame){
+
+        ONI::Frame::Rhs2116MultiFrame* mframe = reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame);
+
+        //phase += 0.4;
+        //for(size_t probe = 0; probe < numProbes; ++probe){
+        //    mframe->ac_uV[probe] = sin(phase);
+        //}
 
         dataMutex[DENSE_MUTEX].lock();
         denseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)); // TODO:: right now I am assuming a Rhs2116MultiProcessor/multiframe but I shouldn't be!!!
@@ -133,8 +142,10 @@ public:
 
     void resetProbeData(){
         lockAll();
-        probeStats.clear();
-        probeStats.resize(BaseProcessor::numProbes);
+        probeStats[FRONT_BUFFER].clear();
+        probeStats[BACK_BUFFER].clear();
+        probeStats[FRONT_BUFFER].resize(BaseProcessor::numProbes);
+        probeStats[BACK_BUFFER].resize(BaseProcessor::numProbes);
         sparseTimeStamps.resize(sparseBuffer.size());
         for(size_t frame = 0; frame < sparseTimeStamps.size(); ++frame) sparseTimeStamps[frame] = frame * sparseBuffer.getMillisPerStep();
         unlockAll();
@@ -155,7 +166,8 @@ public:
         if(thread.joinable()) thread.join();
         denseBuffer.clear();
         sparseBuffer.clear();
-        probeStats.clear();
+        probeStats[FRONT_BUFFER].clear();
+        probeStats[BACK_BUFFER].clear();
     }
     
 private:
@@ -187,34 +199,39 @@ private:
 
         for(size_t probe = 0; probe < numProbes; ++probe){
 
-            probeStats[probe].sum = 0;
+            probeStats[BACK_BUFFER][probe].sum = 0;
 
             float* acProbeVoltages = sparseBuffer.getAcuVFloatRaw(probe, 0);
 
             for(size_t frame = 0; frame < sparseBuffer.size(); ++frame){
-                probeStats[probe].sum += acProbeVoltages[frame];
+                probeStats[BACK_BUFFER][probe].sum += acProbeVoltages[frame];
             }
 
-            probeStats[probe].mean = probeStats[probe].sum / sparseBuffer.size();
-            probeStats[probe].std = 0;
+            probeStats[BACK_BUFFER][probe].mean = probeStats[BACK_BUFFER][probe].sum / sparseBuffer.size();
+            probeStats[BACK_BUFFER][probe].std = 0;
 
             for(size_t frame = 0; frame < sparseBuffer.size(); ++frame){
-                float acdiff = acProbeVoltages[frame] - probeStats[probe].mean;
-                probeStats[probe].std += acdiff * acdiff;
+                float acdiff = acProbeVoltages[frame] - probeStats[BACK_BUFFER][probe].mean;
+                probeStats[BACK_BUFFER][probe].std += acdiff * acdiff;
             }
 
-            probeStats[probe].variance = probeStats[probe].std / (sparseBuffer.size());  // use population (N) or sample (n-1) deviation?
-            probeStats[probe].deviation = sqrt(probeStats[probe].variance);
+            probeStats[BACK_BUFFER][probe].variance = probeStats[BACK_BUFFER][probe].std / (sparseBuffer.size());  // use population (N) or sample (n-1) deviation?
+            probeStats[BACK_BUFFER][probe].deviation = sqrt(probeStats[BACK_BUFFER][probe].variance);
 
         }
-
+        
         dataMutex[SPARSE_MUTEX].unlock();
+
+        //probeDataMutex.lock();
+        //std::swap(probeStats[FRONT_BUFFER], probeStats[BACK_BUFFER]);
+        //probeDataMutex.unlock();
 
     }
 
     inline const std::vector<ONI::Frame::ProbeStatistics>& getProbeStats(){
-        const std::lock_guard<std::mutex> lock(dataMutex[SPARSE_MUTEX]);
-        return probeStats;
+        //const std::lock_guard<std::mutex> lock(probeDataMutex);
+        //return probeStats[FRONT_BUFFER];
+        return probeStats[BACK_BUFFER]; // unsafe, but who cares.....until you do!!!???? causes lots of locks in the interface
     }
 
 
@@ -223,11 +240,12 @@ protected:
     uint64_t lastThresholdTime = 0;
 
     std::vector<float> sparseTimeStamps;
-    std::vector<ONI::Frame::ProbeStatistics> probeStats;
+    std::vector<ONI::Frame::ProbeStatistics> probeStats[2];
 
     ONI::FrameBuffer denseBuffer;   // contains all frames at full sample rate
     ONI::FrameBuffer sparseBuffer; // contains a sparse buffer sampled every N samples
     std::mutex dataMutex[2];
+    std::mutex probeDataMutex;
 
     ONI::Processor::BaseProcessor* source = nullptr;
 

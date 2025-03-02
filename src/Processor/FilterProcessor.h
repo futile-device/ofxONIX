@@ -76,7 +76,7 @@ public:
 																  Dsp::DirectFormII>(1);                 // realization
 		}
 
-		setBandStop(50, 4);
+		setBandStop(1300, 1000);
 
 		lowpassFilters.resize(numProbes);
 
@@ -93,13 +93,13 @@ public:
 		highpassFilters.resize(numProbes);
 
 		for(size_t probe = 0; probe < numProbes; ++probe){
-			highpassFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::HighPass    // design type
+			highpassFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::HighShelf    // design type
 																  <4>,                                   // order
 																  1,                                     // number of channels (must be const)
 																  Dsp::DirectFormII>(1);                 // realization
 		}
 
-		setHighPass(4, 1.25);
+		setHighPass(1000, -12);
 
 
 		bandpassFilters.resize(numProbes);
@@ -200,9 +200,9 @@ public:
 		Dsp::Params params;
 		params[0] = RHS2116_SAMPLE_FREQUENCY_HZ;	// sample rate
 		params[1] = 4;								// order
-		params[2] = frequency;						// center frequency
-		params[3] = Q;							// band width
-
+		params[2] = frequency;						// corner frequency
+		params[3] = Q;							// shelf gain
+		params[4] = 0.1;							// passband ripple
 		for(size_t probe = 0; probe < numProbes; ++probe){
 			highpassFilters[probe]->setParams(params);
 		}

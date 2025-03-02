@@ -38,7 +38,7 @@
 
 namespace ONI{
 
-
+// from: https://stackoverflow.com/questions/22226872/two-problems-when-writing-to-wav-c/22227440#22227440
 template<typename T>
 void write(std::ofstream& stream, const T& t) {
 	stream.write((const char*)&t, sizeof(T));
@@ -386,6 +386,7 @@ private:
 						std::string path = ofToDataPath("sin.wav");
 
 						writeWAVData(path.c_str(), b.getBuffer().data(), b.getBuffer().size(), RHS2116_SAMPLE_FREQUENCY_HZ, 1);
+
 
 						samples.clear();
 					}

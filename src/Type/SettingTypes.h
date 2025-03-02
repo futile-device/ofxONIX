@@ -584,12 +584,12 @@ public:
 
 	inline void setBufferSizeMillis(const size_t& millis){ // handle 0ms case?
 		bufferSizeMillis = millis;
-		bufferSizeSamples =  std::floor(millis * RHS2116_SAMPLE_FREQUENCY_MS);
+		bufferSizeSamples =  std::floor(millis * RHS2116_SAMPLES_PER_MS);
 	}
 
 	inline void setSparseStepSizeMillis(const size_t& millis){
 		sparseStepMillis = millis;
-		sparseStepSamples = std::floor(millis * RHS2116_SAMPLE_FREQUENCY_MS);
+		sparseStepSamples = std::floor(millis * RHS2116_SAMPLES_PER_MS);
 		if(sparseStepSamples == 0) sparseStepSamples = 1;
 	}
 
@@ -708,7 +708,7 @@ struct SpikeSettings{
 	float negativeDeviationMultiplier = 3.0f;
 
 	float spikeWaveformLengthMs = 2.0f;
-	int spikeWaveformLengthSamples = spikeWaveformLengthMs * RHS2116_SAMPLE_FREQUENCY_MS;
+	int spikeWaveformLengthSamples = spikeWaveformLengthMs * RHS2116_SAMPLES_PER_MS;
 	int spikeWaveformBufferSize = 10;
 
 	int minSampleOffset = 3; // this is a way to avoid finding minima/maxima too close to the thresholded rise/fall when cntering spikes

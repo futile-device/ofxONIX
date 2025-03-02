@@ -73,7 +73,7 @@ public:
 			fp.setBandStop(bandStopFrequency, bandStopWidth);
 		}
 
-		/*
+		
 		///////////////////////////////////////////////
 		/// LOW PASS FILTER
 		///////////////////////////////////////////////
@@ -106,12 +106,12 @@ public:
 		ImGui::InputFloat("HighQ", &highPassQ);
 
 		if(highPassFrequency < 1) highPassFrequency = 1;
-		if(highPassQ < 0.1) highPassQ = 0.1;
+		//if(highPassQ < 0.1) highPassQ = 0.1;
 
 		if(fp.settings.highPassFrequency != highPassFrequency || fp.settings.highPassQ != highPassQ){
 			fp.setHighPass(highPassFrequency, highPassQ);
 		}
-		*/
+		
 
 		///////////////////////////////////////////////
 		/// BAND PASS FILTER
@@ -127,6 +127,8 @@ public:
 
 		if(lowBandPassFrequency < 1) lowBandPassFrequency = 1;
 		if(highBandPassFrequency < 1) highBandPassFrequency = 1;
+
+		highBandPassFrequency = std::max(lowBandPassFrequency + 1, highBandPassFrequency);
 
 		if(fp.settings.lowBandPassFrequency != lowBandPassFrequency || fp.settings.highBandPassFrequency != highBandPassFrequency){
 			fp.setBandPass(lowBandPassFrequency, highBandPassFrequency);
