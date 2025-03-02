@@ -47,23 +47,16 @@ constexpr float conversionRatio = (float)sourceSampleRate / (float)targetSampleR
 
 namespace ONI{
 
-
-
 namespace Interface{
 class AudioInterface;
 }
 
 namespace Processor{
 
-//class SpikeProcessor;
-
 class AudioProcessor : public BaseProcessor{
 
 public:
 
-    //friend class SpikeProcessor;
-    //friend class BufferProcessor;
-    //friend class RecordProcessor;
     friend class ONI::Interface::AudioInterface;
 
     AudioProcessor(){
@@ -149,9 +142,9 @@ public:
     }
 
 	inline void process(oni_frame_t* frame){}; // nothing
-
-    
 	inline void process(ONI::Frame::BaseFrame& frame){
+
+        if(!bUseAudio) return;
 
         ONI::Frame::Rhs2116MultiFrame* f = reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame);
 
@@ -197,6 +190,7 @@ public:
 
     void audioOut(ofSoundBuffer& outBuffer){
 
+        if(!bUseAudio) return;
         if(!(ONI::Global::model.isAquiring() || ONI::Global::model.getRecordProcessor()->isPlaying())) return; // we need to be getting frames
 
         mutex.lock();
@@ -302,6 +296,7 @@ protected:
 
     //ONI::Settings::BufferProcessorSettings settings;
 
+    std::atomic_bool bUseAudio = false;
     std::atomic_bool bThread = false;
     std::thread thread;
     std::mutex mutex;

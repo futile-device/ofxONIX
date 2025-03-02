@@ -99,7 +99,7 @@ public:
 																  Dsp::DirectFormII>(1);                 // realization
 		}
 
-		setHighPass(1000, -12);
+		setHighShelf(1000, -12, 0.1);
 
 
 		bandpassFilters.resize(numProbes);
@@ -138,7 +138,7 @@ public:
 			}
 		}
 
-		if(settings.bUseHighPass){
+		if(settings.bUseHighShelf){
 			for(size_t probe = 0; probe < numProbes; ++probe){
 				float* ptr = &f->ac_uV[probe];
 				highpassFilters[probe]->process(1, &ptr);
@@ -192,17 +192,19 @@ public:
 
 	}
 
-	void setHighPass(const int& frequency, const float& Q){
+	void setHighShelf(const int& frequency, const float& gain, const float& ripple){
 
-		settings.highPassFrequency = frequency;
-		settings.highPassQ = Q;
+		settings.highShelfFrequency = frequency;
+		settings.highShelfGain = gain;
+		settings.highShelfRipple = ripple;
 
 		Dsp::Params params;
 		params[0] = RHS2116_SAMPLE_FREQUENCY_HZ;	// sample rate
 		params[1] = 4;								// order
 		params[2] = frequency;						// corner frequency
-		params[3] = Q;							// shelf gain
-		params[4] = 0.1;							// passband ripple
+		params[3] = gain;							// shelf gain
+		params[4] = ripple;							// passband ripple
+
 		for(size_t probe = 0; probe < numProbes; ++probe){
 			highpassFilters[probe]->setParams(params);
 		}

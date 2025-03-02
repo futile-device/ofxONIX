@@ -750,7 +750,7 @@ struct FilterSettings{
 
 	bool bUseBandStopFilter = false;
 	bool bUseLowPass = false;
-	bool bUseHighPass = false;
+	bool bUseHighShelf = false;
 	bool bUseBandPassFilter = true;
 
 	int lowBandPassFrequency = 300;
@@ -762,8 +762,9 @@ struct FilterSettings{
 	int lowPassFrequency = 25;
 	float lowPassQ = 1.2;
 
-	int highPassFrequency = 4;
-	float highPassQ = 1.2;
+	int highShelfFrequency = 4;
+	float highShelfGain = 1.2;
+	float highShelfRipple = 0.1;
 
 	// copy assignment (copy-and-swap idiom)
 	FilterSettings& FilterSettings::operator=(FilterSettings other) noexcept{
@@ -775,10 +776,11 @@ struct FilterSettings{
 		std::swap(bUseBandPassFilter, other.bUseBandPassFilter);
 		std::swap(lowPassFrequency, other.lowPassFrequency);
 		std::swap(lowPassQ, other.lowPassQ);
-		std::swap(highPassFrequency, other.highPassFrequency);
-		std::swap(highPassQ, other.highPassQ);
+		std::swap(highShelfFrequency, other.highShelfFrequency);
+		std::swap(highShelfGain, other.highShelfGain);
+		std::swap(highShelfRipple, other.highShelfRipple);
 		std::swap(bUseLowPass, other.bUseLowPass);
-		std::swap(bUseHighPass, other.bUseHighPass);
+		std::swap(bUseHighShelf, other.bUseHighShelf);
 		return *this;
 	}
 
@@ -793,11 +795,12 @@ inline bool operator==(const FilterSettings& lhs, const FilterSettings& rhs){
 			lhs.bUseBandStopFilter == rhs.bUseBandStopFilter &&
 			lhs.bUseBandPassFilter == rhs.bUseBandPassFilter &&
 			lhs.bUseLowPass == rhs.bUseLowPass &&
-			lhs.bUseHighPass == rhs.bUseHighPass &&
+			lhs.bUseHighShelf == rhs.bUseHighShelf &&
 			lhs.lowPassFrequency == rhs.lowPassFrequency &&
-			lhs.highPassFrequency == rhs.highPassFrequency &&
+			lhs.highShelfFrequency == rhs.highShelfFrequency &&
+			lhs.highShelfRipple == rhs.highShelfRipple &&
 			lhs.lowPassQ == rhs.lowPassQ &&
-			lhs.highPassQ == rhs.highPassQ);
+			lhs.highShelfGain == rhs.highShelfGain);
 }
 inline bool operator!=(const FilterSettings& lhs, const FilterSettings& rhs) { return !(lhs == rhs); }
 
