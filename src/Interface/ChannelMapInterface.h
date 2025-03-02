@@ -50,10 +50,12 @@ public:
 	
 		ONI::Processor::ChannelMapProcessor& cm = *reinterpret_cast<ONI::Processor::ChannelMapProcessor*>(&processor);
 
-		if(nextChannelMapBoolMatrix.size() != cm.getNumProbes()){
-			nextChannelMapBoolMatrix = cm.getChannelMapBoolMatrix();
-		}
-		
+		//if(nextChannelMapBoolMatrix.size() != cm.getNumProbes()){
+		//	nextChannelMapBoolMatrix = cm.getChannelMapBoolMatrix();
+		//}
+
+		nextChannelMapBoolMatrix = cm.getChannelMapBoolMatrix(); // not efficient but it works when updating
+
 		ImGui::PushID(cm.getName().c_str());
 		ImGui::Text(cm.getName().c_str());
 
