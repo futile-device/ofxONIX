@@ -9,6 +9,7 @@ docs/tagfile.xml
 !*/bin/data/
 *.dat
 *experiment_*
+*.wav
 
 # for bin folder in root
 /bin/*

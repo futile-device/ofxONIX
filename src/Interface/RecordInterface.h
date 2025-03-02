@@ -340,8 +340,8 @@ protected:
 	constexpr ImVec2 buttonSize = ImVec2(64, 60);
 	fu::Timer flashTimer;
 	
-	char descriptionReadBuf[1024];
-	char descriptionWriteBuf[1024];
+	char descriptionReadBuf[4096];
+	char descriptionWriteBuf[512];
 
 	int fileIDX = 0;
 	std::vector<std::string> folders;
