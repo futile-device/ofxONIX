@@ -198,12 +198,12 @@ public:
 			if(ImGui::CollapsingHeader("Rhs2116Multi", true)) multiInterface.gui(*ONI::Global::model.getRhs2116MultiProcessor());
 		}
 
+		if(bDisableOnPlayback) ImGui::EndDisabled();
+
 		if(ONI::Global::model.getRhs2116StimProcessor() != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);
 			if(ImGui::CollapsingHeader("Rhs2116Stimulus", true)) stimInterface.gui(*ONI::Global::model.getRhs2116StimProcessor());
 		}
-
-		if(bDisableOnPlayback) ImGui::EndDisabled();
 
 		if(ONI::Global::model.getChannelMapProcessor() != nullptr){
 			if(bOpenOnFirstStart) ImGui::SetNextItemOpen(bOpenOnFirstStart);

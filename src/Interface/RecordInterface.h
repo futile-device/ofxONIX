@@ -105,7 +105,7 @@ public:
 		case ONI::Interface::RECORD:
 		{
 			ImGui::OpenPopup("Record Description");
-			memset(descriptionWriteBuf, 0, 1024);
+			memset(descriptionWriteBuf, 0, 512);
 			break;
 		}
 		//case ONI::Interface::PAUSE:
