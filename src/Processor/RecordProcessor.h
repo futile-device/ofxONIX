@@ -236,14 +236,25 @@ public:
 			std::string exp = "experiment_";
 			std::string fileTimeStamp = path.substr(path.find(exp) + exp.size());
 			std::ostringstream osI; osI << path << "\\info_" << fileTimeStamp << ".txt";
-
+			settings.infoFileName = osI.str();
 
 			std::ifstream infostream;
 			infostream.open(settings.infoFileName.c_str());
 			std::string line; std::ostringstream osInf;
 			while(std::getline(infostream, line)) osInf << line << "\n";
-			
+			infostream.close();
 			info = osInf.str();
+
+			//std::string version = getStringSetting("Version: ", info); // do the update on load
+			//if(version == "")
+			//	upgradeToVersion(1);
+			//	std::ifstream infostream;
+			//	infostream.open(settings.infoFileName.c_str());
+			//	std::string line; std::ostringstream osInf;
+			//	while(std::getline(infostream, line)) osInf << line << "\n";
+			//	infostream.close();
+			//	info = osInf.str();
+			//}
 
 		}else{
 			LOGERROR("Path for info not valid: %s", path.c_str());
@@ -277,14 +288,15 @@ public:
 			infostream.open(settings.infoFileName.c_str());
 			std::string line; std::ostringstream osInf;
 			while(std::getline(infostream, line))osInf << line << "\n";
+			infostream.close();
 			settings.info = osInf.str();
 
 			// Find Heartbeat setting
-			std::string hz = getStringSetting("HeartBeat Hz: ");
+			std::string hz = getStringSetting("HeartBeat Hz: ", settings.info);
 			settings.heartBeatRateHz = std::atoi(hz.c_str());
 
-			std::string version = getStringSetting("Version: ");
-			//if(version == "") upgradeToVersion(1);
+			std::string version = getStringSetting("Version: ", settings.info);
+			if(version == "") upgradeToVersion(1);
 
 			std::ostringstream osD; osD << path << "\\data_stream_" << settings.fileTimeStamp << ".dat";
 			std::ostringstream osT; osT << path << "\\time_stream_" << settings.fileTimeStamp << ".dat";
@@ -325,8 +337,11 @@ public:
 	}
 
 	void upgradeToVersion(const int& toVersionNumber){
-		if(toVersionNumber == 1){
 
+		LOGALERT("Updating settings for %s to Version %d", settings.dataFileName.c_str(), toVersionNumber);
+
+		if(toVersionNumber == 1){
+			
 			settings.version = std::to_string(toVersionNumber);
 
 			// add version number
@@ -338,15 +353,15 @@ public:
 		}
 	}
 
-	inline std::string getStringSetting(const std::string& settingName){
-		size_t start = settings.info.find(settingName.c_str());
+	inline std::string getStringSetting(const std::string& settingName, std::string& settingsInfo){
+		size_t start = settingsInfo.find(settingName.c_str());
 		if(start == std::string::npos){ // there isn't that setting
-			LOGALERT("Setting %s does not exist! Is this an old file version?", settingName);
+			LOGALERT("Setting %s does not exist! Is this an old file version?", settingName.c_str());
 			return "";
 		}
 		start += settingName.size();
-		size_t end = settings.info.find("\n", start);
-		std::string s = settings.info.substr(start, end - start);
+		size_t end = settingsInfo.find("\n", start);
+		std::string s = settingsInfo.substr(start, end - start);
 		return s;
 	}
 
