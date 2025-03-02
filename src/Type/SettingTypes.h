@@ -816,6 +816,8 @@ struct RecordSettings{
 	std::string timeFileName = "";
 	std::string infoFileName = "";
 	std::string timeStamp = "";      // "normal"
+	std::string version = "";
+	std::string channelMap = "";
 	std::string fileTimeStamp = "";  // reversed for file sorting
 	std::string fileLengthTimeStamp = "00:00:00:000.000";
 	std::string description = "";
@@ -834,6 +836,8 @@ struct RecordSettings{
 		std::swap(timeFileName, other.timeFileName);
 		std::swap(infoFileName, other.infoFileName);
 		std::swap(timeStamp, other.timeStamp);
+		std::swap(version, other.version);
+		std::swap(channelMap, other.channelMap);
 		std::swap(fileTimeStamp, other.fileTimeStamp);
 		std::swap(description, other.description);
 		std::swap(info, other.info);
@@ -854,6 +858,8 @@ inline bool operator==(const RecordSettings& lhs, const RecordSettings& rhs){
 			lhs.timeFileName == rhs.timeFileName &&
 			lhs.infoFileName == rhs.infoFileName &&
 			lhs.timeStamp == rhs.timeStamp &&
+			lhs.channelMap == rhs.channelMap &&
+			lhs.version == rhs.version &&
 			lhs.fileTimeStamp == rhs.fileTimeStamp &&
 			lhs.description == rhs.description &&
 			lhs.info == rhs.info &&
