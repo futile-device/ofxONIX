@@ -239,15 +239,10 @@ public:
 
 
 			std::ifstream infostream;
-			infostream.open(osI.str().c_str());
+			infostream.open(settings.infoFileName.c_str());
 			std::string line; std::ostringstream osInf;
-			while(std::getline(infostream, line)){
-				std::string hz = "HeartBeat Hz: ";
-				if(line.find(hz) != std::string::npos){
-					settings.heartBeatRateHz = std::atoi(line.substr(line.find(hz) + hz.size()).c_str());
-				}
-				osInf << line << "\n";
-			}
+			while(std::getline(infostream, line)) osInf << line << "\n";
+			
 			info = osInf.str();
 
 		}else{
@@ -274,25 +269,28 @@ public:
 			settings.fileTimeStamp = path.substr(path.find(exp) + exp.size());
 			settings.timeStamp = ONI::ReverseTimeStamp(settings.fileTimeStamp);
 
-			std::ostringstream osD; osD << path << "\\data_stream_" << settings.fileTimeStamp << ".dat";
-			std::ostringstream osT; osT << path << "\\time_stream_" << settings.fileTimeStamp << ".dat";
+			// load the info metadata first
 			std::ostringstream osI; osI << path << "\\info_" << settings.fileTimeStamp << ".txt";
-
-			settings.dataFileName = osD.str();
-			settings.timeFileName = osT.str();
 			settings.infoFileName = osI.str();
 
 			std::ifstream infostream;
 			infostream.open(settings.infoFileName.c_str());
 			std::string line; std::ostringstream osInf;
-			while(std::getline(infostream, line)){
-				std::string hz = "HeartBeat Hz: ";
-				if(line.find(hz) != std::string::npos){
-					settings.heartBeatRateHz = std::atoi(line.substr(line.find(hz) + hz.size()).c_str());
-				}
-				osInf << line << "\n";
-			}
+			while(std::getline(infostream, line))osInf << line << "\n";
 			settings.info = osInf.str();
+
+			// Find Heartbeat setting
+			std::string hz = getStringSetting("HeartBeat Hz: ");
+			settings.heartBeatRateHz = std::atoi(hz.c_str());
+
+			std::string version = getStringSetting("Version: ");
+			//if(version == "") upgradeToVersion(1);
+
+			std::ostringstream osD; osD << path << "\\data_stream_" << settings.fileTimeStamp << ".dat";
+			std::ostringstream osT; osT << path << "\\time_stream_" << settings.fileTimeStamp << ".dat";
+
+			settings.dataFileName = osD.str();
+			settings.timeFileName = osT.str();
 
 			return true;
 		} else{
@@ -302,7 +300,58 @@ public:
 
 	}
 
+	void saveInfoSettings(){
+
+		std::ofstream infostream;
+		infostream.open(settings.infoFileName.c_str());
+
+		infostream << "Time: " << settings.timeStamp << "\n\n";
+		infostream << "Version: " << settings.version << "\n\n";
+		infostream << "Description: " << settings.description << "\n\n";
+
+		for(auto& device : ONI::Global::model.getDevices()) {
+			device.second->reset();
+			infostream << device.second->info() << "\n\n";
+		}
+
+		infostream << "Channel Map: ";
+		const std::vector<size_t>& channelMap = ONI::Global::model.getChannelMapProcessor()->getChannelMap();
+		for(size_t probe = 0; probe < channelMap.size(); ++probe){
+			infostream << std::to_string(channelMap[probe]) << (probe == channelMap.size() - 1 ? "" : ",");
+		}
+		size_t t = infostream.tellp();
+		infostream.close();
+
+	}
+
+	void upgradeToVersion(const int& toVersionNumber){
+		if(toVersionNumber == 1){
+
+			settings.version = std::to_string(toVersionNumber);
+
+			// add version number
+			// add channel map
+			// add spike stream
+
+			saveInfoSettings();
+
+		}
+	}
+
+	inline std::string getStringSetting(const std::string& settingName){
+		size_t start = settings.info.find(settingName.c_str());
+		if(start == std::string::npos){ // there isn't that setting
+			LOGALERT("Setting %s does not exist! Is this an old file version?", settingName);
+			return "";
+		}
+		start += settingName.size();
+		size_t end = settings.info.find("\n", start);
+		std::string s = settings.info.substr(start, end - start);
+		return s;
+	}
+
 private:
+
 	bool bBadFrame = false;
 	int nextDeviceCounter = 0;
 
@@ -505,18 +554,19 @@ private:
 			LOGINFO("Created recording folder: %s", settings.recordFolder.c_str())
 		}
 
-		std::ofstream infostream;
-		infostream.open(settings.infoFileName.c_str());
+		saveInfoSettings();
+		//std::ofstream infostream;
+		//infostream.open(settings.infoFileName.c_str());
 
-		infostream << "Time: " << settings.timeStamp << "\n\n";
-		infostream << "Description: " << settings.description << "\n\n";
+		//infostream << "Time: " << settings.timeStamp << "\n\n";
+		//infostream << "Description: " << settings.description << "\n\n";
 
-		for(auto& device : ONI::Global::model.getDevices()) {
-			device.second->reset();
-			infostream << device.second->info() << "\n\n";
-		}
+		//for(auto& device : ONI::Global::model.getDevices()) {
+		//	device.second->reset();
+		//	infostream << device.second->info() << "\n\n";
+		//}
 
-		infostream.close();
+		//infostream.close();
 
 		streamMutex.lock();
 
