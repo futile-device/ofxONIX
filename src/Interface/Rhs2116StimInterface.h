@@ -66,7 +66,7 @@ public:
 		ImGui::Text(std.getName().c_str());
 
 
-		if(deviceStimuli.size() == 0){ // ...then this is the first time we are drawing the gui //|| std.isChannelMapChanged()
+		if(stagedStimuli != std.getStimuli(ONI::Processor::Rhs2116StimProcessor::SettingType::STAGED)){ // is this too inefficient
 			refreshStimuliData(std);
 		}
 
@@ -429,10 +429,11 @@ public:
 		ImGui::Checkbox("Use Silent Registers", &bSilentUpdate);
 		if(!std.isDeviceChannelMapSynced()) ImGui::EndDisabled();
 
-		if(!std.isDeviceChannelMapSynced()){
+		if(!std.isDeviceChannelMapSynced() || std.bAnnoyingMe){// I can't seem to do this elegantly ---> I just need to get the send to device button to turn on during playbakc
 			ImGui::SameLine();
 			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(255, 0, 0, 127));
 			if(ImGui::Button("Resync Device Stimulus")){
+				std.bAnnoyingMe = false;
 				std.updateStimuliOnDevice();
 				refreshStimuliData(std);
 			}
@@ -564,7 +565,7 @@ public:
 
 
 
-			for(size_t i = 0; i < allStimulusAmplitudes.size(); ++i){
+			for(size_t i = 0; i < std.lastAppliedInverseChannelMap.size(); ++i){
 
 				size_t rhsProbeIDX = std.lastAppliedInverseChannelMap[i];
 				size_t meaProbeIDX =  std.lastAppliedChannelMap[rhsProbeIDX];
