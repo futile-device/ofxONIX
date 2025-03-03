@@ -54,7 +54,7 @@ public:
 			acProbeVoltages[probe].resize(bufferSize * 3);
 			dcProbeVoltages[probe].resize(bufferSize * 3);
 			stimProbeData[probe].resize(bufferSize * 3);
-			spikeProbeData[probe].resize(bufferSize * 3);
+			spikeProbeData[probe].assign(bufferSize * 3, -10);
 		}
 
 		this->bufferSampleRateStep = step;

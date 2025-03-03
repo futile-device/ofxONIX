@@ -358,7 +358,7 @@ private:
 				ONI::Processor::Rhs2116StimProcessor* stim = ONI::Global::model.getRhs2116StimProcessor();
 				ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
 
-				if(ImPlot::BeginPlot("##probeplot", ImVec2(-1, 20), ImPlotFlags_CanvasOnly)){
+				if(ImPlot::BeginPlot("##probeplot", ImVec2(-1, 80), ImPlotFlags_CanvasOnly)){
 
 					ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
 
@@ -370,15 +370,15 @@ private:
 					ImPlot::SetNextLineStyle(col);
 					ImPlot::SetNextFillStyle(col);
 					float* spikeV = bp.sparseBuffer.getSpikeFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-					ImPlot::PlotLine("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+					ImPlot::PlotLine("##spike", &bp.sparseCountStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
 					//ImPlot::PlotDigital("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
-
+					
 					ImPlot::SetNextLineStyle(col, 0.0);
 					ImPlot::SetNextFillStyle(col, 0.6);
 
 					if(stim->isStimulusOnDevice(probe)){
 						float* stimV = bp.sparseBuffer.getStimFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-						ImPlot::PlotDigital("##stim", &bp.sparseCountStamps[0], stimV, frameCount, ImPlotLineFlags_None, offset);
+						ImPlot::PlotDigital("##stim", &bp.sparseTimeStamps[0], stimV, frameCount, ImPlotLineFlags_None, offset);
 					}
 
 
