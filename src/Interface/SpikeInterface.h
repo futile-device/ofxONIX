@@ -96,7 +96,7 @@ public:
 		nextSettings.spikeWaveformLengthMs = std::clamp(nextSettings.spikeWaveformLengthMs, 0.02f, 1000.0f);
 		nextSettings.spikeWaveformLengthSamples = nextSettings.spikeWaveformLengthMs * RHS2116_SAMPLES_PER_MS;
 
-		if(ImGui::InputInt("Spike Detection Buffer Size", &nextSettings.spikeWaveformBufferSize)) bNeedsUpdate = true;
+		if(ImGui::InputInt("Spike Detection Buffer Size", &nextSettings.shortSpikeBufferSize)) bNeedsUpdate = true;
 		if(ImGui::InputInt("Spike Min Search Offset (samples)", &nextSettings.minSampleOffset)) bNeedsUpdate = true;
 
 		if(ImGui::Checkbox("Align Falling Edges to Peak", &nextSettings.bFallingAlignMax)) bNeedsUpdate = true;
@@ -158,15 +158,15 @@ public:
 					static ImPlotAxisFlags flags = ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels;
 					
 					ImPlot::SetupAxes(nullptr, nullptr, flags, flags);
-					ImPlot::SetupAxesLimits(0, sp.probeSpikes[probe][0].rawWaveform.size(), -voltageRange, voltageRange, ImGuiCond_Always);
+					ImPlot::SetupAxesLimits(0, sp.shortSpikeBuffer[probe][0].rawWaveform.size(), -voltageRange, voltageRange, ImGuiCond_Always);
 					//ImVec4 col = ImPlot::GetColormapColor(probe);
 
-					for(size_t j = 0; j < sp.probeSpikes[probe].size(); ++j){
+					for(size_t j = 0; j < sp.shortSpikeBuffer[probe].size(); ++j){
 						ImVec4 colf = col;
-						colf.w = (float)(j + 1) / (sp.spikeCounts[probe] % sp.probeSpikes[probe].size());
+						colf.w = (float)(j + 1) / (sp.totalSpikeCounts[probe] % sp.shortSpikeBuffer[probe].size());
 						ImPlot::SetNextLineStyle(colf);
 
-						ImPlot::PlotLine("##spark", &sp.probeSpikes[probe][j].rawWaveform[0], sp.probeSpikes[probe][j].rawWaveform.size(), 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+						ImPlot::PlotLine("##spark", &sp.shortSpikeBuffer[probe][j].rawWaveform[0], sp.shortSpikeBuffer[probe][j].rawWaveform.size(), 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
 						
 						if(frameCount != 0 && numProbes != 0){
 							ImPlot::SetNextLineStyle(ImVec4(1, 0, 0, 0.5));
