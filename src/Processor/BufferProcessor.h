@@ -83,8 +83,8 @@ public:
 
         BaseProcessor::numProbes = source->getNumProbes();
 
-        settings.setBufferSizeMillis(5000);
-        settings.setSparseStepSizeMillis(1);
+        settings.setBufferSizeMillis(60000);
+        settings.setSparseStepSizeMillis(10);
         settings.autoThresholdMs = 1000;
         settings.bUseAutoThreshold = true;
 
@@ -227,25 +227,27 @@ private:
 
         dataMutex[SPARSE_MUTEX].lock();
 
+        size_t N = std::min(sparseBuffer.getCurrentIndex(), sparseBuffer.size());
+
         for(size_t probe = 0; probe < numProbes; ++probe){
 
             probeStats[BACK_BUFFER][probe].sum = 0;
 
             float* acProbeVoltages = sparseBuffer.getAcuVFloatRaw(probe, 0);
 
-            for(size_t frame = 0; frame < sparseBuffer.size(); ++frame){
+            for(size_t frame = 0; frame < N; ++frame){
                 probeStats[BACK_BUFFER][probe].sum += acProbeVoltages[frame];
             }
 
-            probeStats[BACK_BUFFER][probe].mean = probeStats[BACK_BUFFER][probe].sum / sparseBuffer.size();
+            probeStats[BACK_BUFFER][probe].mean = probeStats[BACK_BUFFER][probe].sum / N;
             probeStats[BACK_BUFFER][probe].std = 0;
 
-            for(size_t frame = 0; frame < sparseBuffer.size(); ++frame){
+            for(size_t frame = 0; frame < N; ++frame){
                 float acdiff = acProbeVoltages[frame] - probeStats[BACK_BUFFER][probe].mean;
                 probeStats[BACK_BUFFER][probe].std += acdiff * acdiff;
             }
 
-            probeStats[BACK_BUFFER][probe].variance = probeStats[BACK_BUFFER][probe].std / (sparseBuffer.size());  // use population (N) or sample (n-1) deviation?
+            probeStats[BACK_BUFFER][probe].variance = probeStats[BACK_BUFFER][probe].std / (N);  // use population (N) or sample (n-1) deviation?
             probeStats[BACK_BUFFER][probe].deviation = sqrt(probeStats[BACK_BUFFER][probe].variance);
 
         }

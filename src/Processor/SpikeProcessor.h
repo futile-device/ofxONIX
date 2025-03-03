@@ -81,7 +81,8 @@ public:
         reset();
 
     }
-
+    fu::Timer burstWindowTimer;
+    size_t numberOfBurstWindows = 30;
     void reset(){
 
         LOGINFO("SpikeProcessor RESET");
@@ -89,17 +90,25 @@ public:
         bThread = false;
         if (thread.joinable()) thread.join();
 
-        //probeStats.clear();
-        nextPeekDetectBufferCount.clear();
-        
-        totalSpikeCounts.clear();
-        
         std::vector<bool>& spikeFlags = ONI::Global::model.getSpikeFlags();
         spikeFlags.resize(numProbes);
 
-        //probeStats.resize(numProbes);
+        nextPeekDetectBufferCount.clear();
         nextPeekDetectBufferCount.resize(numProbes);
+
+
+        totalSpikeCounts.clear();
         totalSpikeCounts.resize(numProbes);
+
+        burstSpikeCounts.clear();
+        burstSpikeCounts.resize(numProbes);
+
+        burstSpikeIDXs.clear();
+        burstSpikeIDXs.resize(numProbes);
+        burstsPerWindow.clear();
+        burstsPerWindow.resize(numProbes);
+        burstsPerWindowAvg.clear();
+        burstsPerWindowAvg.resize(numProbes);
 
         shortSpikeBuffer.clear();
         shortSpikeBufferIDXs.clear();
@@ -115,6 +124,12 @@ public:
 
             nextPeekDetectBufferCount[probe] = 0;
             totalSpikeCounts[probe] = 0;
+            burstSpikeCounts[probe] = 0;
+            burstSpikeIDXs[probe] = 0;
+            burstsPerWindow[probe].resize(numberOfBurstWindows);
+            for(size_t i = 0; i < numberOfBurstWindows; ++i){
+                burstsPerWindow[probe][i] = 0;
+            }
 
             shortSpikeBufferIDXs[probe] = 0;
             shortSpikeBuffer[probe].resize(settings.shortSpikeBufferSize);
@@ -129,7 +144,7 @@ public:
             }
         }
 
-
+        burstWindowTimer.start<fu::micros>(burstWindowTimeUs);
 
         bThread = true;
         thread = std::thread(&ONI::Processor::SpikeProcessor::processSpikes, this);
@@ -157,10 +172,10 @@ public:
                 // get the buffer count which is the global counter for frames going into the buffer
                 uint64_t bufferCount = buffer.getBufferCount();
 
-                if(bufferCount > buffer.size()){ // wait until the buffer is full
+                if(true){ // wait until the buffer is full
 
                     // we are going to search for spikes from the 'central' time point in the frame buffer
-                    size_t centralSampleIDX = size_t(std::floor(buffer.getCurrentIndex() + buffer.size() / 2.0)) % buffer.size();
+                    size_t centralSampleIDX = (buffer.getCurrentIndex() + buffer.size() - 30000) % buffer.size();// size_t(std::floor(buffer.getCurrentIndex() + buffer.size() / 2.0)) % buffer.size();
 
                     // get a reference to the central "current" frame
                     ONI::Frame::Rhs2116MultiFrame& frame = buffer.getFrameAt(centralSampleIDX);
@@ -235,8 +250,7 @@ public:
                                 shortSpikeBufferIDXs[probe] = (shortSpikeBufferIDXs[probe] + 1) % settings.shortSpikeBufferSize;
                                 longSpikeBufferIDXs[probe] = (longSpikeBufferIDXs[probe] + 1) % settings.longSpikeBufferSize;
                                 totalSpikeCounts[probe]++;
-                                //frame.spike = true;
-                                //if(spikeCounts[probe] < settings.spikeWaveformBufferSize) spikeCounts[probe]++;
+                                burstSpikeCounts[probe]++;
 
                             }
 
@@ -307,8 +321,7 @@ public:
                                 shortSpikeBufferIDXs[probe] = (shortSpikeBufferIDXs[probe] + 1) % settings.shortSpikeBufferSize;
                                 longSpikeBufferIDXs[probe] = (longSpikeBufferIDXs[probe] + 1) % settings.longSpikeBufferSize;
                                 totalSpikeCounts[probe]++;
-                                //frame.spike = true;
-                                //if(spikeCounts[probe] < settings.spikeWaveformBufferSize) spikeCounts[probe]++;
+                                burstSpikeCounts[probe]++;
 
                             }
 
@@ -321,6 +334,25 @@ public:
 
             bufferProcessor->dataMutex[DENSE_MUTEX].unlock();
 
+            if(burstWindowTimer.finished()){
+                for(size_t probe = 0; probe < numProbes; ++probe){
+                    double burstsPerSecond = (double)burstSpikeCounts[probe] / fu::time::convert<fu::micros, fu::seconds>(burstWindowTimeUs);
+                    burstsPerWindow[probe][burstSpikeIDXs[probe]] = burstsPerSecond;
+                    
+                    burstsPerWindowAvg[probe] = 0;
+                    size_t N = std::min(burstSpikeIDXs[probe], numberOfBurstWindows);
+                    for(size_t b = 0; b < N; ++b){
+                        burstsPerWindowAvg[probe] += burstsPerWindow[probe][b];
+                    }
+                    burstsPerWindowAvg[probe] /= N;
+
+                    burstSpikeIDXs[probe] = (burstSpikeIDXs[probe] + 1) % numberOfBurstWindows;
+                    burstSpikeCounts[probe] = 0;
+                }
+                burstWindowTimer.restart();
+                
+            }
+
             spikeMutex.unlock();
 
         }
@@ -329,6 +361,12 @@ public:
 
     void calculateBurstiness(const int& binSizeMillis){
         
+        for(size_t probe = 0; probe < numProbes; ++probe){
+            for(size_t s = 0; s < longSpikeBuffer[probe].size(); ++s){
+                size_t spikeIDX = (s + longSpikeBufferIDXs[probe]) % settings.longSpikeBufferSize;
+
+            }
+        }
     }
 
     inline void processSpike(Spike& spike){
@@ -483,6 +521,13 @@ protected:
     std::vector<size_t> shortSpikeBufferIDXs;
 
     std::vector<size_t> totalSpikeCounts;
+
+    size_t burstWindowTimeUs = 1000000;
+
+    std::vector<size_t> burstSpikeIDXs;
+    std::vector<size_t> burstSpikeCounts;
+    std::vector<std::vector<float>> burstsPerWindow;
+    std::vector<double> burstsPerWindowAvg;
 
     ONI::Processor::BufferProcessor* bufferProcessor;
 

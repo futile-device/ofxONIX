@@ -149,6 +149,8 @@ public:
 					if(b) ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, cell_bg_color);
 				}
 
+				ImGui::Text("Bursts/s: %0.3f", sp.burstsPerWindowAvg[probe]);
+
 				ImGui::PushID(probe);
 
 				ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
