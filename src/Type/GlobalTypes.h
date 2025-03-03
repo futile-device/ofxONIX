@@ -47,7 +47,9 @@ struct Spike{
 
 	size_t probe = 0;
 	std::vector<float> rawWaveform;
-	size_t acquisitionTime = 0;
+	size_t acquisitionTimeHardware = 0;
+	uint64_t acquisitionTimeWallNs = 0;
+	uint64_t acquisitionTimeHiResNs = 0;
 	size_t maxSampleIndex = 0;
 	size_t minSampleIndex = 0;
 	float minVoltage = INFINITY;
@@ -57,7 +59,9 @@ struct Spike{
 	Spike& Spike::operator=(Spike other) noexcept{
 		std::swap(probe, other.probe);
 		std::swap(rawWaveform, other.rawWaveform);
-		std::swap(acquisitionTime, other.acquisitionTime);
+		std::swap(acquisitionTimeHardware, other.acquisitionTimeHardware);
+		std::swap(acquisitionTimeWallNs, other.acquisitionTimeWallNs);
+		std::swap(acquisitionTimeHiResNs, other.acquisitionTimeHiResNs);
 		std::swap(maxSampleIndex, other.maxSampleIndex);
 		std::swap(minSampleIndex, other.minSampleIndex);
 		std::swap(minVoltage, other.minVoltage);
@@ -70,7 +74,9 @@ struct Spike{
 inline bool operator==(const Spike& lhs, const Spike& rhs){
 	return (lhs.probe == rhs.probe &&
 			lhs.rawWaveform == rhs.rawWaveform &&
-			lhs.acquisitionTime == rhs.acquisitionTime &&
+			lhs.acquisitionTimeHardware == rhs.acquisitionTimeHardware &&
+			lhs.acquisitionTimeWallNs == rhs.acquisitionTimeWallNs &&
+			lhs.acquisitionTimeHiResNs == rhs.acquisitionTimeHiResNs &&
 			lhs.maxSampleIndex == rhs.maxSampleIndex &&
 			lhs.minSampleIndex == rhs.minSampleIndex &&
 			lhs.minVoltage == rhs.minVoltage &&
@@ -337,7 +343,13 @@ public:
 		return channelSelect;
 	}
 
+	std::vector<bool>& getSpikeFlags(){ // global flag used just to vis the spikes
+		return spikeFlags; // do we need an internal mutext? probably, but lazy
+	}
+
 private:
+	
+	std::vector<bool> spikeFlags; // global flag used just to vis the spikes
 
 	volatile oni_ctx ctx = nullptr;
 

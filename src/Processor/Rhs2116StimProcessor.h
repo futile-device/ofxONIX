@@ -108,7 +108,7 @@ public:
             const int& stimulusID = recordProcessor->getStimID();
             const std::vector<ONI::Settings::Rhs2116StimulusSettings>& allStimSettings = recordProcessor->getAllStimulusSettings();
             if(stimulusID != -1){
-                reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)->stim = true;
+                reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)->stimulation = true;
                 if(stagedSettings != allStimSettings[stimulusID]){ //  // is this too inefficient
                     //reset();
                     stagedSettings = allStimSettings[stimulusID]; // don't apply them??
@@ -119,7 +119,7 @@ public:
 
         }
         if(stimulusSampleCountRemaining > 0) {
-            reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)->stim = true;
+            reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)->stimulation = true;
             if(recordProcessor->isRecording()) recordProcessor->setStimRecording(true);
             --stimulusSampleCountRemaining;
             if(recordProcessor->isRecording() && stimulusSampleCountRemaining <= 0) recordProcessor->setStimRecording(false);

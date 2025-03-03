@@ -156,6 +156,7 @@ public:
 
 		//plotCombinedLinePlot(bp, ONI::Interface::PLOT_DC_DATA);
 		plotCombinedLinePlot(bp, ONI::Interface::PLOT_AC_DATA);
+		plotCombinedSpikes(bp);
 
 		plotIndividualLinePlot(bp, ONI::Interface::PLOT_DC_DATA);
 		plotIndividualLinePlot(bp, ONI::Interface::PLOT_AC_DATA);
@@ -353,13 +354,38 @@ private:
 				float* voltages = nullptr;
 				if(plotType == PLOT_AC_DATA) voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
 				if(plotType == PLOT_DC_DATA) voltages = bp.sparseBuffer.getDcmVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+
 				ONI::Processor::Rhs2116StimProcessor* stim = ONI::Global::model.getRhs2116StimProcessor();
-				if(stim->isStimulusOnDevice(probe)){
-					float* stimV = bp.sparseBuffer.getStimFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-					ONI::Interface::Sparkline2("##spark", voltages, stimV, frameCount, -voltageRange, voltageRange, offset, col, ImVec2(-1, 60));
-				} else{
-					ONI::Interface::Sparkline("##spark", voltages, frameCount, -voltageRange, voltageRange, offset, ImPlot::GetColormapColor(probe), ImVec2(-1, 60));
+				ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0, 0));
+
+				if(ImPlot::BeginPlot("##probeplot", ImVec2(-1, 20), ImPlotFlags_CanvasOnly)){
+
+					ImPlot::SetupAxes(nullptr, nullptr, ImPlotAxisFlags_NoDecorations, ImPlotAxisFlags_None);
+
+					ImPlot::SetupAxesLimits(0, frameCount, -voltageRange, voltageRange, ImGuiCond_Always);
+
+					ImPlot::SetNextLineStyle(col);
+					ImPlot::PlotLine("##probe", voltages, frameCount, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+
+					ImPlot::SetNextLineStyle(col);
+					ImPlot::SetNextFillStyle(col);
+					float* spikeV = bp.sparseBuffer.getSpikeFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+					ImPlot::PlotLine("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+					//ImPlot::PlotDigital("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+
+					ImPlot::SetNextLineStyle(col, 0.0);
+					ImPlot::SetNextFillStyle(col, 0.6);
+
+					if(stim->isStimulusOnDevice(probe)){
+						float* stimV = bp.sparseBuffer.getStimFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+						ImPlot::PlotDigital("##stim", &bp.sparseCountStamps[0], stimV, frameCount, ImPlotLineFlags_None, offset);
+					}
+
+
+
+					ImPlot::EndPlot();
 				}
+				ImPlot::PopStyleVar();
 
 				// do selections for the combined view and audio preview
 				if(ImGui::IsItemClicked()){
@@ -388,6 +414,66 @@ private:
 	}
 
 	// Plot Combined AC or DC probe data
+	inline void plotCombinedSpikes(ONI::Processor::BufferProcessor& bp){
+
+		size_t numProbes = bp.numProbes;
+		size_t frameCount = bp.sparseBuffer.size();
+
+		if(frameCount == 0) return;
+
+		ImGui::Begin("Spike Plot");
+		ImGui::PushID("##CombinedSpikePlot");
+
+		if(ImPlot::BeginPlot("Spikes", ImVec2(-1, -1))){
+
+			ImPlot::SetupAxes("mS", "");
+
+			ImPlot::SetupAxesLimits(0, bp.sparseTimeStamps[frameCount - 1] - 1, 0, 10*65, ImGuiCond_Always);
+
+			for(int probe = 0; probe < numProbes; probe++) {
+
+				//if(!ONI::Global::model.getChannelSelect()[probe]) continue; // only show selected probes
+
+				ImGui::PushID(probe);
+				ImVec4 col = ImPlot::GetColormapColor(probe);
+
+				int offset = 0;
+
+				
+
+				ImPlot::SetNextLineStyle(col);
+				ImPlot::SetNextFillStyle(col);
+
+				bp.dataMutex[SPARSE_MUTEX].lock();
+
+				float* voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+				float* spikeV = bp.sparseBuffer.getSpikeFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+				//ImPlot::PlotLine("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				bool bHighLight = ONI::Global::model.getChannelSelect()[probe];
+				ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, bHighLight ? 1.0f : 0.25f);
+				ImVec4 cl = col;
+				col.w = bHighLight ? 1 : 0.8;
+				cl.w = bHighLight ? 0.9 : 0.4;
+				ImPlot::SetNextMarkerStyle(ImPlotMarker_Square, 4, cl, -1, col);
+				ImPlot::PlotScatter("##spikeS", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				//ImPlot::PlotDigital("##spike2", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+
+				bp.dataMutex[SPARSE_MUTEX].unlock();
+
+				ImGui::PopID();
+				
+			}
+
+			ImPlot::EndPlot();
+
+		}
+
+		ImGui::PopID();
+		ImGui::End();
+
+	}
+
+	// Plot Combined AC or DC probe data
 	inline void plotCombinedLinePlot(ONI::Processor::BufferProcessor& bp, const ONI::Interface::PlotType& plotType) {
 
 		std::string plotName = "";
@@ -400,6 +486,12 @@ private:
 		static std::vector< std::vector<float>> devN;
 		std::vector<float> timeP;
 		
+		if(frameTv.size() != frameCount){ // TODO: make this better
+			frameTv.resize(frameCount);
+			for(size_t i = 0; i < frameCount; ++i) frameTv[i] = i;
+		}
+
+
 		switch(plotType) {
 
 		case PLOT_AC_DATA:
@@ -462,13 +554,21 @@ private:
 				int offset = 0;
 
 				ImPlot::SetupAxesLimits(0, bp.sparseTimeStamps[frameCount - 1] - 1, -voltageRange, voltageRange, ImGuiCond_Always);
-				ImPlot::SetNextLineStyle(col);
 
 				bp.dataMutex[SPARSE_MUTEX].lock();
 				float* voltages = nullptr;
 				if(plotType == PLOT_AC_DATA) voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
 				if(plotType == PLOT_DC_DATA) voltages = bp.sparseBuffer.getDcmVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+
+				ImPlot::SetNextLineStyle(col);
 				ImPlot::PlotLine("##probe", &bp.sparseTimeStamps[0], voltages, frameCount, ImPlotLineFlags_None, offset);
+
+				//ImPlot::SetNextLineStyle(col);
+				//ImPlot::SetNextFillStyle(col);
+				//float* spikeV = bp.sparseBuffer.getSpikeFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+				//ImPlot::PlotLine("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				//ImPlot::PlotDigital("##spike2", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+
 				bp.dataMutex[SPARSE_MUTEX].unlock();
 
 				if(bShowStdDev && plotType == PLOT_AC_DATA){
@@ -484,7 +584,6 @@ private:
 					ImPlot::SetNextFillStyle(col, 0.6);
 					bp.dataMutex[SPARSE_MUTEX].lock();
 					float * stim = bp.sparseBuffer.getStimFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-					//ImPlot::PlotShaded("##pshaded", &bp.sparseTimeStamps[0], &stim[0], frameCount, -INFINITY, ImPlotLineFlags_None, offset);
 					ImPlot::PlotDigital("##stim", &bp.sparseTimeStamps[0], &stim[0], frameCount, ImPlotLineFlags_None, offset);
 					bp.dataMutex[SPARSE_MUTEX].unlock();
 
