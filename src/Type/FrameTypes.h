@@ -237,7 +237,8 @@ public:
 
 	float ac_uV[MAX_NUM_MULTIPROBES];
 	float dc_mV[MAX_NUM_MULTIPROBES];
-	bool stim = false;
+	bool stimulation = false;
+	std::vector<bool> spikes;
 
 	// copy assignment (copy-and-swap idiom)
 	Rhs2116MultiFrame& Rhs2116MultiFrame::operator=(Rhs2116MultiFrame other) noexcept{
@@ -247,17 +248,18 @@ public:
 		std::swap(numProbes, other.numProbes);
 		std::swap(ac_uV, other.ac_uV);
 		std::swap(dc_mV, other.dc_mV);
-		std::swap(stim, other.stim);
+		std::swap(stimulation, other.stimulation);
+		std::swap(spikes, other.spikes);
 		return *this;
 	}
 
 	inline bool operator==(const ONI::Frame::Rhs2116MultiFrame& other){ 
 		for(size_t probe = 0; probe < numProbes; ++probe){
-			if(ac_uV[probe] != other.ac_uV[probe] || dc_mV[probe] != other.ac_uV[probe]){
+			if(ac_uV[probe] != other.ac_uV[probe] || dc_mV[probe] != other.ac_uV[probe]){ // is this enough?
 				return false;
 			}
 		}
-		return (numProbes == other.numProbes && deltaTime == other.deltaTime && stim == other.stim);
+		return (numProbes == other.numProbes && deltaTime == other.deltaTime && stimulation == other.stimulation);
 	}
 	inline bool operator!=(const ONI::Frame::Rhs2116MultiFrame& other) { return !(this == &other); }
 

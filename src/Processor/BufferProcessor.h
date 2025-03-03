@@ -104,10 +104,18 @@ public:
     }
 
 	inline void process(oni_frame_t* frame){}; // nothing
+    
     float phase = 0;
+    std::vector<bool> sparseSpikes;
 	inline void process(ONI::Frame::BaseFrame& frame){
 
-        ONI::Frame::Rhs2116MultiFrame* mframe = reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame);
+        ONI::Frame::Rhs2116MultiFrame* multi_frame = reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame);
+
+        // check for spike flag --> this means marking the frame *after* the 
+        // actual spike as I want to process inside buffer, rather than post process
+        std::vector<bool>& spikeFlags = ONI::Global::model.getSpikeFlags();
+        multi_frame->spikes = spikeFlags;
+
 
         //phase += 0.4;
         //for(size_t probe = 0; probe < numProbes; ++probe){
@@ -115,12 +123,30 @@ public:
         //}
 
         dataMutex[DENSE_MUTEX].lock();
-        denseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame)); // TODO:: right now I am assuming a Rhs2116MultiProcessor/multiframe but I shouldn't be!!!
+        denseBuffer.push(*multi_frame); 
+
+        // basically let's cache all spikes until we record a sparse frame
+        if(sparseSpikes.size() != spikeFlags.size()){
+            sparseSpikes = spikeFlags;
+        } else{
+            for(size_t probe = 0; probe < spikeFlags.size(); ++probe){
+                if(spikeFlags[probe]) sparseSpikes[probe] = true;
+            }
+        }
+        for(size_t probe = 0; probe < spikeFlags.size(); ++probe) spikeFlags[probe] = false;
+
         dataMutex[DENSE_MUTEX].unlock();
-        std::this_thread::yield(); // ????
+
+        //std::this_thread::yield(); // ????
+
         dataMutex[SPARSE_MUTEX].lock();
-        sparseBuffer.push(*reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame));
+        multi_frame->spikes = sparseSpikes;
+        if(sparseBuffer.push(*multi_frame)){
+            sparseSpikes.clear();
+        }
         dataMutex[SPARSE_MUTEX].unlock();
+
+        //std::this_thread::yield(); // ????
 
         for(auto& it : postProcessors){
             it.second->process(frame);
@@ -147,7 +173,11 @@ public:
         probeStats[FRONT_BUFFER].resize(BaseProcessor::numProbes);
         probeStats[BACK_BUFFER].resize(BaseProcessor::numProbes);
         sparseTimeStamps.resize(sparseBuffer.size());
-        for(size_t frame = 0; frame < sparseTimeStamps.size(); ++frame) sparseTimeStamps[frame] = frame * sparseBuffer.getMillisPerStep();
+        sparseCountStamps.resize(sparseBuffer.size());
+        for(size_t frame = 0; frame < sparseTimeStamps.size(); ++frame){
+            sparseCountStamps[frame] = frame;
+            sparseTimeStamps[frame] = frame * sparseBuffer.getMillisPerStep();
+        }
         unlockAll();
     }
 
@@ -240,6 +270,7 @@ protected:
     uint64_t lastThresholdTime = 0;
 
     std::vector<float> sparseTimeStamps;
+    std::vector<float> sparseCountStamps;
     std::vector<ONI::Frame::ProbeStatistics> probeStats[2];
 
     ONI::FrameBuffer denseBuffer;   // contains all frames at full sample rate
