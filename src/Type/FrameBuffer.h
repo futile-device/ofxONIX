@@ -132,23 +132,23 @@ public:
 		return rawSpikeBuffer;
 	}
 
-	inline float* getAcuVFloatRaw(const size_t& probe, const size_t& from){
+	inline float* getAcuVFloatRaw(const size_t& probe, const int& from){
 		return &acProbeVoltages[probe][from + bufferSize]; // allow negative values by wrapping 
 	}
 
-	inline float* getDcmVFloatRaw(const size_t& probe, const size_t& from){
+	inline float* getDcmVFloatRaw(const size_t& probe, const int& from){
 		return &dcProbeVoltages[probe][from + bufferSize]; // allow negative values by wrapping 
 	}
 
-	inline float* getStimFloatRaw(const size_t& probe, const size_t& from){
+	inline float* getStimFloatRaw(const size_t& probe, const int& from){
 		return &stimProbeData[probe][from + bufferSize]; // allow negative values by wrapping 
 	}
 
-	inline float* getSpikeFloatRaw(const size_t& probe, const size_t& from){
+	inline float* getSpikeFloatRaw(const size_t& probe, const int& from){
 		return &spikeProbeData[probe][from + bufferSize]; // allow negative values by wrapping 
 	}
 
-	inline ONI::Frame::Rhs2116MultiFrame& getFrameAt(const size_t& idx){
+	inline ONI::Frame::Rhs2116MultiFrame& getFrameAt(const int& idx){
 		//assert(idx > 0 && idx < bufferSize);
 		return rawSpikeBuffer[idx + bufferSize];
 	}

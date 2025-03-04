@@ -105,7 +105,7 @@ public:
 		return rawBurstBuffer;
 	}
 
-	inline size_t& getBurstCountAt(const size_t& probe, const size_t& idx){
+	inline size_t& getBurstCountAt(const size_t& probe, const int& idx){
 		//assert(idx > 0 && idx < bufferSize);
 		return rawBurstBuffer[probe][idx + bufferSize];
 	}
