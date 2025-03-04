@@ -35,15 +35,15 @@ class FrameBuffer{
 public:
 
 	virtual ~FrameBuffer(){
-		rawFrameBuffer.clear();
+		rawSpikeBuffer.clear();
 	}
 
 	size_t resizeBySamples(const size_t& size, const size_t& step, const size_t& numProbes){
 
-		rawFrameBuffer.clear();
+		rawSpikeBuffer.clear();
 		bufferSize = size;
 		this->numProbes = numProbes;
-		rawFrameBuffer.resize(bufferSize * 3);
+		rawSpikeBuffer.resize(bufferSize * 3);
 
 		acProbeVoltages.resize(numProbes);
 		dcProbeVoltages.resize(numProbes);
@@ -75,7 +75,7 @@ public:
 	}
 
 	void clear(){
-		rawFrameBuffer.clear();
+		rawSpikeBuffer.clear();
 		acProbeVoltages.clear();
 		dcProbeVoltages.clear();
 		stimProbeData.clear();
@@ -87,7 +87,7 @@ public:
 
 		if(bufferSampleCount % bufferSampleRateStep == 0){
 
-			rawFrameBuffer[currentBufferIndex] = rawFrameBuffer[currentBufferIndex + bufferSize] = rawFrameBuffer[currentBufferIndex + bufferSize * 2] = dataFrame;
+			rawSpikeBuffer[currentBufferIndex] = rawSpikeBuffer[currentBufferIndex + bufferSize] = rawSpikeBuffer[currentBufferIndex + bufferSize * 2] = dataFrame;
 
 			for (size_t probe = 0; probe < numProbes; ++probe) {
 
@@ -124,12 +124,12 @@ public:
 
 	inline void copySortedBuffer(std::vector<ONI::Frame::Rhs2116MultiFrame>& to){
 		if (to.size() != bufferSize) to.resize(bufferSize);
-		std::memcpy(&to[0], &rawFrameBuffer[currentBufferIndex], sizeof(ONI::Frame::Rhs2116MultiFrame) * bufferSize);
+		std::memcpy(&to[0], &rawSpikeBuffer[currentBufferIndex], sizeof(ONI::Frame::Rhs2116MultiFrame) * bufferSize);
 	}
 
 	inline std::vector<ONI::Frame::Rhs2116MultiFrame>& getUnderlyingBuffer(){ // this actually returns the whole buffer which is 3 times larger than needed
 		//const std::lock_guard<std::mutex> lock(mutex);
-		return rawFrameBuffer;
+		return rawSpikeBuffer;
 	}
 
 	inline float* getAcuVFloatRaw(const size_t& probe, const size_t& from){
@@ -150,7 +150,7 @@ public:
 
 	inline ONI::Frame::Rhs2116MultiFrame& getFrameAt(const size_t& idx){
 		//assert(idx > 0 && idx < bufferSize);
-		return rawFrameBuffer[idx];
+		return rawSpikeBuffer[idx + bufferSize];
 	}
 
 	inline ONI::Frame::Rhs2116MultiFrame& getCentralFrame(){
@@ -162,7 +162,7 @@ public:
 	}
 
 	inline ONI::Frame::Rhs2116MultiFrame& getLastMultiFrame() {
-		return rawFrameBuffer[getLastIndex()];
+		return rawSpikeBuffer[getLastIndex()];
 	}
 
 	const inline size_t getLastIndex(){
@@ -201,7 +201,7 @@ protected:
 	std::vector< std::vector<float> > stimProbeData;
 	std::vector< std::vector<float> > spikeProbeData;
 
-	std::vector<ONI::Frame::Rhs2116MultiFrame> rawFrameBuffer;
+	std::vector<ONI::Frame::Rhs2116MultiFrame> rawSpikeBuffer;
 
 	size_t currentBufferIndex = 0;
 	size_t bufferSampleCount = 0;

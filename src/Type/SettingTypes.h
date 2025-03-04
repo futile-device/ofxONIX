@@ -757,7 +757,7 @@ inline bool operator!=(const SpikeSettings& lhs, const SpikeSettings& rhs) { ret
 struct FilterSettings{
 
 	bool bUseBandStopFilter = false;
-	bool bUseLowPass = false;
+	bool bUseLowShelf = false;
 	bool bUseHighShelf = false;
 	bool bUseBandPassFilter = true;
 
@@ -767,11 +767,12 @@ struct FilterSettings{
 	int bandStopFrequency = 45;
 	int bandStopWidth = 10;
 
-	int lowPassFrequency = 25;
-	float lowPassQ = 1.2;
+	int lowShelfFrequency = 1000;
+	float lowShelfGain = -6;
+	float lowShelfRipple = 0.1;
 
-	int highShelfFrequency = 4;
-	float highShelfGain = 1.2;
+	int highShelfFrequency = 1000;
+	float highShelfGain = -12;
 	float highShelfRipple = 0.1;
 
 	// copy assignment (copy-and-swap idiom)
@@ -782,12 +783,13 @@ struct FilterSettings{
 		std::swap(bandStopWidth, other.bandStopWidth);
 		std::swap(bUseBandStopFilter, other.bUseBandStopFilter);
 		std::swap(bUseBandPassFilter, other.bUseBandPassFilter);
-		std::swap(lowPassFrequency, other.lowPassFrequency);
-		std::swap(lowPassQ, other.lowPassQ);
+		std::swap(lowShelfFrequency, other.lowShelfFrequency);
+		std::swap(lowShelfGain, other.lowShelfGain);
+		std::swap(lowShelfRipple, other.lowShelfRipple);
 		std::swap(highShelfFrequency, other.highShelfFrequency);
 		std::swap(highShelfGain, other.highShelfGain);
 		std::swap(highShelfRipple, other.highShelfRipple);
-		std::swap(bUseLowPass, other.bUseLowPass);
+		std::swap(bUseLowShelf, other.bUseLowShelf);
 		std::swap(bUseHighShelf, other.bUseHighShelf);
 		return *this;
 	}
@@ -802,13 +804,14 @@ inline bool operator==(const FilterSettings& lhs, const FilterSettings& rhs){
 			lhs.bandStopWidth == rhs.bandStopWidth &&
 			lhs.bUseBandStopFilter == rhs.bUseBandStopFilter &&
 			lhs.bUseBandPassFilter == rhs.bUseBandPassFilter &&
-			lhs.bUseLowPass == rhs.bUseLowPass &&
+			lhs.bUseLowShelf == rhs.bUseLowShelf &&
 			lhs.bUseHighShelf == rhs.bUseHighShelf &&
-			lhs.lowPassFrequency == rhs.lowPassFrequency &&
 			lhs.highShelfFrequency == rhs.highShelfFrequency &&
+			lhs.highShelfGain == rhs.highShelfGain &&
 			lhs.highShelfRipple == rhs.highShelfRipple &&
-			lhs.lowPassQ == rhs.lowPassQ &&
-			lhs.highShelfGain == rhs.highShelfGain);
+			lhs.lowShelfFrequency == rhs.lowShelfFrequency &&
+			lhs.lowShelfGain == rhs.lowShelfGain &&
+			lhs.lowShelfRipple == rhs.lowShelfRipple);
 }
 inline bool operator!=(const FilterSettings& lhs, const FilterSettings& rhs) { return !(lhs == rhs); }
 

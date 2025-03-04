@@ -73,30 +73,37 @@ public:
 			fp.setBandStop(bandStopFrequency, bandStopWidth);
 		}
 
-		/*
+		
 		///////////////////////////////////////////////
-		/// LOW PASS FILTER
+		/// LOW SHELFTER
 		///////////////////////////////////////////////
 
-		ImGui::Checkbox("Use Low Pass", &fp.settings.bUseLowPass);
+		ImGui::PushID("LowShelf");
 
-		int lowPassFrequency = fp.settings.lowPassFrequency;
-		float lowPassQ = fp.settings.lowPassQ;
+		ImGui::Checkbox("Use Low Shelf", &fp.settings.bUseLowShelf);
 
-		ImGui::InputInt("LowPass", &lowPassFrequency);
-		ImGui::InputFloat("LowQ", &lowPassQ);
+		int lowShelfFrequency = fp.settings.lowShelfFrequency;
+		float lowShelfGain = fp.settings.lowShelfGain;
+		float lowShelfRipple = fp.settings.lowShelfRipple;
 
-		if(lowPassFrequency < 1) lowPassFrequency = 1;
-		if(lowPassQ < 0.1) lowPassQ = 0.1;
+		ImGui::InputInt("Frequency", &lowShelfFrequency);
+		ImGui::InputFloat("Gain", &lowShelfGain);
+		ImGui::InputFloat("Ripple", &lowShelfRipple);
 
-		if(fp.settings.lowPassFrequency != lowPassFrequency || fp.settings.lowPassQ != lowPassQ){
-			fp.setLowPass(lowPassFrequency, lowPassQ);
+		if(lowShelfFrequency < 1) lowShelfFrequency = 1;
+		if(lowShelfRipple < 0.01) lowShelfRipple = 0.01;
+
+		if(fp.settings.lowShelfFrequency != lowShelfFrequency || fp.settings.lowShelfGain != lowShelfGain || fp.settings.lowShelfRipple != lowShelfRipple){
+			fp.setLowShelf(lowShelfFrequency, lowShelfGain, lowShelfRipple);
 		}
-		*/
+		
+		ImGui::PopID();
 
 		///////////////////////////////////////////////
 		/// HIGH SHELF FILTER
 		///////////////////////////////////////////////
+
+		ImGui::PushID("HighShelf");
 
 		ImGui::Checkbox("Use High Shelf", &fp.settings.bUseHighShelf);
 
@@ -104,17 +111,18 @@ public:
 		float highShelfGain = fp.settings.highShelfGain;
 		float highShelfRipple = fp.settings.highShelfRipple;
 
-		ImGui::InputInt("CornerFreq", &highPassFrequency);
-		ImGui::InputFloat("GainDb", &highShelfGain);
+		ImGui::InputInt("Frequency", &highPassFrequency);
+		ImGui::InputFloat("Gain", &highShelfGain);
 		ImGui::InputFloat("Ripple", &highShelfRipple);
 
 		if(highPassFrequency < 1) highPassFrequency = 1;
-		if(highShelfRipple < 0.01) highShelfRipple = 0.1;
+		if(highShelfRipple < 0.01) highShelfRipple = 0.01;
 
 		if(fp.settings.highShelfFrequency != highPassFrequency || fp.settings.highShelfGain != highShelfGain || fp.settings.highShelfRipple != highShelfRipple){
 			fp.setHighShelf(highPassFrequency, highShelfGain, highShelfRipple);
 		}
 		
+		ImGui::PopID();
 
 		///////////////////////////////////////////////
 		/// BAND PASS FILTER
