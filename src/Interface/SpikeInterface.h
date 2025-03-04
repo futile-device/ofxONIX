@@ -157,19 +157,34 @@ public:
 
 				if(ImPlot::BeginPlot("##spark", ImVec2(-1, 240), ImPlotFlags_CanvasOnly)){
 
+					size_t displaySpikeBufferSize = sp.settings.shortSpikeBufferSize;
+					size_t spikeWaveformSize = sp.settings.spikeWaveformLengthSamples;
+
+					
+
 					static ImPlotAxisFlags flags = ImPlotAxisFlags_NoLabel | ImPlotAxisFlags_NoTickLabels;
 					
 					ImPlot::SetupAxes(nullptr, nullptr, flags, flags);
-					ImPlot::SetupAxesLimits(0, sp.shortSpikeBuffer[probe][0].rawWaveform.size(), -voltageRange, voltageRange, ImGuiCond_Always);
-					//ImVec4 col = ImPlot::GetColormapColor(probe);
+					ImPlot::SetupAxesLimits(0, spikeWaveformSize, -voltageRange, voltageRange, ImGuiCond_Always);
 
-					for(size_t j = 0; j < sp.shortSpikeBuffer[probe].size(); ++j){
-						ImVec4 colf = col;
-						colf.w = (float)(j + 1) / (sp.totalSpikeCounts[probe] % sp.shortSpikeBuffer[probe].size());
+					sp.spikeMutex.lock();
+					size_t count = sp.spikeBuffer.getMinCount(probe, displaySpikeBufferSize);
+
+					for(size_t j = 0; j < count; ++j){
+						
+
+						int spikeIndex = sp.spikeBuffer.getLastIndex(probe) - j;
+						ONI::Spike& spike = sp.spikeBuffer.getSpikeAt(probe, spikeIndex);
+
+						//if(spike.rawWaveform.size() == 0) continue;
+						
+						ImVec4 colf = col; colf.w = (float)(j + 1) / (count % displaySpikeBufferSize);
 						ImPlot::SetNextLineStyle(colf);
 
-						ImPlot::PlotLine("##spark", &sp.shortSpikeBuffer[probe][j].rawWaveform[0], sp.shortSpikeBuffer[probe][j].rawWaveform.size(), 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
+						ImPlot::PlotLine("##spark", &spike.rawWaveform[0], spikeWaveformSize, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
 						
+						
+
 						if(frameCount != 0 && numProbes != 0){
 							ImPlot::SetNextLineStyle(ImVec4(1, 0, 0, 0.5));
 							ImPlot::PlotLine("##devP", &timeP[0], &devP[probe][0], 2, ImPlotLineFlags_None, offset);
@@ -178,6 +193,8 @@ public:
 						}
 
 					}
+
+					sp.spikeMutex.unlock();
 
 					if(ImGui::IsItemClicked()){
 						ONI::Global::model.clickChannelSelect(probe, ImGui::IsKeyDown(ImGuiKey::ImGuiKey_LeftShift));

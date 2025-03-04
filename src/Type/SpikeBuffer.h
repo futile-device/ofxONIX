@@ -38,9 +38,9 @@ public:
 		rawSpikeBuffer.clear();
 	}
 
-	size_t resizeBySamples(const size_t& size, const size_t& step, const size_t& numProbes){
+	size_t resizeByNSpikes(const size_t& maxNumSpikes, const size_t& numProbes){
 
-		bufferSize = size;
+		bufferSize = maxNumSpikes;
 		this->numProbes = numProbes;
 
 		rawSpikeBuffer.clear();
@@ -55,20 +55,16 @@ public:
 			rawSpikeBuffer[probe].resize(bufferSize * 3);
 		}
 
-		this->bufferSampleRateStep = step;
 		bIsFrameNew = false;
 
 		return bufferSize;
 
 	}
 
-	size_t resizeByMillis(const int& bufferSizeMillis, const int& bufferStepMillis,const size_t& numProbes){
-
-		size_t bufferStepFrameSize = bufferStepMillis / framesPerMillis;
-		if(bufferStepMillis == 0) bufferStepFrameSize = 1;
-		size_t bufferFrameSizeRequired = bufferSizeMillis / framesPerMillis / bufferStepFrameSize;
-		return resizeBySamples(bufferFrameSizeRequired, bufferStepFrameSize, numProbes);
-	}
+	//size_t resizeByMillis(const int& bufferSizeMillis,const size_t& numProbes){
+	//	size_t bufferFrameSizeRequired = bufferSizeMillis / framesPerMillis;
+	//	return resizeBySamples(bufferFrameSizeRequired, numProbes);
+	//}
 
 	void clear(){
 		rawSpikeBuffer.clear();
@@ -76,23 +72,18 @@ public:
 		bufferSampleCounts.clear();
 	}
 
-	inline bool push(const ONI::Spike& spike){
+	inline void push(const ONI::Spike& spike){
 		//const std::lock_guard<std::mutex> lock(mutex);
 
 		const size_t& probe = spike.probe;
 		const size_t& currentBufferIndex = currentBufferIDXs[probe];
 
-		if(bufferSampleCounts[probe] % bufferSampleRateStep == 0){
+		rawSpikeBuffer[probe][currentBufferIndex] = rawSpikeBuffer[probe][currentBufferIndex + bufferSize] = rawSpikeBuffer[probe][currentBufferIndex + bufferSize * 2] = spike;
 
-			rawSpikeBuffer[probe][currentBufferIndex] = rawSpikeBuffer[probe][currentBufferIndex + bufferSize] = rawSpikeBuffer[probe][currentBufferIndex + bufferSize * 2] = spike;
-
-			currentBufferIDXs[probe] = (currentBufferIndex + 1) % bufferSize;
-			bIsFrameNew = true;
-			++bufferSampleCounts[probe];
-			return true;
-		}
+		currentBufferIDXs[probe] = (currentBufferIndex + 1) % bufferSize;
+		bIsFrameNew = true;
 		++bufferSampleCounts[probe];
-		return false;
+
 	}
 
 	inline bool isFrameNew(const bool& reset = true){ // should I really auto reset? means it can only be called once per cycle
@@ -114,16 +105,16 @@ public:
 		return rawSpikeBuffer;
 	}
 
-	inline ONI::Spike& getSpikeAt(const size_t& probe, const size_t& idx){
+	inline ONI::Spike& getSpikeAt(const size_t& probe, const int& idx){
 		//assert(idx > 0 && idx < bufferSize);
 		return rawSpikeBuffer[probe][idx + bufferSize];
 	}
 
-	inline std::vector<float>& getSpikeWaveAt(const size_t& probe, const size_t& idx){
+	inline std::vector<float>& getSpikeWaveAt(const size_t& probe, const int& idx){
 		return rawSpikeBuffer[probe][idx + bufferSize].rawWaveform;
 	}
 
-	inline float* getRawSpikeWaveAt(const size_t& probe, const size_t& idx){
+	inline float* getRawSpikeWaveAt(const size_t& probe, const int& idx){
 		return rawSpikeBuffer[probe][idx + bufferSize].rawWaveform.data(); // allow negative values by wrapping 
 	}
 
@@ -132,7 +123,7 @@ public:
 	}
 
 	inline ONI::Spike& getLastSpike(const size_t& probe) {
-		return rawSpikeBuffer[probe][getLastIndex()];
+		return rawSpikeBuffer[probe][getLastIndex(probe)];
 	}
 
 	const inline size_t getLastIndex(const size_t& probe){
@@ -145,9 +136,8 @@ public:
 		return currentBufferIDXs[probe];
 	}
 
-	const inline size_t& getStep(){
-	//const std::lock_guard<std::mutex> lock(mutex);
-		return bufferSampleRateStep;
+	const inline size_t& getMinCount(const size_t& probe, const size_t& count){
+		return std::min(count, bufferSampleCounts[probe]);
 	}
 
 	const inline size_t& getBufferCount(const size_t& probe){
@@ -167,8 +157,6 @@ protected:
 
 	std::vector<size_t> currentBufferIDXs;
 	std::vector<size_t> bufferSampleCounts;
-
-	size_t bufferSampleRateStep = 0;
 
 	size_t bufferSize = 0;
 	size_t numProbes = 0;

@@ -26,6 +26,8 @@
 #include "../Type/SettingTypes.h"
 #include "../Type/FrameTypes.h"
 #include "../Type/GlobalTypes.h"
+#include "../Type/BurstBuffer.h"
+#include "../Type/SpikeBuffer.h"
 
 #include "../Processor/BaseProcessor.h"
 #include "../Processor/Rhs2116MultiProcessor.h"
@@ -96,9 +98,8 @@ public:
         nextPeekDetectBufferCount.clear();
         nextPeekDetectBufferCount.resize(numProbes);
 
-
-        totalSpikeCounts.clear();
-        totalSpikeCounts.resize(numProbes);
+        spikeBuffer.resizeByNSpikes(10, numProbes);
+        burstBuffer.resizeByMillis(60000, 100, numProbes);
 
         burstSpikeCounts.clear();
         burstSpikeCounts.resize(numProbes);
@@ -110,20 +111,10 @@ public:
         burstsPerWindowAvg.clear();
         burstsPerWindowAvg.resize(numProbes);
 
-        shortSpikeBuffer.clear();
-        shortSpikeBufferIDXs.clear();
-        shortSpikeBuffer.resize(numProbes);
-        shortSpikeBufferIDXs.resize(numProbes);
-
-        longSpikeBuffer.clear();
-        longSpikeBufferIDXs.clear();
-        longSpikeBuffer.resize(numProbes);
-        longSpikeBufferIDXs.resize(numProbes);
 
         for(size_t probe = 0; probe < numProbes; ++probe){
 
             nextPeekDetectBufferCount[probe] = 0;
-            totalSpikeCounts[probe] = 0;
             burstSpikeCounts[probe] = 0;
             burstSpikeIDXs[probe] = 0;
             burstsPerWindow[probe].resize(numberOfBurstWindows);
@@ -131,18 +122,6 @@ public:
                 burstsPerWindow[probe][i] = 0;
             }
 
-            shortSpikeBufferIDXs[probe] = 0;
-            shortSpikeBuffer[probe].resize(settings.shortSpikeBufferSize);
-            for(size_t i = 0; i < settings.shortSpikeBufferSize; ++i){
-                shortSpikeBuffer[probe][i].rawWaveform.resize(settings.spikeWaveformLengthSamples);
-            }
-            
-            longSpikeBufferIDXs[probe] = 0;
-            longSpikeBuffer[probe].resize(settings.longSpikeBufferSize);
-            for(size_t i = 0; i < settings.longSpikeBufferSize; ++i){
-                longSpikeBuffer[probe][i].rawWaveform.resize(settings.spikeWaveformLengthSamples);
-               // LOGDEBUG("Spike data size: %d %d %d", sizeof(ONI::Spike), sizeof(longSpikeBuffer[probe][i]), sizeof(float) * longSpikeBuffer[probe][i].rawWaveform.size() );
-            }
         }
         
         burstWindowTimer.start<fu::micros>(burstWindowTimeUs);
@@ -214,8 +193,10 @@ public:
                                 
                                 size_t halfLength = std::floor(settings.spikeWaveformLengthSamples / 2);
  
-                                // store the spike data and waveform
-                                ONI::Spike& spike = shortSpikeBuffer[probe][shortSpikeBufferIDXs[probe]];
+                                ONI::Spike spike;
+                                spike.probe = probe;
+                                spike.rawWaveform.resize(settings.spikeWaveformLengthSamples);
+
                                 //spike.rawWaveform.resize(settings.spikeWaveformLengthSamples);
                                 if(settings.bFallingAlignMax){ // by default align to the peaks
                                     spike.minVoltage = frame.ac_uV[probe];
@@ -227,7 +208,6 @@ public:
                                     spike.acquisitionTimeWallNs = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength + peakOffsetIndex);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    longSpikeBuffer[probe][longSpikeBufferIDXs[probe]] = spike;
                                     processSpike(spike);
                                 }else{
                                     spike.minVoltage = frame.ac_uV[probe];
@@ -239,7 +219,6 @@ public:
                                     spike.acquisitionTimeWallNs = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    longSpikeBuffer[probe][longSpikeBufferIDXs[probe]] = spike;
                                     processSpike(spike);
                                 }
 
@@ -248,9 +227,6 @@ public:
 
                                 // cache this spike detection buffer count (so we can suppress re-detecting the same spike)
                                 nextPeekDetectBufferCount[probe] = bufferCount + settings.spikeWaveformLengthSamples;// halfLength + peakOffsetIndex; // is this reasonable?
-                                shortSpikeBufferIDXs[probe] = (shortSpikeBufferIDXs[probe] + 1) % settings.shortSpikeBufferSize;
-                                longSpikeBufferIDXs[probe] = (longSpikeBufferIDXs[probe] + 1) % settings.longSpikeBufferSize;
-                                totalSpikeCounts[probe]++;
                                 burstSpikeCounts[probe]++;
 
                             }
@@ -283,10 +259,12 @@ public:
 
                                 size_t halfLength = std::floor(settings.spikeWaveformLengthSamples / 2);
 
+                                ONI::Spike spike;
+                                spike.probe = probe;
+                                spike.rawWaveform.resize(settings.spikeWaveformLengthSamples);
+
                                 // store the spike data and waveform
                                 if(!settings.bRisingAlignMin){ // by default align to the peaks
-                                    ONI::Spike& spike = shortSpikeBuffer[probe][shortSpikeBufferIDXs[probe]];
-                                    //spike.rawWaveform.resize(settings.spikeWaveformLengthSamples);
                                     spike.minVoltage = troughVoltage;
                                     spike.minSampleIndex = halfLength - troughOffsetIndex;
                                     spike.maxVoltage = frame.ac_uV[probe];
@@ -296,10 +274,8 @@ public:
                                     spike.acquisitionTimeWallNs = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - halfLength);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    longSpikeBuffer[probe][longSpikeBufferIDXs[probe]] = spike;
                                     processSpike(spike);
                                 }else{
-                                    ONI::Spike& spike = shortSpikeBuffer[probe][shortSpikeBufferIDXs[probe]];
                                     spike.minVoltage = troughVoltage;
                                     spike.minSampleIndex = halfLength;
                                     spike.maxVoltage = frame.ac_uV[probe];
@@ -309,7 +285,6 @@ public:
                                     spike.acquisitionTimeWallNs = duration_cast<nanoseconds>(system_clock::now().time_since_epoch()).count();
                                     float* rawAcUv = buffer.getAcuVFloatRaw(probe, centralSampleIDX - troughOffsetIndex - halfLength);
                                     std::memcpy(&spike.rawWaveform[0], &rawAcUv[0], sizeof(float) * settings.spikeWaveformLengthSamples);
-                                    longSpikeBuffer[probe][longSpikeBufferIDXs[probe]] = spike;
                                     processSpike(spike);
                                 }
                                 
@@ -319,9 +294,6 @@ public:
 
                                 // cache this spike detection buffer count (so we can suppress re-detecting the same spike)
                                 nextPeekDetectBufferCount[probe] = bufferCount + settings.spikeWaveformLengthSamples;//+ halfLength; // is this reasonable?
-                                shortSpikeBufferIDXs[probe] = (shortSpikeBufferIDXs[probe] + 1) % settings.shortSpikeBufferSize;
-                                longSpikeBufferIDXs[probe] = (longSpikeBufferIDXs[probe] + 1) % settings.longSpikeBufferSize;
-                                totalSpikeCounts[probe]++;
                                 burstSpikeCounts[probe]++;
 
                             }
@@ -360,17 +332,10 @@ public:
 
     }
 
-    void calculateBurstiness(const int& binSizeMillis){
-        
-        for(size_t probe = 0; probe < numProbes; ++probe){
-            for(size_t s = 0; s < longSpikeBuffer[probe].size(); ++s){
-                size_t spikeIDX = (s + longSpikeBufferIDXs[probe]) % settings.longSpikeBufferSize;
-
-            }
-        }
-    }
-
     inline void processSpike(Spike& spike){
+
+        spikeBuffer.push(spike);
+        burstBuffer.push(spike);
 
         spikeEvent.notify(spike);
 
@@ -515,13 +480,8 @@ protected:
     std::vector< ONI::Spike > allSpikes;
     std::vector< std::vector<float> > allWaveforms;
 
-    std::vector< std::vector< ONI::Spike > > longSpikeBuffer;
-    std::vector<size_t> longSpikeBufferIDXs;
-
-    std::vector< std::vector< ONI::Spike > > shortSpikeBuffer;
-    std::vector<size_t> shortSpikeBufferIDXs;
-
-    std::vector<size_t> totalSpikeCounts;
+    ONI::BurstBuffer burstBuffer;
+    ONI::SpikeBuffer spikeBuffer;
 
     size_t burstWindowTimeUs = 1000000;
 
