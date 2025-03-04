@@ -136,14 +136,15 @@ public:
             for(size_t i = 0; i < settings.shortSpikeBufferSize; ++i){
                 shortSpikeBuffer[probe][i].rawWaveform.resize(settings.spikeWaveformLengthSamples);
             }
-
+            
             longSpikeBufferIDXs[probe] = 0;
             longSpikeBuffer[probe].resize(settings.longSpikeBufferSize);
             for(size_t i = 0; i < settings.longSpikeBufferSize; ++i){
                 longSpikeBuffer[probe][i].rawWaveform.resize(settings.spikeWaveformLengthSamples);
+               // LOGDEBUG("Spike data size: %d %d %d", sizeof(ONI::Spike), sizeof(longSpikeBuffer[probe][i]), sizeof(float) * longSpikeBuffer[probe][i].rawWaveform.size() );
             }
         }
-
+        
         burstWindowTimer.start<fu::micros>(burstWindowTimeUs);
 
         bThread = true;

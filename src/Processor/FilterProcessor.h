@@ -78,22 +78,22 @@ public:
 
 		setBandStop(1300, 1000);
 
-		lowpassFilters.resize(numProbes);
+		lowshelfFilters.resize(numProbes);
 
 		for(size_t probe = 0; probe < numProbes; ++probe){
-			lowpassFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::LowPass     // design type
+			lowshelfFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::LowShelf     // design type
 																 <4>,                                   // order
 																 1,                                     // number of channels (must be const)
 																 Dsp::DirectFormII>(1);                 // realization
 		}
 
-		setLowPass(25, 1.25);
+		setLowShelf(100, -6, 0.1);
 
 
-		highpassFilters.resize(numProbes);
+		highshelfFilters.resize(numProbes);
 
 		for(size_t probe = 0; probe < numProbes; ++probe){
-			highpassFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::HighShelf    // design type
+			highshelfFilters[probe] = new Dsp::SmoothedFilterDesign<Dsp::Butterworth::Design::HighShelf    // design type
 																  <4>,                                   // order
 																  1,                                     // number of channels (must be const)
 																  Dsp::DirectFormII>(1);                 // realization
@@ -131,17 +131,17 @@ public:
 			}
 		}
 
-		if(settings.bUseLowPass){
+		if(settings.bUseLowShelf){
 			for(size_t probe = 0; probe < numProbes; ++probe){
 				float* ptr = &f->ac_uV[probe];
-				lowpassFilters[probe]->process(1, &ptr);
+				lowshelfFilters[probe]->process(1, &ptr);
 			}
 		}
 
 		if(settings.bUseHighShelf){
 			for(size_t probe = 0; probe < numProbes; ++probe){
 				float* ptr = &f->ac_uV[probe];
-				highpassFilters[probe]->process(1, &ptr);
+				highshelfFilters[probe]->process(1, &ptr);
 			}
 		}
 
@@ -175,19 +175,21 @@ public:
 
 	}
 
-	void setLowPass(const int& frequency, const float& Q){
+	void setLowShelf(const int& frequency, const float& gain, const float& ripple){
 
-		settings.lowPassFrequency = frequency;
-		settings.lowPassQ = Q;
+		settings.lowShelfFrequency = frequency;
+		settings.lowShelfGain = gain;
+		settings.lowShelfRipple = ripple;
 
 		Dsp::Params params;
 		params[0] = RHS2116_SAMPLE_FREQUENCY_HZ;	// sample rate
 		params[1] = 4;								// order
-		params[2] = frequency;						// center frequency
-		params[3] = Q;							// band width
+		params[2] = frequency;						// corner frequency
+		params[3] = gain;							// shelf gain
+		params[4] = ripple;							// passband ripple
 
 		for(size_t probe = 0; probe < numProbes; ++probe){
-			lowpassFilters[probe]->setParams(params);
+			lowshelfFilters[probe]->setParams(params);
 		}
 
 	}
@@ -206,7 +208,7 @@ public:
 		params[4] = ripple;							// passband ripple
 
 		for(size_t probe = 0; probe < numProbes; ++probe){
-			highpassFilters[probe]->setParams(params);
+			highshelfFilters[probe]->setParams(params);
 		}
 
 	}
@@ -237,8 +239,8 @@ protected:
 	ONI::Processor::BaseProcessor* source;
 
 	std::vector<Dsp::Filter*> bandstopFilters;
-	std::vector<Dsp::Filter*> lowpassFilters;
-	std::vector<Dsp::Filter*> highpassFilters;
+	std::vector<Dsp::Filter*> lowshelfFilters;
+	std::vector<Dsp::Filter*> highshelfFilters;
 	std::vector<Dsp::Filter*> bandpassFilters;
 
 };
