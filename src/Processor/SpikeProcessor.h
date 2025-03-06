@@ -99,7 +99,7 @@ public:
         nextPeekDetectBufferCount.resize(numProbes);
 
         spikeBuffer.resizeByNSpikes(10, numProbes);
-        burstBuffer.resizeByMillis(60000, 100, numProbes);
+        burstBuffer.resizeByMillis(60000, 10, numProbes);
 
         burstSpikeCounts.clear();
         burstSpikeCounts.resize(numProbes);
@@ -140,7 +140,7 @@ public:
         
         while(bThread) {
 
-            spikeMutex.lock();
+            //spikeMutex.lock();
 
             // get a reference to the dense buffer (ie., all samples)
             bufferProcessor->dataMutex[DENSE_MUTEX].lock();
@@ -307,11 +307,14 @@ public:
 
             bufferProcessor->dataMutex[DENSE_MUTEX].unlock();
 
+            //spikeMutex.lock();
+            burstBuffer.updateClock();
+
             if(burstWindowTimer.finished()){
                 for(size_t probe = 0; probe < numProbes; ++probe){
                     double burstsPerSecond = (double)burstSpikeCounts[probe] / fu::time::convert<fu::micros, fu::seconds>(burstWindowTimeUs);
                     burstsPerWindow[probe][burstSpikeIDXs[probe]] = burstsPerSecond;
-                    
+                    //LOGDEBUG("%d ==?== %d", burstsPerSecond, burstBuffer.getLastBurstCount(probe));
                     burstsPerWindowAvg[probe] = 0;
                     size_t N = std::min(burstSpikeIDXs[probe], numberOfBurstWindows);
                     for(size_t b = 0; b < N; ++b){
@@ -326,7 +329,7 @@ public:
                 
             }
 
-            spikeMutex.unlock();
+            //spikeMutex.unlock();
 
         }
 
@@ -334,8 +337,10 @@ public:
 
     inline void processSpike(Spike& spike){
 
+        spikeMutex.lock();
         spikeBuffer.push(spike);
         burstBuffer.push(spike);
+        spikeMutex.unlock();
 
         spikeEvent.notify(spike);
 

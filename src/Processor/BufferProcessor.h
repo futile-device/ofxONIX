@@ -83,8 +83,8 @@ public:
 
         BaseProcessor::numProbes = source->getNumProbes();
 
-        settings.setBufferSizeMillis(60000);
-        settings.setSparseStepSizeMillis(10);
+        settings.setBufferSizeMillis(5000);
+        settings.setSparseStepSizeMillis(1);
         settings.autoThresholdMs = 1000;
         settings.bUseAutoThreshold = true;
 
