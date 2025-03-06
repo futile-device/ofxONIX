@@ -367,10 +367,10 @@ private:
 					ImPlot::SetNextLineStyle(col);
 					ImPlot::PlotLine("##probe", voltages, frameCount, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
 
-					ImPlot::SetNextLineStyle(col);
-					ImPlot::SetNextFillStyle(col);
-					float* spikeV = bp.sparseBuffer.getSpikeFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-					ImPlot::PlotLine("##spike", &bp.sparseCountStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+					//ImPlot::SetNextLineStyle(col);
+					//ImPlot::SetNextFillStyle(col);
+					//float* spikeV = bp.sparseBuffer.getSpikeFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+					//ImPlot::PlotLine("##spike", &bp.sparseCountStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
 					//ImPlot::PlotDigital("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
 					
 					ImPlot::SetNextLineStyle(col, 0.0);

@@ -124,6 +124,8 @@ public:
 			sp.reset();
 		}
 
+		plotCombinedBursts(sp);
+
 		ImGui::Begin("SpikeDetection");
 		ImGui::PushID("##SpikeDetection");
 		static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg;
@@ -149,7 +151,7 @@ public:
 					if(b) ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, cell_bg_color);
 				}
 
-				ImGui::Text("Bursts/s: %0.3f", sp.burstsPerWindowAvg[probe]);
+				ImGui::Text("Bursts/s: %0.5f [%0.5f]", sp.burstsPerWindowAvg[probe], sp.burstBuffer.getCurrentBurstRatePSA(probe, 30000));
 
 				ImGui::PushID(probe);
 
@@ -169,12 +171,14 @@ public:
 
 					sp.spikeMutex.lock();
 					size_t count = sp.spikeBuffer.getMinCount(probe, displaySpikeBufferSize);
+					sp.spikeMutex.unlock();
 
 					for(size_t j = 0; j < count; ++j){
 						
-
+						sp.spikeMutex.lock();
 						int spikeIndex = sp.spikeBuffer.getLastIndex(probe) - j;
-						ONI::Spike& spike = sp.spikeBuffer.getSpikeAt(probe, spikeIndex);
+						ONI::Spike spike = sp.spikeBuffer.getSpikeAt(probe, spikeIndex);
+						sp.spikeMutex.unlock();
 
 						//if(spike.rawWaveform.size() == 0) continue;
 						
@@ -182,8 +186,6 @@ public:
 						ImPlot::SetNextLineStyle(colf);
 
 						ImPlot::PlotLine("##spark", &spike.rawWaveform[0], spikeWaveformSize, 1, 0, ImPlotLineFlags_None, offset); //ImPlotLineFlags_Shaded
-						
-						
 
 						if(frameCount != 0 && numProbes != 0){
 							ImPlot::SetNextLineStyle(ImVec4(1, 0, 0, 0.5));
@@ -194,7 +196,7 @@ public:
 
 					}
 
-					sp.spikeMutex.unlock();
+					
 
 					if(ImGui::IsItemClicked()){
 						ONI::Global::model.clickChannelSelect(probe, ImGui::IsKeyDown(ImGuiKey::ImGuiKey_LeftShift));
@@ -224,6 +226,71 @@ public:
 		ImGui::PopID();
 
 	};
+
+	// Plot Combined AC or DC probe data
+	inline void plotCombinedBursts(ONI::Processor::SpikeProcessor& sp){
+
+
+		size_t numProbes = sp.numProbes;
+		size_t frameCount = std::min(sp.burstBuffer.size(), sp.burstBuffer.getBufferCount());
+
+		if(frameCount == 0) return;
+
+		ImGui::Begin("Burst Plot");
+		ImGui::PushID("##CombinedBurstPlot");
+
+		if(ImPlot::BeginPlot("Bursts", ImVec2(-1, -1))){
+
+			ImPlot::SetupAxes("mS", "");
+
+			//ImPlot::SetupAxesLimits(0, frameCount, 0, 400, ImGuiCond_Always);
+			//ImPlot::SetupAxisLimits(ImAxis_X1, x_min, x_max, cond);
+			ImPlot::SetupAxisLimits(ImAxis_X1, 0, frameCount, ImGuiCond_Always);
+
+			//for(int probe = 0; probe < numProbes; probe++) {
+
+				//if(!ONI::Global::model.getChannelSelect()[probe]) continue; // only show selected probes
+
+				//ImGui::PushID(probe);
+				ImVec4 col = ImPlot::GetColormapColor(1);
+
+				int offset = 0;
+
+
+
+				ImPlot::SetNextLineStyle(col);
+				//ImPlot::SetNextFillStyle(col);
+				double* rawBurst = sp.burstBuffer.getRawSPSA(sp.burstBuffer.getCurrentIndex() - frameCount);
+				ImPlot::PlotLine("##burstrate", rawBurst, frameCount, 1, 0, ImPlotLineFlags_None, offset);
+
+				//bp.dataMutex[SPARSE_MUTEX].lock();
+
+				//float* voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+				//float* spikeV = bp.sparseBuffer.getSpikeFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
+				////ImPlot::PlotLine("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				//bool bHighLight = ONI::Global::model.getChannelSelect()[probe];
+				//ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, bHighLight ? 1.0f : 0.25f);
+				//ImVec4 cl = col;
+				//col.w = bHighLight ? 1 : 0.8;
+				//cl.w = bHighLight ? 0.9 : 0.4;
+				//ImPlot::SetNextMarkerStyle(ImPlotMarker_Square, 4, cl, -1, col);
+				//ImPlot::PlotScatter("##spikeS", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				////ImPlot::PlotDigital("##spike2", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+
+				//bp.dataMutex[SPARSE_MUTEX].unlock();
+
+				//ImGui::PopID();
+
+			//}
+
+			ImPlot::EndPlot();
+
+		}
+
+		ImGui::PopID();
+		ImGui::End();
+
+	}
 
 	bool save(std::string presetName){
 		return false;
