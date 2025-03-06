@@ -215,11 +215,11 @@ public:
 
 		//float anodicAmplitudeMicroAmps = currentStimulus.actualAnodicAmplitudeMicroAmps / currentStimulusStepSizeMicroAmps;
 		//float cathodicAmplitudeMicroAmps = currentStimulus.actualCathodicAmplitudeMicroAmps / currentStimulusStepSizeMicroAmps;
-		float delaySamplesMs = currentStimulus.delaySamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
-		float anodicWidthSamplesMs = currentStimulus.anodicWidthSamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
-		float cathodicWidthSamplesMs = currentStimulus.cathodicWidthSamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
-		float dwellSamplesMs = currentStimulus.dwellSamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
-		float interStimulusIntervalSamplesMs = currentStimulus.interStimulusIntervalSamples / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
+		float delaySamplesMs = ONI::rhs2116SamplesToMillis(currentStimulus.delaySamples);// / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
+		float anodicWidthSamplesMs = ONI::rhs2116SamplesToMillis(currentStimulus.anodicWidthSamples);// / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
+		float cathodicWidthSamplesMs = ONI::rhs2116SamplesToMillis(currentStimulus.cathodicWidthSamples); // / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
+		float dwellSamplesMs = ONI::rhs2116SamplesToMillis(currentStimulus.dwellSamples);// / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
+		float interStimulusIntervalSamplesMs = ONI::rhs2116SamplesToMillis(currentStimulus.interStimulusIntervalSamples);// / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0f;
 		int numberOfStimuli = currentStimulus.numberOfStimuli;
 
 
@@ -247,34 +247,34 @@ public:
 			if(bUseBurstFrequency){
 				ImGui::InputFloat("Burst Frequency (Hz)", &burstFrequency, 0.1f, 1.0f); 
 				burstFrequency = std::clamp(burstFrequency, 0.1f, 1000.0f);
-				ImGui::InputFloat("Burst Time (ms)", &burstDurationMs, 0.03f, 1.0f); 
-				anodicWidthSamplesMs = 1000.0 / burstFrequency / 2.0f;
-			}else{
-				ImGui::InputFloat("Pulse Time (ms)", &anodicWidthSamplesMs, 0.03f, 1.0f); 
+				ImGui::InputFloat("Burst Duration (ms)", &burstDurationMs, 1.0f, 60000.0f); 
+				interStimulusIntervalSamplesMs = 1000.0 / burstFrequency;
+				numberOfStimuli = burstDurationMs / interStimulusIntervalSamplesMs;
 			}
 			
+			ImGui::InputFloat("Pulse Time (ms)", &anodicWidthSamplesMs, 0.03f, 1.0f);
+			cathodicWidthSamplesMs = anodicWidthSamplesMs;
 			ImGui::BeginDisabled();
 			ImGui::InputFloat("Cathodic Time (ms)", &cathodicWidthSamplesMs, 0.03f, 1.0f); 
 			ImGui::EndDisabled();
-			cathodicWidthSamplesMs = anodicWidthSamplesMs;
 		}
 
 		ImGui::InputFloat("Dwell Time (ms)", &dwellSamplesMs, 0.03f, 1.0f);
-		ImGui::InputFloat("Inter Stimulus Time (ms)", &interStimulusIntervalSamplesMs, 0.03f, 1.0f);
+		
 
 		if(bUseBurstFrequency){
 			ImGui::BeginDisabled();
-			numberOfStimuli = std::clamp((int)std::floor(burstDurationMs / anodicWidthSamplesMs / 2.0f), 1, 256);
+			//numberOfStimuli = std::clamp((int)std::floor(burstDurationMs / anodicWidthSamplesMs / 2.0f), 1, 256);
 		}
-
-		ImGui::InputInt("Number of Stimuli", &numberOfStimuli, 1, 512);
+		ImGui::InputFloat("Inter Stimulus Time (ms)", &interStimulusIntervalSamplesMs, 0.03f, 100000.0f);
+		ImGui::InputInt("Number of Stimuli", &numberOfStimuli, 1, 256);
 		if(bUseBurstFrequency) ImGui::EndDisabled();
 
-		currentStimulus.delaySamples = std::round(delaySamplesMs *RHS2116_SAMPLES_PER_MS);
-		currentStimulus.anodicWidthSamples = std::round(anodicWidthSamplesMs * RHS2116_SAMPLES_PER_MS);
-		currentStimulus.cathodicWidthSamples = std::round(cathodicWidthSamplesMs * RHS2116_SAMPLES_PER_MS);
-		currentStimulus.dwellSamples = std::round(dwellSamplesMs * RHS2116_SAMPLES_PER_MS);
-		currentStimulus.interStimulusIntervalSamples = std::round(interStimulusIntervalSamplesMs * RHS2116_SAMPLES_PER_MS);
+		currentStimulus.delaySamples = ONI::rhs2116MillisToSamples(delaySamplesMs);
+		currentStimulus.anodicWidthSamples = ONI::rhs2116MillisToSamples(anodicWidthSamplesMs);
+		currentStimulus.cathodicWidthSamples = ONI::rhs2116MillisToSamples(cathodicWidthSamplesMs);
+		currentStimulus.dwellSamples = ONI::rhs2116MillisToSamples(dwellSamplesMs);
+		currentStimulus.interStimulusIntervalSamples = ONI::rhs2116MillisToSamples(interStimulusIntervalSamplesMs);
 		currentStimulus.numberOfStimuli = std::clamp(numberOfStimuli, 1, 256);
 
 		//if(currentStimulus.delaySamples == 0) currentStimulus.delaySamples = 1;

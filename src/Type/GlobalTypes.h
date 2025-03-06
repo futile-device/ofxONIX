@@ -34,6 +34,7 @@ constexpr long double nanos_to_seconds = 1000000000.0; // conversion factor
 constexpr long double nanos_to_millis = 1000000.0;
 
 constexpr long double RHS2116_SAMPLE_FREQUENCY_HZ = 30.1932367151e3;
+constexpr long double RHS2116_MS_PER_SAMPLE = 1000.0 / RHS2116_SAMPLE_FREQUENCY_HZ;
 constexpr long double RHS2116_SAMPLES_PER_MS = RHS2116_SAMPLE_FREQUENCY_HZ / 1000.0;
 constexpr long double RHS2116_SAMPLES_PER_NS = RHS2116_SAMPLE_FREQUENCY_HZ / nanos_to_seconds;
 constexpr long double RHS2116_SAMPLE_WAIT_TIME_NS = 1.0 / RHS2116_SAMPLE_FREQUENCY_HZ * nanos_to_seconds;
@@ -42,6 +43,14 @@ constexpr long double RHS2116_NUM_DEVICE_PROBES = 16;
 constexpr long double framesPerMillis = 1.0 / RHS2116_SAMPLE_FREQUENCY_HZ * 1000.0;
 
 namespace ONI{
+
+inline uint64_t rhs2116MillisToSamples(const double& millis){
+	return std::floor(RHS2116_SAMPLES_PER_MS * millis);
+}
+
+inline double rhs2116SamplesToMillis(const uint64_t& samples){
+	return std::floor(RHS2116_MS_PER_SAMPLE * samples);
+}
 
 struct Spike{
 
