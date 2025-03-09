@@ -67,7 +67,7 @@ public:
         assert(source != nullptr);
 
         bufferProcessor = source;
-        //bufferProcessor->subscribeProcessor("SpikeProcessor", ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
+        bufferProcessor->subscribeProcessor("SpikeProcessor", ONI::Processor::SubscriptionType::POST_PROCESSOR, this);
 
         BaseProcessor::numProbes = bufferProcessor->getNumProbes();
 
@@ -99,7 +99,7 @@ public:
         nextPeekDetectBufferCount.resize(numProbes);
 
         spikeBuffer.resizeByNSpikes(10, numProbes);
-        burstBuffer.resizeByMillis(60000, 10, numProbes);
+        burstBuffer.resizeByMillis(600000, 10, numProbes);
 
         burstSpikeCounts.clear();
         burstSpikeCounts.resize(numProbes);
@@ -132,7 +132,9 @@ public:
     };
 
 	inline void process(oni_frame_t* frame){};
-	inline void process(ONI::Frame::BaseFrame& frame){}
+	inline void process(ONI::Frame::BaseFrame& frame){
+        burstBuffer.updateClock();
+    }
 
     void processSpikes() {
 
@@ -308,7 +310,7 @@ public:
             bufferProcessor->dataMutex[DENSE_MUTEX].unlock();
 
             //spikeMutex.lock();
-            burstBuffer.updateClock();
+            //burstBuffer.updateClock();
 
             if(burstWindowTimer.finished()){
                 for(size_t probe = 0; probe < numProbes; ++probe){

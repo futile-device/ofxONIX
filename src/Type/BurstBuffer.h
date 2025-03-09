@@ -40,11 +40,9 @@ public:
 		rawBurstBuffer.clear();
 	}
 
-	size_t resizeBySamples(const size_t& size, const int& windowSizeMillis, const size_t& numProbes){
+	size_t _resize(){
 		const std::lock_guard<std::mutex> lock(mutex);
 
-		bufferSize = size;
-		this->numProbes = numProbes;
 
 		
 		currentBufferIndex = 0;
@@ -62,17 +60,31 @@ public:
 
 		bIsFrameNew = false;
 
-		burstIntervalTimer.start<fu::millis>(burstIntervalTimeMs);
+		frameCounter = 0;
+
+		//burstIntervalTimer.start<fu::millis>(burstIntervalTimeMs);
+		
+		LOGDEBUG("BurstBuffer timer: %d %d %0.3f", burstIntervalTimeMs, burstIntervalTimeSamples, ONI::rhs2116SamplesToMillis(burstIntervalTimeSamples));
+		
+
+		timeStamps.resize(bufferSize);
+		for(size_t i = 0; i < bufferSize; ++i){
+			timeStamps.push_back(i * burstIntervalTimeMs);
+		}
+
+		LOGINFO("BurstBuffer Size: %d %0.3f %d", bufferSize, bufferSize * burstIntervalTimeMs / 1000.0, burstIntervalTimeMs);
 
 		return bufferSize;
 
 	}
+	std::vector<float> timeStamps;
+	size_t resizeByMillis(const int& bufferDurationMs, const int& intervalTimeMs, const size_t& numProbes){
+		this->burstIntervalTimeSamples = ONI::rhs2116MillisToSamples(burstIntervalTimeMs);
+		this->burstIntervalTimeMs = ONI::rhs2116SamplesToMillis(burstIntervalTimeSamples);
+		this->bufferSize = ONI::rhs2116MillisToSamples(bufferDurationMs) / burstIntervalTimeSamples;
+		this->numProbes = numProbes;
 
-	size_t resizeByMillis(const int& bufferSizeMillis, const int& windowSizeMillis, const size_t& numProbes){
-		size_t bufferStepFrameSize = windowSizeMillis / framesPerMillis;
-		assert(windowSizeMillis != 0);
-		size_t bufferFrameSizeRequired = bufferSizeMillis / framesPerMillis / bufferStepFrameSize;
-		return resizeBySamples(bufferFrameSizeRequired, windowSizeMillis, numProbes);
+		return _resize();
 	}
 
 	void clear(){
@@ -88,10 +100,13 @@ public:
 
 	}
 
+	uint64_t burstIntervalTimeSamples = 0;
+	uint64_t frameCounter = 0;
 	inline void updateClock(){
 		const std::lock_guard<std::mutex> lock(mutex);
-		if(burstIntervalTimer.finished()){
-			burstIntervalTimer.restart();
+		//if(burstIntervalTimer.finished()){
+		//	burstIntervalTimer.restart();
+		if(frameCounter % burstIntervalTimeSamples == 0){
 			double totes = 0;
 			for(int probe = 0; probe < numProbes; ++probe){
 				totes += getCurrentBurstRatePSA2(probe, 1000);
@@ -100,6 +115,7 @@ public:
 			++bufferSampleCount;
 			currentBufferIndex = (currentBufferIndex + 1) % bufferSize;
 		}
+		++frameCounter;
 	}
 
 	inline bool isFrameNew(const bool& reset = true){ // should I really auto reset? means it can only be called once per cycle
@@ -116,26 +132,26 @@ public:
 		//std::memcpy(&to[0], &rawSpikeBuffer[currentBufferIndex], sizeof(ONI::Frame::Rhs2116MultiFrame) * bufferSize);
 	}
 
-	inline double* getRawSPSA(const int& from){
+	inline float* getRawSPSA(const int& from){
 		const std::lock_guard<std::mutex> lock(mutex);
 		return &rawSPSABuffer[from + bufferSize]; // allow negative values by wrapping 
 	}
 
-	inline std::vector<std::vector<double>>& getUnderlyingBuffer(){ // this actually returns the whole buffer which is 3 times larger than needed
+	inline std::vector<std::vector<float>>& getUnderlyingBuffer(){ // this actually returns the whole buffer which is 3 times larger than needed
 		const std::lock_guard<std::mutex> lock(mutex);
 		return rawBurstBuffer;
 	}
 
-	inline double& getBurstCountAt(const size_t& probe, const int& idx){
+	inline float& getBurstCountAt(const size_t& probe, const int& idx){
 		const std::lock_guard<std::mutex> lock(mutex);
 		//assert(idx > 0 && idx < bufferSize);
 		return rawBurstBuffer[probe][idx + bufferSize];
 	}
 
-	inline double getCurrentBurstRatePSA2(const size_t& probe, const size_t& windowIntervalMs){
+	inline float getCurrentBurstRatePSA2(const size_t& probe, const size_t& windowIntervalMs){
 		//const std::lock_guard<std::mutex> lock(mutex);
-		assert(windowIntervalMs % burstIntervalTimeMs == 0);
-		size_t steps = std::min(windowIntervalMs / burstIntervalTimeMs, bufferSampleCount); // make sure we actually have enough sample windows
+		//assert(windowIntervalMs % burstIntervalTimeMs == 0);
+		size_t steps = std::min((size_t)std::floor(windowIntervalMs / burstIntervalTimeMs), bufferSampleCount); // make sure we actually have enough sample windows
 		if(steps == 0) return 0;
 		// 30000/100 =     100 * 100 = 10000;
 		size_t sum = 0;
@@ -148,10 +164,10 @@ public:
 		return ratePS;
 	}
 
-	inline double getCurrentBurstRatePSA(const size_t& probe, const size_t& windowIntervalMs){
+	inline float getCurrentBurstRatePSA(const size_t& probe, const size_t& windowIntervalMs){
 		const std::lock_guard<std::mutex> lock(mutex);
-		assert(windowIntervalMs % burstIntervalTimeMs == 0);
-		size_t steps = std::min(windowIntervalMs / burstIntervalTimeMs, bufferSampleCount); // make sure we actually have enough sample windows
+		//assert(windowIntervalMs % burstIntervalTimeMs == 0);
+		size_t steps = std::min((size_t)std::floor(windowIntervalMs / burstIntervalTimeMs), bufferSampleCount); // make sure we actually have enough sample windows
 		if(steps == 0) return 0;
 		// 30000/100 =     100 * 100 = 10000;
 		size_t sum = 0;
@@ -164,7 +180,7 @@ public:
 		return ratePS;
 	}
 
-	inline double& getLastBurstCount(const size_t& probe){
+	inline float& getLastBurstCount(const size_t& probe){
 		const std::lock_guard<std::mutex> lock(mutex);
 		return rawBurstBuffer[probe][(currentBufferIndex - 1) % bufferSize];
 	}
@@ -202,8 +218,8 @@ public:
 protected:
 
 
-	std::vector<std::vector<double>> rawBurstBuffer;
-	std::vector<double> rawSPSABuffer;
+	std::vector<std::vector<float>> rawBurstBuffer;
+	std::vector<float> rawSPSABuffer;
 
 	size_t currentBufferIndex = 0;
 	size_t bufferSampleCount = 0;
