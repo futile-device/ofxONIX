@@ -190,27 +190,34 @@ public:
 
     void audioOut(ofSoundBuffer& outBuffer){
 
-        if(!bUseAudio) return;
-        if(!(ONI::Global::model.isAquiring() || ONI::Global::model.getRecordProcessor()->isPlaying())) return; // we need to be getting frames
-
-        mutex.lock();
-
-        if(rhsResampledBuffer.size() > minResampledBuffers){
-            for(size_t i = 0; i < outBuffer.getNumFrames(); ++i){
-                outBuffer[i * outBuffer.getNumChannels() + 0] = rhsResampledBuffer.front().getBuffer()[i];
-                outBuffer[i * outBuffer.getNumChannels() + 1] = rhsResampledBuffer.front().getBuffer()[i];
-            }
-            rhsResampledBuffer.pop();
-
-        }else{
+       
+        if(!bUseAudio || !(ONI::Global::model.isAquiring() || ONI::Global::model.getRecordProcessor()->isPlaying())){ // we need to be getting frames
             for(size_t i = 0; i < outBuffer.getNumFrames(); ++i){
                 outBuffer[i * outBuffer.getNumChannels() + 0] = 0;
                 outBuffer[i * outBuffer.getNumChannels() + 1] = 0;
             }
-            LOGDEBUG("Buffer not full enough");
+        }else{
+            mutex.lock();
+
+            if(rhsResampledBuffer.size() > minResampledBuffers){
+                for(size_t i = 0; i < outBuffer.getNumFrames(); ++i){
+                    outBuffer[i * outBuffer.getNumChannels() + 0] = rhsResampledBuffer.front().getBuffer()[i];
+                    outBuffer[i * outBuffer.getNumChannels() + 1] = rhsResampledBuffer.front().getBuffer()[i];
+                }
+                rhsResampledBuffer.pop();
+
+            } else{
+                for(size_t i = 0; i < outBuffer.getNumFrames(); ++i){
+                    outBuffer[i * outBuffer.getNumChannels() + 0] = 0;
+                    outBuffer[i * outBuffer.getNumChannels() + 1] = 0;
+                }
+                LOGDEBUG("Buffer not full enough");
+            }
+
+            mutex.unlock();
         }
 
-        mutex.unlock();
+        
         
     }
 

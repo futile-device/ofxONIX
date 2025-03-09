@@ -246,6 +246,7 @@ public:
 			//ImPlot::SetupAxesLimits(0, frameCount, 0, 400, ImGuiCond_Always);
 			//ImPlot::SetupAxisLimits(ImAxis_X1, x_min, x_max, cond);
 			ImPlot::SetupAxisLimits(ImAxis_X1, 0, frameCount, ImGuiCond_Always);
+			ImPlot::SetupAxisLimits(ImAxis_Y1, 0, 50, ImGuiCond_Once);
 
 			//for(int probe = 0; probe < numProbes; probe++) {
 
@@ -260,7 +261,7 @@ public:
 
 				ImPlot::SetNextLineStyle(col);
 				//ImPlot::SetNextFillStyle(col);
-				double* rawBurst = sp.burstBuffer.getRawSPSA(sp.burstBuffer.getCurrentIndex() - frameCount);
+				float* rawBurst = sp.burstBuffer.getRawSPSA(sp.burstBuffer.getCurrentIndex() - frameCount);
 				ImPlot::PlotLine("##burstrate", rawBurst, frameCount, 1, 0, ImPlotLineFlags_None, offset);
 
 				//bp.dataMutex[SPARSE_MUTEX].lock();
