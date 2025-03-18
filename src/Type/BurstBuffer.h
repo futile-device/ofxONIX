@@ -114,6 +114,9 @@ public:
 			rawSPSABuffer[currentBufferIndex] = rawSPSABuffer[currentBufferIndex + bufferSize] = rawSPSABuffer[currentBufferIndex + bufferSize * 2] = totes;
 			++bufferSampleCount;
 			currentBufferIndex = (currentBufferIndex + 1) % bufferSize;
+			for(int probe = 0; probe < numProbes; ++probe){
+				rawBurstBuffer[probe][currentBufferIndex] = rawBurstBuffer[probe][currentBufferIndex + bufferSize] = rawBurstBuffer[probe][currentBufferIndex + bufferSize * 2] = 0;
+			}
 		}
 		++frameCounter;
 	}
