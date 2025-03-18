@@ -73,8 +73,8 @@ public:
 
         settings.spikeEdgeDetectionType = ONI::Settings::SpikeEdgeDetectionType::EITHER;
 
-        settings.positiveDeviationMultiplier = 4.5f;
-        settings.negativeDeviationMultiplier = 4.5f;
+        settings.positiveDeviationMultiplier = 5.0f;
+        settings.negativeDeviationMultiplier = 5.0f;
 
         settings.spikeWaveformLengthMs = 3;
         settings.spikeWaveformLengthSamples = settings.spikeWaveformLengthMs * RHS2116_SAMPLES_PER_MS;
@@ -99,7 +99,7 @@ public:
         nextPeekDetectBufferCount.resize(numProbes);
 
         spikeBuffer.resizeByNSpikes(10, numProbes);
-        burstBuffer.resizeByMillis(600000, 10, numProbes);
+        burstBuffer.resizeByMillis(60000, 10, numProbes);
 
         burstSpikeCounts.clear();
         burstSpikeCounts.resize(numProbes);
