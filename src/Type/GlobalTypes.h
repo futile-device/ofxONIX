@@ -63,6 +63,7 @@ struct Spike{
 	size_t minSampleIndex = 0;
 	float minVoltage = INFINITY;
 	float maxVoltage = -INFINITY;
+	bool bStimFrame = false;
 
 		// copy assignment (copy-and-swap idiom)
 	Spike& Spike::operator=(Spike other) noexcept{
@@ -75,6 +76,7 @@ struct Spike{
 		std::swap(minSampleIndex, other.minSampleIndex);
 		std::swap(minVoltage, other.minVoltage);
 		std::swap(maxVoltage, other.maxVoltage);
+		std::swap(bStimFrame, other.bStimFrame);
 		return *this;
 	}
 
@@ -89,7 +91,8 @@ inline bool operator==(const Spike& lhs, const Spike& rhs){
 			lhs.maxSampleIndex == rhs.maxSampleIndex &&
 			lhs.minSampleIndex == rhs.minSampleIndex &&
 			lhs.minVoltage == rhs.minVoltage &&
-			lhs.maxVoltage == rhs.maxVoltage);
+			lhs.maxVoltage == rhs.maxVoltage &&
+			lhs.bStimFrame == rhs.bStimFrame);
 }
 inline bool operator!=(const Spike& lhs, const Spike& rhs) { return !(lhs == rhs); }
 

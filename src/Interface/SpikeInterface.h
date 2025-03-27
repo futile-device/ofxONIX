@@ -78,7 +78,8 @@ public:
 
 		static bool bNeedsUpdate = false;
 		static bool bFirstLoad = true;
-		if(bFirstLoad){
+		if(bFirstLoad || sp.bUpdatedSettings){ // total hack for the installation rn
+			sp.bUpdatedSettings = false;
 			sp.spikeMutex.lock();
 			nextSettings = sp.settings;
 			sp.spikeMutex.unlock();

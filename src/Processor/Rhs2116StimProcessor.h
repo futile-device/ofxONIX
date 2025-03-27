@@ -398,14 +398,13 @@ public:
 
         ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
         if(recordProcessor->isRecording()){
-
             recordProcessor->setStimTriggerDevices(stagedSettings); // hmm we should double check these are the same as the device ones???
         }
 
         for(auto& it : rhs2116StimDevices){
             ONI::Device::Rhs2116StimDevice* device = it.second;
+            stimulusSampleCountRemaining = stimulusSampleCountTotal = getMaxLengthSamples() + ONI::rhs2116MillisToSamples(10); // TODO make this a settable/interface param
             device->triggerStimulus();
-            stimulusSampleCountRemaining = stimulusSampleCountTotal = getMaxLengthSamples();
             device->getContexteNeedsReset(); // force no context resetting (cos this sets it to false)
         }
 
