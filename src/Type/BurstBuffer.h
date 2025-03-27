@@ -94,7 +94,7 @@ public:
 
 	inline void push(const ONI::Spike& spike){
 		const std::lock_guard<std::mutex> lock(mutex);
-
+		
 		const size_t& probe = spike.probe;
 		rawBurstBuffer[probe][currentBufferIndex] = rawBurstBuffer[probe][currentBufferIndex + bufferSize] = rawBurstBuffer[probe][currentBufferIndex + bufferSize * 2] = rawBurstBuffer[probe][currentBufferIndex] + 1;
 
@@ -109,7 +109,7 @@ public:
 		if(frameCounter % burstIntervalTimeSamples == 0){
 			double totes = 0;
 			for(int probe = 0; probe < numProbes; ++probe){
-				totes += getCurrentBurstRatePSA2(probe, 1000);
+				totes += getCurrentBurstRatePSANoLocks(probe, 1000);
 			}
 			rawSPSABuffer[currentBufferIndex] = rawSPSABuffer[currentBufferIndex + bufferSize] = rawSPSABuffer[currentBufferIndex + bufferSize * 2] = totes;
 			++bufferSampleCount;
@@ -151,7 +151,16 @@ public:
 		return rawBurstBuffer[probe][idx + bufferSize];
 	}
 
-	inline float getCurrentBurstRatePSA2(const size_t& probe, const size_t& windowIntervalMs){
+	inline float getTotalBurstRatePSA(const size_t& windowIntervalMs){
+		const std::lock_guard<std::mutex> lock(mutex);
+		float totes = 0;
+		for(size_t probe = 0; probe < numProbes; ++probe){
+			totes += getCurrentBurstRatePSANoLocks(probe, windowIntervalMs);
+		}
+		return totes;
+	}
+
+	inline float getCurrentBurstRatePSANoLocks(const size_t& probe, const size_t& windowIntervalMs){
 		//const std::lock_guard<std::mutex> lock(mutex);
 		//assert(windowIntervalMs % burstIntervalTimeMs == 0);
 		size_t steps = std::min((size_t)std::floor(windowIntervalMs / burstIntervalTimeMs), bufferSampleCount); // make sure we actually have enough sample windows
