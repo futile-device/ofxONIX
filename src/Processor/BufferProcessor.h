@@ -261,7 +261,7 @@ private:
     }
 
     inline const std::vector<ONI::Frame::ProbeStatistics>& getProbeStats(){
-        //const std::lock_guard<std::mutex> lock(probeDataMutex);
+        const std::lock_guard<std::mutex> lock(probeDataMutex);
         //return probeStats[FRONT_BUFFER];
         return probeStats[BACK_BUFFER]; // unsafe, but who cares.....until you do!!!???? causes lots of locks in the interface
     }

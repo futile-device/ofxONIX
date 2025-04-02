@@ -346,10 +346,10 @@ public:
 
         spikeEvent.notify(spike);
 
-        if(allSpikes.size() < maxSpikeSampleSize){
-            allSpikes.push_back(spike);
-            allWaveforms.push_back(spike.rawWaveform);
-        }
+        //if(allSpikes.size() < maxSpikeSampleSize){
+        //    allSpikes.push_back(spike);
+        //    allWaveforms.push_back(spike.rawWaveform);
+        //}
     }
 
     void processSVD(){
