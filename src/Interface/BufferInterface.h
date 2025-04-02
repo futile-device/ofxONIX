@@ -336,9 +336,9 @@ private:
 				ImGui::TableSetColumnIndex(0);
 				ImGui::Text("Probe %d (%d)", probe, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap()[probe]);
 				ImGui::TableSetColumnIndex(1);
-				bp.dataMutex[SPARSE_MUTEX].lock();
+				//bp.dataMutex[SPARSE_MUTEX].lock();
 				if(plotType == PLOT_AC_DATA) ImGui::Text("%.3f avg \n%.3f dev \n%i N", bp.getProbeStats()[probe].mean, bp.getProbeStats()[probe].deviation, frameCount);
-				bp.dataMutex[SPARSE_MUTEX].unlock();
+				//bp.dataMutex[SPARSE_MUTEX].unlock();
 				ImGui::TableSetColumnIndex(2);
 
 				if(ONI::Global::model.getChannelSelect().size()){

@@ -120,6 +120,9 @@ public:
 		closeContext();
 	}
 
+	bool bContextNeedsRestart = false;
+	bool bContextNeedsReset = false;
+
 	inline void update(){
 
 		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
@@ -148,8 +151,7 @@ public:
 
 		if(!ONI::Global::model.bIsContextSetup) return;
 
-		bool bContextNeedsRestart = false;
-		bool bContextNeedsReset = false;
+
 
 		// check all the devices to see if they require an context restart eg., PORTVOLTAGE
 		std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
@@ -197,6 +199,8 @@ public:
 			if(bResetAcquire) startAcquisition();
 		}
 
+		bContextNeedsRestart = false;
+		bContextNeedsReset = false;
 
 	}
 
@@ -685,6 +689,7 @@ private:
 
 			if(rc < 0){
 				LOGERROR("Frame read error: %s", oni_error_str(rc));
+				bContextNeedsRestart = true;
 			}else{
 
 				std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
