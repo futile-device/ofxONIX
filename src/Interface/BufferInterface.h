@@ -156,7 +156,7 @@ public:
 
 		//plotCombinedLinePlot(bp, ONI::Interface::PLOT_DC_DATA);
 		plotCombinedLinePlot(bp, ONI::Interface::PLOT_AC_DATA);
-		plotCombinedSpikes(bp);
+		//plotCombinedSpikes(bp);
 
 		plotIndividualLinePlot(bp, ONI::Interface::PLOT_DC_DATA);
 		plotIndividualLinePlot(bp, ONI::Interface::PLOT_AC_DATA);
@@ -315,7 +315,7 @@ private:
 		static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV | ImGuiTableFlags_RowBg;
 
 		static int offset = 0;
-
+		bp.dataMutex[SPARSE_MUTEX].lock();
 		if(ImGui::BeginTable("##probetable", 3, flags, ImVec2(-1, 0))){
 
 			ImGui::TableSetupColumn("Probe", ImGuiTableColumnFlags_WidthFixed, 75.0f);
@@ -336,9 +336,9 @@ private:
 				ImGui::TableSetColumnIndex(0);
 				ImGui::Text("Probe %d (%d)", probe, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap()[probe]);
 				ImGui::TableSetColumnIndex(1);
-				//bp.dataMutex[SPARSE_MUTEX].lock();
-				if(plotType == PLOT_AC_DATA) ImGui::Text("%.3f avg \n%.3f dev \n%i N", bp.getProbeStats()[probe].mean, bp.getProbeStats()[probe].deviation, frameCount);
 				//bp.dataMutex[SPARSE_MUTEX].unlock();
+				if(plotType == PLOT_AC_DATA) ImGui::Text("%.3f avg \n%.3f dev \n%i N", bp.getProbeStatsUnlocked()[probe].mean, bp.getProbeStatsUnlocked()[probe].deviation, frameCount);
+				//bp.dataMutex[SPARSE_MUTEX].lock();
 				ImGui::TableSetColumnIndex(2);
 
 				if(ONI::Global::model.getChannelSelect().size()){
@@ -350,7 +350,7 @@ private:
 
 				ImGui::PushID(probe);
 				
-				bp.dataMutex[SPARSE_MUTEX].lock();
+				//bp.dataMutex[SPARSE_MUTEX].lock();
 				float* voltages = nullptr;
 				if(plotType == PLOT_AC_DATA) voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
 				if(plotType == PLOT_DC_DATA) voltages = bp.sparseBuffer.getDcmVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
@@ -398,7 +398,7 @@ private:
 					}
 				}
 
-				bp.dataMutex[SPARSE_MUTEX].unlock();
+				//bp.dataMutex[SPARSE_MUTEX].unlock();
 
 
 				ImGui::PopID();
@@ -407,71 +407,13 @@ private:
 
 			ImGui::EndTable();
 		}
-
+		bp.dataMutex[SPARSE_MUTEX].unlock();
 		ImGui::PopID();
 		ImGui::End();
 
 	}
 
-	// Plot Combined AC or DC probe data
-	inline void plotCombinedSpikes(ONI::Processor::BufferProcessor& bp){
-
-		size_t numProbes = bp.numProbes;
-		size_t frameCount = bp.sparseBuffer.size();
-
-		if(frameCount == 0) return;
-
-		ImGui::Begin("Spike Plot");
-		ImGui::PushID("##CombinedSpikePlot");
-
-		if(ImPlot::BeginPlot("Spikes", ImVec2(-1, -1))){
-
-			ImPlot::SetupAxes("mS", "");
-
-			ImPlot::SetupAxesLimits(0, bp.sparseTimeStamps[frameCount - 1] - 1, 0, 10*65, ImGuiCond_Always);
-
-			for(int probe = 0; probe < numProbes; probe++) {
-
-				//if(!ONI::Global::model.getChannelSelect()[probe]) continue; // only show selected probes
-
-				ImGui::PushID(probe);
-				ImVec4 col = ImPlot::GetColormapColor(probe);
-
-				int offset = 0;
-
-				
-
-				ImPlot::SetNextLineStyle(col);
-				ImPlot::SetNextFillStyle(col);
-
-				bp.dataMutex[SPARSE_MUTEX].lock();
-
-				float* voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-				float* spikeV = bp.sparseBuffer.getSpikeFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-				//ImPlot::PlotLine("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
-				bool bHighLight = ONI::Global::model.getChannelSelect()[probe];
-				ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, bHighLight ? 1.0f : 0.25f);
-				ImVec4 cl = col;
-				col.w = bHighLight ? 1 : 0.8;
-				cl.w = bHighLight ? 0.9 : 0.4;
-				ImPlot::SetNextMarkerStyle(ImPlotMarker_Square, 4, cl, -1, col);
-				ImPlot::PlotScatter("##spikeS", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
-				//ImPlot::PlotDigital("##spike2", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
-
-				bp.dataMutex[SPARSE_MUTEX].unlock();
-
-				ImGui::PopID();
-				
-			}
-
-			ImPlot::EndPlot();
-
-		}
-
-		ImGui::PopID();
-		ImGui::End();
-
-	}
+	
 
 	// Plot Combined AC or DC probe data
 	inline void plotCombinedLinePlot(ONI::Processor::BufferProcessor& bp, const ONI::Interface::PlotType& plotType) {
@@ -538,7 +480,7 @@ private:
 
 		ImGui::Begin(plotName.c_str());
 		ImGui::PushID("##CombinedProbePlot");
-
+		bp.dataMutex[SPARSE_MUTEX].lock();
 		if(ImPlot::BeginPlot("Probe Voltages", ImVec2(-1, -1))){
 
 			ImPlot::SetupAxes("mS", unitStr.c_str());
@@ -555,7 +497,7 @@ private:
 
 				ImPlot::SetupAxesLimits(0, bp.sparseTimeStamps[frameCount - 1] - 1, -voltageRange, voltageRange, ImGuiCond_Always);
 
-				bp.dataMutex[SPARSE_MUTEX].lock();
+				//bp.dataMutex[SPARSE_MUTEX].lock();
 				float* voltages = nullptr;
 				if(plotType == PLOT_AC_DATA) voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
 				if(plotType == PLOT_DC_DATA) voltages = bp.sparseBuffer.getDcmVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
@@ -569,7 +511,7 @@ private:
 				//ImPlot::PlotLine("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
 				//ImPlot::PlotDigital("##spike2", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
 
-				bp.dataMutex[SPARSE_MUTEX].unlock();
+				//bp.dataMutex[SPARSE_MUTEX].unlock();
 
 				if(bShowStdDev && plotType == PLOT_AC_DATA){
 					ImPlot::SetNextLineStyle(ImVec4(1, 0, 0, 0.5));
@@ -582,10 +524,10 @@ private:
 				if(stim->isStimulusOnDevice(probe)) {
 					ImPlot::SetNextLineStyle(col, 0.0);
 					ImPlot::SetNextFillStyle(col, 0.6);
-					bp.dataMutex[SPARSE_MUTEX].lock();
+					//bp.dataMutex[SPARSE_MUTEX].lock();
 					float * stim = bp.sparseBuffer.getStimFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
 					ImPlot::PlotDigital("##stim", &bp.sparseTimeStamps[0], &stim[0], frameCount, ImPlotLineFlags_None, offset);
-					bp.dataMutex[SPARSE_MUTEX].unlock();
+					//bp.dataMutex[SPARSE_MUTEX].unlock();
 
 				}
 
@@ -595,8 +537,9 @@ private:
 			}
 
 			ImPlot::EndPlot();
-		}
 
+		}
+		bp.dataMutex[SPARSE_MUTEX].unlock();
 		ImGui::PopID();
 		ImGui::End();
 

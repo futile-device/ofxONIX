@@ -94,23 +94,29 @@ public:
 				acProbeVoltages[probe][currentBufferIndex] = dataFrame.ac_uV[probe]; //0.195f * (frames1[frame].ac[probe     ] - 32768) / 1000.0f; // 0.195 uV × (ADC result – 32768) divide by 1000 for mV?
 				dcProbeVoltages[probe][currentBufferIndex] = dataFrame.dc_mV[probe]; //-19.23 * (frames1[frame].dc[probe     ] - 512) / 1000.0f;   // -19.23 mV × (ADC result – 512) divide by 1000 for V?
 				stimProbeData[probe][currentBufferIndex] = (float)dataFrame.stimulation; //frameBuffer[frame].stim ? 8.0f : 0.0f;
-				spikeProbeData[probe][currentBufferIndex] = dataFrame.spikes[probe] ? (float)(64 - probe) * 10.0 : -10.0f;
+				//spikeProbeData[probe][currentBufferIndex] = -10;// (float)(64 - probe) * 10.0;// dataFrame.spikes[probe] ? (float)(64 - probe) * 10.0 : -10.0f;
 				//if(spikeProbeData[probe][currentBufferIndex] && currentBufferIndex > 0) spikeProbeData[probe][currentBufferIndex - 1] = spikeProbeData[probe][currentBufferIndex];
 
 				acProbeVoltages[probe][currentBufferIndex + bufferSize] = acProbeVoltages[probe][currentBufferIndex + bufferSize * 2] = acProbeVoltages[probe][currentBufferIndex];
 				dcProbeVoltages[probe][currentBufferIndex + bufferSize] = dcProbeVoltages[probe][currentBufferIndex + bufferSize * 2] = dcProbeVoltages[probe][currentBufferIndex];
 				stimProbeData[probe][currentBufferIndex + bufferSize] = stimProbeData[probe][currentBufferIndex + bufferSize * 2] = stimProbeData[probe][currentBufferIndex];
-				spikeProbeData[probe][currentBufferIndex + bufferSize] = spikeProbeData[probe][currentBufferIndex + bufferSize * 2] = spikeProbeData[probe][currentBufferIndex];
+				//spikeProbeData[probe][currentBufferIndex + bufferSize] = spikeProbeData[probe][currentBufferIndex + bufferSize * 2] = spikeProbeData[probe][currentBufferIndex];
 
 			}
 
 			currentBufferIndex = (currentBufferIndex + 1) % bufferSize;
+
 			bIsFrameNew = true;
 			++bufferSampleCount;
 			return true;
 		}
 		++bufferSampleCount;
 		return false;
+	}
+
+	inline void setSpike(const size_t& idx, const size_t& probe, const bool& b){
+		spikeProbeData[probe][idx] = b ? (float)(64 - probe) * 10.0 : -10.0f;
+		spikeProbeData[probe][idx + bufferSize] = spikeProbeData[probe][idx + bufferSize * 2] = spikeProbeData[probe][idx];
 	}
 
 	inline bool isFrameNew(const bool& reset = true){ // should I really auto reset? means it can only be called once per cycle

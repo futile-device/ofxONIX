@@ -152,7 +152,7 @@ public:
 					if(b) ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, cell_bg_color);
 				}
 
-				ImGui::Text("Bursts/s: %0.5f [%0.5f]", sp.burstsPerWindowAvg[probe], sp.burstBuffer.getCurrentBurstRatePSA(probe, 30000));
+				ImGui::Text("Bursts/spsa: %0.5f", sp.burstBuffer.getCurrentBurstRatePSA(probe, 30000));
 
 				ImGui::PushID(probe);
 
@@ -221,12 +221,84 @@ public:
 			ImGui::EndTable();
 		}
 
+		plotCombinedSpikes(sp);
+
 		ImGui::PopID();
 		ImGui::End();
 
 		ImGui::PopID();
 
 	};
+
+	// Plot Combined AC or DC probe data
+	inline void plotCombinedSpikes(ONI::Processor::SpikeProcessor& sp){
+		
+		size_t numProbes = sp.numProbes;
+		size_t frameCount = sp.spikeFrameBuffer.size();
+
+		if(frameCount == 0) return;
+
+		ImGui::Begin("Spike Plot");
+		ImGui::PushID("##CombinedSpikePlot");
+		
+		if(ImPlot::BeginPlot("Spikes", ImVec2(-1, -1))){
+
+			ImPlot::SetupAxes("mS", "");
+
+			ImPlot::SetupAxesLimits(0, ONI::Global::model.getBufferProcessor()->sparseTimeStamps[frameCount - 1] - 1, 0, 10*65, ImGuiCond_Always);
+
+			for(int probe = 0; probe < numProbes; probe++) {
+
+				//if(!ONI::Global::model.getChannelSelect()[probe]) continue; // only show selected probes
+
+				ImGui::PushID(probe);
+				ImVec4 col = ImPlot::GetColormapColor(probe);
+
+				int offset = 0;
+
+
+
+				ImPlot::SetNextLineStyle(col);
+				ImPlot::SetNextFillStyle(col);
+
+				//bp->dataMutex[SPARSE_MUTEX].lock();
+				sp.spikeMutex.lock();
+				//float* voltages = bp->sparseBuffer.getAcuVFloatRaw(probe, bp->sparseBuffer.getCurrentIndex());
+				float* spikeV = sp.spikeFrameBuffer.getSpikeFloatRaw(probe, sp.spikeFrameBuffer.getCurrentIndex());
+				//ImPlot::PlotLine("##spike", &bp->sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				bool bHighLight = false;// ONI::Global::model.getChannelSelect()[probe];
+				ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, bHighLight ? 1.0f : 0.25f);
+				ImVec4 cl = col;
+				col.w = bHighLight ? 1 : 0.8;
+				cl.w = bHighLight ? 0.9 : 0.4;
+				ImPlot::SetNextMarkerStyle(ImPlotMarker_Square, 4, cl, -1, col);
+				ImPlot::PlotScatter("##spikeS", &ONI::Global::model.getBufferProcessor()->sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				std::this_thread::yield();
+				sp.spikeMutex.unlock();
+				//std::vector<float> f;
+				//f.resize(frameCount);
+				//for(int i = 0; i < frameCount; ++i){
+				//	f[i] = spikeV[i];
+				//	if(f[i] != -10){
+				//		LOGDEBUG("wtf");
+				//	}
+				//}
+				//ImPlot::PlotDigital("##spike2", &bp->sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+
+				//bp->dataMutex[SPARSE_MUTEX].unlock();
+
+				ImGui::PopID();
+
+			}
+
+			ImPlot::EndPlot();
+
+		}
+		//sp.spikeMutex.unlock();
+		ImGui::PopID();
+		ImGui::End();
+
+	}
 
 	// Plot Combined AC or DC probe data
 	inline void plotCombinedBursts(ONI::Processor::SpikeProcessor& sp){
@@ -265,21 +337,21 @@ public:
 				float* rawBurst = sp.burstBuffer.getRawSPSA(sp.burstBuffer.getCurrentIndex() - frameCount);
 				ImPlot::PlotLine("##burstrate", rawBurst, frameCount, 1, 0, ImPlotLineFlags_None, offset);
 
-				//bp.dataMutex[SPARSE_MUTEX].lock();
+				//bp->dataMutex[SPARSE_MUTEX].lock();
 
-				//float* voltages = bp.sparseBuffer.getAcuVFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-				//float* spikeV = bp.sparseBuffer.getSpikeFloatRaw(probe, bp.sparseBuffer.getCurrentIndex());
-				////ImPlot::PlotLine("##spike", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				//float* voltages = bp->sparseBuffer.getAcuVFloatRaw(probe, bp->sparseBuffer.getCurrentIndex());
+				//float* spikeV = bp->sparseBuffer.getSpikeFloatRaw(probe, bp->sparseBuffer.getCurrentIndex());
+				////ImPlot::PlotLine("##spike", &bp->sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
 				//bool bHighLight = ONI::Global::model.getChannelSelect()[probe];
 				//ImPlot::PushStyleVar(ImPlotStyleVar_FillAlpha, bHighLight ? 1.0f : 0.25f);
 				//ImVec4 cl = col;
 				//col.w = bHighLight ? 1 : 0.8;
 				//cl.w = bHighLight ? 0.9 : 0.4;
 				//ImPlot::SetNextMarkerStyle(ImPlotMarker_Square, 4, cl, -1, col);
-				//ImPlot::PlotScatter("##spikeS", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
-				////ImPlot::PlotDigital("##spike2", &bp.sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				//ImPlot::PlotScatter("##spikeS", &bp->sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
+				////ImPlot::PlotDigital("##spike2", &bp->sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
 
-				//bp.dataMutex[SPARSE_MUTEX].unlock();
+				//bp->dataMutex[SPARSE_MUTEX].unlock();
 
 				//ImGui::PopID();
 
