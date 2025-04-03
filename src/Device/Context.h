@@ -275,6 +275,7 @@ public:
 	void startAcquisition(){
 		ONI::Processor::RecordProcessor* recordProcessor = ONI::Global::model.getRecordProcessor();
 		if(recordProcessor != nullptr) recordProcessor->stop();
+		ONI::Global::model.getSpikeProcessor()->reset();
 		ONI::Global::model.getBufferProcessor()->reset();
 		startFrameRead();
 		startContext();
@@ -689,7 +690,7 @@ private:
 
 			if(rc < 0){
 				LOGERROR("Frame read error: %s", oni_error_str(rc));
-				bContextNeedsRestart = true;
+				bContextNeedsReset = true;
 			}else{
 
 				std::map<uint32_t, ONI::Device::BaseDevice*>& devices = ONI::Global::model.getDevices();
