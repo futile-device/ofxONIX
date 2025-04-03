@@ -46,6 +46,7 @@ namespace ONI{
 
 namespace Interface{
 class BufferInterface;
+class SpikeInterface;
 }
 
 namespace Processor{
@@ -59,6 +60,7 @@ public:
 
     friend class SpikeProcessor;
     friend class AudioProcessor;
+    friend class ONI::Interface::SpikeInterface;
     friend class ONI::Interface::BufferInterface;
 
     BufferProcessor(){
@@ -111,6 +113,17 @@ public:
 
         ONI::Frame::Rhs2116MultiFrame* multi_frame = reinterpret_cast<ONI::Frame::Rhs2116MultiFrame*>(&frame);
 
+
+        dataMutex[DENSE_MUTEX].lock();
+        denseBuffer.push(*multi_frame);
+        dataMutex[DENSE_MUTEX].unlock();
+
+
+        dataMutex[SPARSE_MUTEX].lock();
+        sparseBuffer.push(*multi_frame);
+        dataMutex[SPARSE_MUTEX].unlock();
+
+        /*
         // check for spike flag --> this means marking the frame *after* the 
         // actual spike as I want to process inside buffer, rather than post process
         std::vector<bool>& spikeFlags = ONI::Global::model.getSpikeFlags();
@@ -147,6 +160,7 @@ public:
         dataMutex[SPARSE_MUTEX].unlock();
 
         //std::this_thread::yield(); // ????
+        */
 
         for(auto& it : postProcessors){
             it.second->process(frame);
@@ -260,8 +274,14 @@ private:
 
     }
 
+    inline const std::vector<ONI::Frame::ProbeStatistics>& getProbeStatsUnlocked(){
+        //const std::lock_guard<std::mutex> lock(dataMutex[SPARSE_MUTEX]);
+        //return probeStats[FRONT_BUFFER];
+        return probeStats[BACK_BUFFER]; // unsafe, but who cares.....until you do!!!???? causes lots of locks in the interface
+    }
+
     inline const std::vector<ONI::Frame::ProbeStatistics>& getProbeStats(){
-        const std::lock_guard<std::mutex> lock(probeDataMutex);
+        const std::lock_guard<std::mutex> lock(dataMutex[SPARSE_MUTEX]);
         //return probeStats[FRONT_BUFFER];
         return probeStats[BACK_BUFFER]; // unsafe, but who cares.....until you do!!!???? causes lots of locks in the interface
     }
