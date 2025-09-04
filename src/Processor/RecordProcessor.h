@@ -111,6 +111,7 @@ public:
     void setup(){
 
         LOGDEBUG("Setting up RecordProcessor");
+		oscHeartBeat.setup("127.0.0.1", 4000);
 
     }
 
@@ -766,6 +767,9 @@ private:
 					auto device = it->second;
 					device->process(frame);	
 
+					sendHeartBeat();
+
+
 				}
 
 				delete [] frame->data;
@@ -910,7 +914,21 @@ private:
 
 	}
 
+	inline void sendHeartBeat(){
+		frameCounter++;
+		if(frameCounter > 30000){
+			//LOGDEBUG("BEAT");
+			frameCounter = 0;
+			ofxOscMessage m;
+			m.setAddress("/alive");
+			oscHeartBeat.sendMessage(m);
+		}
+	}
+
 protected:
+
+	ofxOscSender oscHeartBeat;
+	uint64_t frameCounter = 0;
 
 	fu::Timer realHeartBeatTimer;
 	double realHeartBeatAvg = 1;

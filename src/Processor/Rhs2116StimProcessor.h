@@ -403,7 +403,7 @@ public:
 
         for(auto& it : rhs2116StimDevices){
             ONI::Device::Rhs2116StimDevice* device = it.second;
-            stimulusSampleCountRemaining = stimulusSampleCountTotal = getMaxLengthSamples() + ONI::rhs2116MillisToSamples(50); // TODO make this a settable/interface param
+            stimulusSampleCountRemaining = stimulusSampleCountTotal = getMaxLengthSamples() + ONI::rhs2116MillisToSamples(100); // TODO make this a settable/interface param
             device->triggerStimulus();
             device->getContexteNeedsReset(); // force no context resetting (cos this sets it to false)
         }

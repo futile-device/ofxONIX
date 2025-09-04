@@ -212,6 +212,8 @@ public:
 		return settings.stepSize;
 	}
 
+	uint64_t numberOfDroppedFrames = 0;
+
 	inline void process(oni_frame_t* frame) override {
 
 		//const std::lock_guard<std::mutex> lock(mutex);
@@ -261,6 +263,13 @@ public:
 					//errorFrameRaw.devIdx = frame->dev_idx;
 					
 					LOGDEBUG("Dropped multiframe %i (%llu) ==> %i", frame->dev_idx, reinterpret_cast<ONI::Frame::Rhs2116DataExtended*>(frame->data)->hubTime, nextDeviceCounter);
+
+					++numberOfDroppedFrames;
+
+					if(numberOfDroppedFrames > 50000){
+						LOGERROR("DROPPING TOO MANY MULTIFRAMES");
+						exit(0);
+					}
 
 					bBadFrame = true;
 					--nextDeviceCounter; // decrease the device id counter so we can check if this gets corrected on next frame

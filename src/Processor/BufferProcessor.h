@@ -186,6 +186,12 @@ public:
         probeStats[BACK_BUFFER].clear();
         probeStats[FRONT_BUFFER].resize(BaseProcessor::numProbes);
         probeStats[BACK_BUFFER].resize(BaseProcessor::numProbes);
+        activeProbes.resize(BaseProcessor::numProbes);
+        if(!fu::Serializer.loadClass("activeProbes.conf", *this, ARCHIVE_TEXT)){
+            for(size_t probe = 0; probe < numProbes; ++probe){
+                activeProbes[probe] = true;
+            }
+        }
         sparseTimeStamps.resize(sparseBuffer.size());
         sparseCountStamps.resize(sparseBuffer.size());
         for(size_t frame = 0; frame < sparseTimeStamps.size(); ++frame){
@@ -215,7 +221,7 @@ public:
     }
     
 private:
-
+    
 
     inline void processBuffers(){
 
@@ -286,6 +292,13 @@ private:
         return probeStats[BACK_BUFFER]; // unsafe, but who cares.....until you do!!!???? causes lots of locks in the interface
     }
 
+    inline std::vector<bool>& getActiveProbes(){
+        return activeProbes;
+    }
+
+    void saveActiveProbes(){
+        fu::Serializer.saveClass("activeProbes.conf", *this, ARCHIVE_TEXT);
+    }
 
 protected:
 
@@ -300,6 +313,8 @@ protected:
     std::mutex dataMutex[2];
     std::mutex probeDataMutex;
 
+    std::vector<bool> activeProbes;
+
     ONI::Processor::BaseProcessor* source = nullptr;
 
     ONI::Settings::BufferProcessorSettings settings;
@@ -308,7 +323,11 @@ protected:
 
     std::thread thread;
 
-
+    friend class boost::serialization::access;
+    template<class Archive>
+    void serialize(Archive& ar, const unsigned int version){
+        ar& BOOST_SERIALIZATION_NVP(activeProbes);
+    }
 
 };
 
