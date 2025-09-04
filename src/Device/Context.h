@@ -706,6 +706,8 @@ private:
 					ONI::Global::model.getRecordProcessor()->recordFrame(frame);
 					device->process(frame);	
 
+					recordProcessor->sendHeartBeat();
+
 				}
 
 			}

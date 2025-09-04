@@ -337,7 +337,17 @@ private:
 				ImGui::Text("Probe %d (%d)", probe, ONI::Global::model.getChannelMapProcessor()->getInverseChannelMap()[probe]);
 				ImGui::TableSetColumnIndex(1);
 				//bp.dataMutex[SPARSE_MUTEX].unlock();
-				if(plotType == PLOT_AC_DATA) ImGui::Text("%.3f avg \n%.3f dev \n%i N", bp.getProbeStatsUnlocked()[probe].mean, bp.getProbeStatsUnlocked()[probe].deviation, frameCount);
+				if(plotType == PLOT_AC_DATA){
+					ImGui::Text("%.3f avg \n%.3f dev \n%i N", bp.getProbeStatsUnlocked()[probe].mean, bp.getProbeStatsUnlocked()[probe].deviation, frameCount);
+					ImGui::PushID(probe);
+					bool bUseProbe = ONI::Global::model.getBufferProcessor()->getActiveProbes()[probe];
+					if(ImGui::Checkbox("use", &bUseProbe)){
+						LOGDEBUG("Use: %i %d", (int)bUseProbe, probe);
+						ONI::Global::model.getBufferProcessor()->getActiveProbes()[probe] = bUseProbe;
+						ONI::Global::model.getBufferProcessor()->saveActiveProbes();
+					}
+					ImGui::PopID();
+				}
 				//bp.dataMutex[SPARSE_MUTEX].lock();
 				ImGui::TableSetColumnIndex(2);
 

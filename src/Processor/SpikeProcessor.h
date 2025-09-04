@@ -75,8 +75,8 @@ public:
 
         settings.spikeEdgeDetectionType = ONI::Settings::SpikeEdgeDetectionType::EITHER;
 
-        settings.positiveDeviationMultiplier = 5.0f;
-        settings.negativeDeviationMultiplier = 5.0f;
+        settings.positiveDeviationMultiplier = 5.2f;
+        settings.negativeDeviationMultiplier = 5.2f;
 
         settings.spikeWaveformLengthMs = 3;
         settings.spikeWaveformLengthSamples = settings.spikeWaveformLengthMs * RHS2116_SAMPLES_PER_MS;
@@ -131,9 +131,9 @@ public:
 
                 // get the buffer count which is the global counter for frames going into the buffer
                 uint64_t bufferCount = denseBuffer.getBufferCount();
-
+                /*(buffer.getCurrentIndex() + buffer.size() - 30000) % buffer.size()*/
                 // we are going to search for spikes from the 'central' time point in the frame buffer
-                size_t centralSampleIDX = denseBuffer.getCurrentIndex();//% buffer.size();// size_t(std::floor(buffer.getCurrentIndex() + buffer.size() / 2.0)) % buffer.size();
+                size_t centralSampleIDX = (denseBuffer.getCurrentIndex() + denseBuffer.size() - 30000) % denseBuffer.size(); // denseBuffer.getCurrentIndex();//% buffer.size();// size_t(std::floor(buffer.getCurrentIndex() + buffer.size() / 2.0)) % buffer.size();
                 
 
                 // get a reference to the central "current" frame
@@ -142,15 +142,19 @@ public:
 
                 // check each probe to see if there's a spike...
                 for(size_t probe = 0; probe < numProbes; ++probe) {
-
+                    bool bUseProbe = ONI::Global::model.getBufferProcessor()->getActiveProbes()[probe];
+                    if(!bUseProbe) continue;
+                    //if(probe == 1 || probe == 4 || probe == 10 || probe == 25 || probe == 28 || probe == 32 || probe == 33 || probe == 34 || probe == 40 || probe == 46 || probe == 50 || probe == 59 || probe == 63) continue; // HACKING IGNORE PROBE SPIKE PROCESSING TODO: make this a checkbox somewhere
+                    float deviation = bufferProcessor->getProbeStats()[probe].deviation;
 
                     // after we discover a spike on a probe channel we suppress detection till after the waveform capture TODO: what about overlapping spikes?
                     if(bufferCount < nextPeekDetectBufferCount[probe]) continue;
 
                     using ONI::Settings::SpikeEdgeDetectionType;
 
+                    //if(abs(frame.ac_uV[probe]) > abs(deviation * 6)) continue;
 
-                    if(frame.ac_uV[probe] < -bufferProcessor->getProbeStatsUnlocked()[probe].deviation * settings.negativeDeviationMultiplier &&
+                    if(frame.ac_uV[probe] < -deviation * settings.negativeDeviationMultiplier &&
                        (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::FALLING ||
                        settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER ||
                        settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH)){
@@ -170,7 +174,7 @@ public:
                         }
 
                         if((settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::FALLING || settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER) ||
-                           (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && peakVoltage > bufferProcessor->getProbeStats()[probe].deviation * settings.positiveDeviationMultiplier)){ // ...reject if max voltage is not over the threshold
+                           (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && peakVoltage > deviation * settings.positiveDeviationMultiplier)){ // ...reject if max voltage is not over the threshold
 
                             size_t halfLength = std::floor(settings.spikeWaveformLengthSamples / 2);
 
@@ -216,7 +220,7 @@ public:
                     }
 
 
-                    if(frame.ac_uV[probe] > bufferProcessor->getProbeStatsUnlocked()[probe].deviation * settings.positiveDeviationMultiplier &&
+                    if(frame.ac_uV[probe] > deviation * settings.positiveDeviationMultiplier &&
                        (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::RISING ||
                        settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER ||
                        settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH)){
@@ -236,7 +240,7 @@ public:
 
 
                         if((settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::RISING || settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::EITHER) ||
-                           (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && troughVoltage < -bufferProcessor->getProbeStats()[probe].deviation * settings.negativeDeviationMultiplier)){ // ...reject if min voltage is not under the threshold
+                           (settings.spikeEdgeDetectionType == SpikeEdgeDetectionType::BOTH && troughVoltage < -deviation * settings.negativeDeviationMultiplier)){ // ...reject if min voltage is not under the threshold
 
                             size_t halfLength = std::floor(settings.spikeWaveformLengthSamples / 2);
 

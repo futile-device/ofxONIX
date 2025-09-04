@@ -152,7 +152,17 @@ public:
 					if(b) ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, cell_bg_color);
 				}
 
-				ImGui::Text("Bursts/spsa: %0.5f", sp.burstBuffer.getCurrentBurstRatePSA(probe, 30000));
+				ImGui::Text("P: %02d || Bursts/spsa: %0.5f", probe, sp.burstBuffer.getCurrentBurstRatePSA(probe, 30000));
+
+				ImGui::PushID(probe);
+				ImGui::SameLine();
+				bool bUseProbe = ONI::Global::model.getBufferProcessor()->getActiveProbes()[probe];
+				if(ImGui::Checkbox("use", &bUseProbe)){
+					LOGDEBUG("Use: %i %d", (int)bUseProbe, probe);
+					ONI::Global::model.getBufferProcessor()->getActiveProbes()[probe] = bUseProbe;
+					ONI::Global::model.getBufferProcessor()->saveActiveProbes();
+				}
+				ImGui::PopID();
 
 				ImGui::PushID(probe);
 
@@ -273,7 +283,7 @@ public:
 				cl.w = bHighLight ? 0.9 : 0.4;
 				ImPlot::SetNextMarkerStyle(ImPlotMarker_Square, 4, cl, -1, col);
 				ImPlot::PlotScatter("##spikeS", &ONI::Global::model.getBufferProcessor()->sparseTimeStamps[0], spikeV, frameCount, ImPlotLineFlags_None, offset);
-				std::this_thread::yield();
+				//std::this_thread::yield();
 				sp.spikeMutex.unlock();
 				//std::vector<float> f;
 				//f.resize(frameCount);
